@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Role {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+
+  users User[]
+}
+
+model User {
+  id           Int          @id @default(autoincrement())
+  name         String
+  email        String       @unique
+  passwordHash String
+  roleId       Int
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  role         Role         @relation(fields: [roleId], references: [id])
+  problems     Problem[]
+  submissions  Submission[]
+  aiLogs       AiLog[]
+}
+
+model Problem {
+  id                Int          @id @default(autoincrement())
+  title             String
+  description       String
+  starterCode       String?
+  referenceSolution String?
+  difficulty        String?
+  language          String       @default("javascript")
+  createdById       Int
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  createdBy         User         @relation(fields: [createdById], references: [id])
+  testCases         TestCase[]
+  submissions       Submission[]
+  aiLogs            AiLog[]
+}
+
+model TestCase {
+  id             Int       @id @default(autoincrement())
+  problemId      Int
+  input          String
+  expectedOutput String
+  isHidden       Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+
+  problem        Problem   @relation(fields: [problemId], references: [id], onDelete: Cascade)
+}
+
+model Submission {
+  id            Int       @id @default(autoincrement())
+  userId        Int
+  problemId     Int
+  code          String
+  language      String    @default("javascript")
+  status        String
+  stdout        String?
+  stderr        String?
+  executionTime Float?
+  memory        Int?
+  createdAt     DateTime  @default(now())
+
+  user          User      @relation(fields: [userId], references: [id])
+  problem       Problem   @relation(fields: [problemId], references: [id])
+  aiLogs        AiLog[]
+}
+
+model AiLog {
+  id              Int         @id @default(autoincrement())
+  userId          Int
+  problemId       Int
+  submissionId    Int?
+  mode            String      @default("practice")
+  promptVersion   String
+  modelName       String
+  studentQuestion String?
+  responseText    String
+  requestPayload  Json?
+  responsePayload Json?
+  createdAt       DateTime    @default(now())
+
+  user            User        @relation(fields: [userId], references: [id])
+  problem         Problem     @relation(fields: [problemId], references: [id])
+  submission      Submission? @relation(fields: [submissionId], references: [id])
+}
+
+model SystemFlag {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
+}

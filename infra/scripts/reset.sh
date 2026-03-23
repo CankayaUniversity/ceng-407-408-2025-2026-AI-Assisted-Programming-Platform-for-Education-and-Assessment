@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 echo "⚠️  Bu komut tüm volume'ları silecek (veritabanı verileri dahil)!"
 read -p "Devam etmek istiyor musunuz? (y/N): " confirm
 

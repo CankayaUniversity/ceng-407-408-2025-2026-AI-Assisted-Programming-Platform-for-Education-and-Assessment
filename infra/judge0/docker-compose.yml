@@ -1,16 +1,3 @@
-# ==========================================
-# Judge0 — Standalone Code Execution Stack
-# ==========================================
-# Bu stack uygulama compose'undan bağımsız çalışır.
-# Backend buraya JUDGE0_URL ile bağlanır.
-#
-# Kullanım:
-#   docker compose up -d
-#
-# Test:
-#   curl http://localhost:2358/system_info
-# ==========================================
-
 services:
   judge0-server:
     image: judge0/judge0:1.13.1
@@ -19,8 +6,8 @@ services:
     privileged: true
     ports:
       - "2358:2358"
-    env_file:
-      - ./judge0.conf
+    volumes:
+      - ./judge0.conf:/judge0.conf:ro
     depends_on:
       judge0-db:
         condition: service_healthy
@@ -33,8 +20,8 @@ services:
     restart: always
     privileged: true
     command: ["./scripts/workers"]
-    env_file:
-      - ./judge0.conf
+    volumes:
+      - ./judge0.conf:/judge0.conf:ro
     depends_on:
       judge0-db:
         condition: service_healthy
@@ -45,14 +32,12 @@ services:
     image: postgres:16
     container_name: judge0-db
     restart: always
-    environment:
-      POSTGRES_USER: judge0
-      POSTGRES_PASSWORD: judge0_password
-      POSTGRES_DB: judge0
+    env_file:
+      - ./judge0.conf
     volumes:
       - judge0_db_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U judge0 -d judge0"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -61,11 +46,13 @@ services:
     image: redis:7
     container_name: judge0-redis
     restart: always
-    command: redis-server --appendonly yes --requirepass "judge0_redis_password"
+    env_file:
+      - ./judge0.conf
+    command: ["sh", "-c", "docker-entrypoint.sh --appendonly no --requirepass \"$${REDIS_PASSWORD}\""]
     volumes:
       - judge0_redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "judge0_redis_password", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping"]
       interval: 5s
       timeout: 5s
       retries: 5

@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 echo "Stopping app stack..."
 docker compose down
 

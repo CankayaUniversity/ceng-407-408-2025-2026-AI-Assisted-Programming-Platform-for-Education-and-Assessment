@@ -1,5 +1,5 @@
 #!/bin/bash
-# Judge0 stack'ini başlat
+set -e
 echo "Starting Judge0 stack..."
 docker compose -f infra/judge0/docker-compose.yml up -d
 

@@ -7,9 +7,13 @@ services:
     ports:
       - "5173:5173"
     env_file:
-      - .env.example
+      - .env
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
     depends_on:
       - backend
+    restart: unless-stopped
 
   backend:
     build:
@@ -19,9 +23,18 @@ services:
     ports:
       - "5000:5000"
     env_file:
-      - .env.example
+      - .env
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+      openwebui:
+        condition: service_started
+      ollama:
+        condition: service_started
+    restart: unless-stopped
 
   postgres:
     image: postgres:16
@@ -30,27 +43,41 @@ services:
     ports:
       - "5432:5432"
     env_file:
-      - .env.example
+      - .env
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-  judge0-server:
-    image: judge0/judge0:1.13.1
-    container_name: judge0-server
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
     restart: unless-stopped
     ports:
-      - "2358:2358"
-    env_file:
-      - .env.example
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
 
   openwebui:
     image: ghcr.io/open-webui/open-webui:main
     container_name: openwebui
     restart: unless-stopped
+    depends_on:
+      - ollama
     ports:
       - "8080:8080"
-    env_file:
-      - .env.example
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
+      WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY}
+    volumes:
+      - openwebui_data:/app/backend/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 volumes:
   postgres_data:
+  ollama_data:
+  openwebui_data:

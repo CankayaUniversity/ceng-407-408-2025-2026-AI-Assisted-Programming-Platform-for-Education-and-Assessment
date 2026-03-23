@@ -1,0 +1,75 @@
+# ==========================================
+# Judge0 — Standalone Code Execution Stack
+# ==========================================
+# Bu stack uygulama compose'undan bağımsız çalışır.
+# Backend buraya JUDGE0_URL ile bağlanır.
+#
+# Kullanım:
+#   docker compose up -d
+#
+# Test:
+#   curl http://localhost:2358/system_info
+# ==========================================
+
+services:
+  judge0-server:
+    image: judge0/judge0:1.13.1
+    container_name: judge0-server
+    restart: always
+    privileged: true
+    ports:
+      - "2358:2358"
+    env_file:
+      - ./judge0.conf
+    depends_on:
+      judge0-db:
+        condition: service_healthy
+      judge0-redis:
+        condition: service_healthy
+
+  judge0-worker:
+    image: judge0/judge0:1.13.1
+    container_name: judge0-worker
+    restart: always
+    privileged: true
+    command: ["./scripts/workers"]
+    env_file:
+      - ./judge0.conf
+    depends_on:
+      judge0-db:
+        condition: service_healthy
+      judge0-redis:
+        condition: service_healthy
+
+  judge0-db:
+    image: postgres:16
+    container_name: judge0-db
+    restart: always
+    environment:
+      POSTGRES_USER: judge0
+      POSTGRES_PASSWORD: judge0_password
+      POSTGRES_DB: judge0
+    volumes:
+      - judge0_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U judge0 -d judge0"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  judge0-redis:
+    image: redis:7
+    container_name: judge0-redis
+    restart: always
+    command: redis-server --appendonly yes --requirepass "judge0_redis_password"
+    volumes:
+      - judge0_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "judge0_redis_password", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  judge0_db_data:
+  judge0_redis_data:

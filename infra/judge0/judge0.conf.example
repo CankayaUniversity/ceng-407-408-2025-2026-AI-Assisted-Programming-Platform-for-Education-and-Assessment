@@ -1,0 +1,40 @@
+# ==========================================
+# Judge0 Configuration
+# ==========================================
+# Resmi Judge0 environment değişkenleri
+# Detay: https://github.com/judge0/judge0/blob/master/judge0.conf
+
+# ---------- Database ----------
+POSTGRES_HOST=judge0-db
+POSTGRES_PORT=5432
+POSTGRES_DB=judge0
+POSTGRES_USER=judge0
+POSTGRES_PASSWORD=judge0_password
+
+# ---------- Redis ----------
+REDIS_HOST=judge0-redis
+REDIS_PORT=6379
+REDIS_PASSWORD=judge0_redis_password
+
+# ---------- Judge0 API ----------
+# İsteğe bağlı: API erişim token'ı (boş bırakılırsa auth olmadan çalışır)
+# AUTHN_HEADER=X-Auth-Token
+# AUTHN_TOKEN=your-secret-token
+
+# ---------- Worker ----------
+# Eşzamanlı çalışacak worker sayısı
+RAILS_MAX_THREADS=4
+
+# ---------- Kaynak Limitleri ----------
+# Varsayılan CPU süresi (saniye)
+CPU_TIME_LIMIT=5
+# Varsayılan bellek limiti (KB)
+MEMORY_LIMIT=128000
+# Maksimum CPU süresi (saniye)
+MAX_CPU_TIME_LIMIT=15
+# Maksimum bellek limiti (KB)
+MAX_MEMORY_LIMIT=512000
+
+# ---------- Dil Desteği ----------
+# MVP için gerekli diller: C, C++, C#, Python, Java
+# Dil ID'leri: https://github.com/judge0/judge0/blob/master/docs/api/languages.md

@@ -1,90 +1,99 @@
 # AI-Assisted Programming Platform for Education and Assessment
 
-AI destekli programlama eğitim ve değerlendirme platformu.
+Web platform for programming courses with AI-assisted hints (mentor role), secure code execution, and instructor tooling.
 
-## Proje Yapısı
+## Repository layout
 
 ```
-├── frontend/              → React frontend
-├── backend/               → Node.js/Express backend
+├── frontend/              → React frontend (scaffold / future UI)
+├── backend/               → Node.js / Express API + Prisma
 ├── infra/
-│   ├── judge0/            → Judge0 code execution stack (ayrı compose)
+│   ├── judge0/            → Judge0 stack (separate compose)
 │   │   ├── docker-compose.yml
-│   │   ├── judge0.conf.example
-│   │   └── judge0.conf        ← .gitignore'da (şifreler içerir)
-│   └── scripts/           → DevOps yardımcı scriptler
-│       ├── start.sh
-│       ├── stop.sh
-│       └── reset.sh
-├── docs/                  → Proje dokümantasyonu
-├── info/                  → Proje tasarım dokümanları
-├── docker-compose.yml     → Ana uygulama servisleri
-├── .env.example           → Environment variable şablonu
-└── .env                   ← .gitignore'da (gerçek değerler)
+│   │   └── judge0.conf.example   (copy to judge0.conf; gitignored secrets)
+│   └── scripts/           → Helper scripts (start / stop / reset)
+├── docs/                  → Project notes and checklists
+├── info/                  → Design and requirements PDFs
+├── docker-compose.yml     → Application services
+├── .env.example           → Environment template
+└── .env                   → Local secrets (gitignored)
 ```
 
-## Servisler
+## Services
 
-### Ana Stack (`docker-compose.yml`)
+### Main stack (`docker-compose.yml`)
 
-| Servis | Port | Açıklama |
-|---|---|---|
-| Frontend | 5173 | React UI |
-| Backend | 5000 | Node.js API |
-| PostgreSQL | 5432 | Uygulama veritabanı |
-| Ollama | 11434 | Local LLM runtime |
-| OpenWebUI | 8080 | AI model arayüzü |
+| Service   | Port  | Description        |
+|----------|-------|--------------------|
+| Frontend | 5173  | React dev server   |
+| Backend  | 5000  | Express API        |
+| Postgres | 5432  | App database       |
+| Ollama   | 11434 | Local LLM runtime  |
+| Open WebUI | 8080 | Optional UI for talking to models |
 
-### Judge0 Stack (`infra/judge0/docker-compose.yml`)
+### Judge0 stack (`infra/judge0/docker-compose.yml`)
 
-| Servis | Port | Açıklama |
-|---|---|---|
-| Judge0 Server | 2358 | Code execution API |
-| Judge0 Worker | — | Kod çalıştırma işçisi |
-| Judge0 DB | — | Judge0'a özel PostgreSQL |
-| Judge0 Redis | — | Task queue |
+| Service        | Port | Description           |
+|----------------|------|-----------------------|
+| Judge0 server  | 2358 | Code execution API    |
+| Judge0 worker  | —    | Sandbox workers       |
+| Judge0 DB/Redis| —    | Internal queue/state  |
 
-## Kurulum
+## Backend (local, without Docker)
 
-### 1. Environment dosyalarını oluştur
+From `backend/`:
 
 ```bash
-# Ana uygulama
-cp .env.example .env
+npm install
+cp ../.env.example ../.env   # defines DATABASE_URL and other vars for Prisma + runtime
+npm run prisma:generate      # requires DATABASE_URL (see root .env)
+npm run dev
+```
 
-# Judge0
+If you only need the HTTP server and will run Prisma later, you can start the API with a dummy URL just to satisfy the config loader:
+
+```bash
+set DATABASE_URL=postgresql://postgres:postgres@localhost:5432/app_db   # Windows cmd
+# export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/app_db  # Unix
+npm run prisma:generate
+```
+
+Health checks: `GET http://localhost:5000/health` and `GET http://localhost:5000/api/health`.
+
+## Setup
+
+### 1. Environment files
+
+```bash
+cp .env.example .env
 cp infra/judge0/judge0.conf.example infra/judge0/judge0.conf
 ```
 
-### 2. Projeyi başlat
+### 2. Start stacks
 
 ```bash
-# Tüm servisleri başlat
 bash infra/scripts/start.sh
 ```
 
-Veya manuel:
+Or manually:
 
 ```bash
-# Önce Judge0
 docker compose -f infra/judge0/docker-compose.yml up -d
-
-# Sonra uygulama
 docker compose up --build -d
 ```
 
-### 3. Projeyi durdur
+### 3. Stop
 
 ```bash
 bash infra/scripts/stop.sh
 ```
 
-### 4. Sıfırla (tüm veriler silinir)
+### 4. Reset (removes volumes)
 
 ```bash
 bash infra/scripts/reset.sh
 ```
 
-## Desteklenen Diller (MVP)
+## MVP language targets (course support)
 
 C, C++, C#, Python, Java

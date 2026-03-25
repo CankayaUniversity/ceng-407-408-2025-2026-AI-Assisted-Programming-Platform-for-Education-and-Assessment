@@ -14,8 +14,112 @@ const pool = new Pool({
   connectionString,
 });
 
-const adapter = new PrismaPg(pool);
+const adapter = new PrismaPg(pool as ConstructorParameters<typeof PrismaPg>[0]);
 const prisma = new PrismaClient({ adapter });
+
+/** Judge0 runs the file as a Node program: read stdin, print stdout. */
+const SUM_DESCRIPTION =
+  "Read two integers from standard input (one line, space-separated) and print their sum as a single line.";
+
+const SUM_STARTER = `const fs = require('fs');
+const input = fs.readFileSync(0, 'utf8').trim();
+const [a, b] = input.split(/\\s+/).map((x) => parseInt(x, 10));
+// TODO: print a + b on one line
+`;
+
+const SUM_REFERENCE = `const fs = require('fs');
+const input = fs.readFileSync(0, 'utf8').trim();
+const [a, b] = input.split(/\\s+/).map((x) => parseInt(x, 10));
+console.log(a + b);
+`;
+
+const PAL_DESCRIPTION =
+  "Read one line from standard input and print true if it is a palindrome, otherwise false (lowercase booleans).";
+
+const PAL_STARTER = `const fs = require('fs');
+const s = fs.readFileSync(0, 'utf8').trim();
+// TODO: print true or false on one line
+`;
+
+const PAL_REFERENCE = `const fs = require('fs');
+const s = fs.readFileSync(0, 'utf8').trim();
+const ok = s === s.split('').reverse().join('');
+console.log(ok);
+`;
+
+const FACT_DESCRIPTION =
+  "Read a positive integer n from standard input and print n factorial (n!) on one line.";
+
+const FACT_STARTER = `const fs = require('fs');
+const n = parseInt(fs.readFileSync(0, 'utf8').trim(), 10);
+// TODO: print factorial of n on one line
+`;
+
+const FACT_REFERENCE = `const fs = require('fs');
+const n = parseInt(fs.readFileSync(0, 'utf8').trim(), 10);
+function fact(x) {
+  if (x <= 1) return 1;
+  return x * fact(x - 1);
+}
+console.log(fact(n));
+`;
+
+type TestSpec = { input: string; expectedOutput: string; isHidden: boolean };
+
+async function upsertProblemWithTests(params: {
+  title: string;
+  description: string;
+  starterCode: string;
+  referenceSolution: string;
+  difficulty: string;
+  language: string;
+  createdById: number;
+  testCases: TestSpec[];
+}) {
+  const existing = await prisma.problem.findFirst({
+    where: { title: params.title },
+  });
+
+  const common = {
+    description: params.description,
+    starterCode: params.starterCode,
+    referenceSolution: params.referenceSolution,
+    difficulty: params.difficulty,
+    language: params.language,
+  };
+
+  if (existing) {
+    await prisma.testCase.deleteMany({ where: { problemId: existing.id } });
+    return prisma.problem.update({
+      where: { id: existing.id },
+      data: {
+        ...common,
+        testCases: {
+          create: params.testCases.map((tc) => ({
+            input: tc.input,
+            expectedOutput: tc.expectedOutput,
+            isHidden: tc.isHidden,
+          })),
+        },
+      },
+    });
+  }
+
+  return prisma.problem.create({
+    data: {
+      title: params.title,
+      ...common,
+      createdById: params.createdById,
+      testCases: {
+        create: params.testCases.map((tc) => ({
+          input: tc.input,
+          expectedOutput: tc.expectedOutput,
+          isHidden: tc.isHidden,
+        })),
+      },
+    },
+  });
+}
 
 async function main() {
   const studentRole = await prisma.role.upsert({
@@ -71,79 +175,47 @@ async function main() {
     },
   });
 
-  let problem1 = await prisma.problem.findFirst({
-    where: { title: "Sum of Two Numbers" },
+  const problem1 = await upsertProblemWithTests({
+    title: "Sum of Two Numbers",
+    description: SUM_DESCRIPTION,
+    starterCode: SUM_STARTER,
+    referenceSolution: SUM_REFERENCE,
+    difficulty: "easy",
+    language: "javascript",
+    createdById: teacher.id,
+    testCases: [
+      { input: "2 3", expectedOutput: "5", isHidden: false },
+      { input: "10 20", expectedOutput: "30", isHidden: true },
+    ],
   });
 
-  if (!problem1) {
-    problem1 = await prisma.problem.create({
-      data: {
-        title: "Sum of Two Numbers",
-        description: "Write a function that takes two integers and returns their sum.",
-        starterCode: "function solve(a, b) {\n  // write your code here\n}\n",
-        referenceSolution: "function solve(a, b) {\n  return a + b;\n}\n",
-        difficulty: "easy",
-        language: "javascript",
-        createdById: teacher.id,
-        testCases: {
-          create: [
-            { input: "2 3", expectedOutput: "5", isHidden: false },
-            { input: "10 20", expectedOutput: "30", isHidden: true },
-          ],
-        },
-      },
-    });
-  }
-
-  let problem2 = await prisma.problem.findFirst({
-    where: { title: "Check Palindrome" },
+  const problem2 = await upsertProblemWithTests({
+    title: "Check Palindrome",
+    description: PAL_DESCRIPTION,
+    starterCode: PAL_STARTER,
+    referenceSolution: PAL_REFERENCE,
+    difficulty: "easy",
+    language: "javascript",
+    createdById: teacher.id,
+    testCases: [
+      { input: "level", expectedOutput: "true", isHidden: false },
+      { input: "hello", expectedOutput: "false", isHidden: true },
+    ],
   });
 
-  if (!problem2) {
-    problem2 = await prisma.problem.create({
-      data: {
-        title: "Check Palindrome",
-        description: "Given a string, return true if it is a palindrome, otherwise false.",
-        starterCode: "function solve(str) {\n  // write your code here\n}\n",
-        referenceSolution:
-          "function solve(str) {\n  const reversed = str.split('').reverse().join('');\n  return str === reversed;\n}\n",
-        difficulty: "easy",
-        language: "javascript",
-        createdById: teacher.id,
-        testCases: {
-          create: [
-            { input: "level", expectedOutput: "true", isHidden: false },
-            { input: "hello", expectedOutput: "false", isHidden: true },
-          ],
-        },
-      },
-    });
-  }
-
-  let problem3 = await prisma.problem.findFirst({
-    where: { title: "Factorial" },
+  const problem3 = await upsertProblemWithTests({
+    title: "Factorial",
+    description: FACT_DESCRIPTION,
+    starterCode: FACT_STARTER,
+    referenceSolution: FACT_REFERENCE,
+    difficulty: "medium",
+    language: "javascript",
+    createdById: teacher.id,
+    testCases: [
+      { input: "5", expectedOutput: "120", isHidden: false },
+      { input: "1", expectedOutput: "1", isHidden: true },
+    ],
   });
-
-  if (!problem3) {
-    problem3 = await prisma.problem.create({
-      data: {
-        title: "Factorial",
-        description: "Given a positive integer n, return n factorial.",
-        starterCode: "function solve(n) {\n  // write your code here\n}\n",
-        referenceSolution:
-          "function solve(n) {\n  let result = 1;\n  for (let i = 2; i <= n; i++) result *= i;\n  return result;\n}\n",
-        difficulty: "medium",
-        language: "javascript",
-        createdById: teacher.id,
-        testCases: {
-          create: [
-            { input: "5", expectedOutput: "120", isHidden: false },
-            { input: "1", expectedOutput: "1", isHidden: true },
-          ],
-        },
-      },
-    });
-  }
 
   await prisma.systemFlag.upsert({
     where: { key: "exam_mode_enabled" },
@@ -169,7 +241,7 @@ async function main() {
       data: {
         userId: student.id,
         problemId: problem1.id,
-        code: "function solve(a, b) { return a + b; }",
+        code: SUM_REFERENCE.trim(),
         language: "javascript",
         status: "accepted",
         stdout: "5",
@@ -198,11 +270,11 @@ async function main() {
         studentQuestion: "Why is my palindrome code failing?",
         responseText: "Check whether you are comparing the reversed string correctly.",
         requestPayload: {
-          code: "function solve(str) { return false; }",
+          code: "const fs = require('fs'); console.log(false);",
           question: "Why is my palindrome code failing?",
         },
         responsePayload: {
-          observation: "The current code always returns false.",
+          observation: "The current code always prints false.",
         },
       },
     });

@@ -1,0 +1,5 @@
+# Shell entrypoints must use LF inside Linux containers (Windows checkouts).
+*.sh text eol=lf
+backend/docker-entrypoint.sh text eol=lf
+infra/judge0/*.conf text eol=lf
+infra/judge0/*.conf.example text eol=lf

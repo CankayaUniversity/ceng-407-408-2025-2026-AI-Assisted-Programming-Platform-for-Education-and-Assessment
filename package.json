@@ -1,0 +1,18 @@
+{
+  "name": "ai-programming-platform",
+  "private": true,
+  "description": "Root scripts for Docker and smoke tests",
+  "scripts": {
+    "up": "docker compose up --build -d",
+    "up:judge0": "docker compose -f infra/judge0/docker-compose.yml up -d",
+    "up:all": "npm run up:judge0 && npm run up",
+    "down": "docker compose down",
+    "down:judge0": "docker compose -f infra/judge0/docker-compose.yml down",
+    "down:all": "npm run down && npm run down:judge0",
+    "logs": "docker compose logs -f backend",
+    "db:migrate": "docker compose exec backend npx prisma migrate deploy",
+    "db:seed": "docker compose exec backend npm run prisma:seed",
+    "setup": "npm run db:migrate && npm run db:seed",
+    "smoke": "node scripts/smoke-test.mjs"
+  }
+}

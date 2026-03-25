@@ -1,6 +1,6 @@
 services:
   judge0-server:
-    image: judge0/judge0:1.13.1
+    image: judge0/judge0:latest
     container_name: judge0-server
     restart: always
     privileged: true
@@ -8,6 +8,7 @@ services:
       - "2358:2358"
     volumes:
       - ./judge0.conf:/judge0.conf:ro
+      - judge0_box_data:/box
     depends_on:
       judge0-db:
         condition: service_healthy
@@ -15,13 +16,14 @@ services:
         condition: service_healthy
 
   judge0-worker:
-    image: judge0/judge0:1.13.1
+    image: judge0/judge0:latest
     container_name: judge0-worker
     restart: always
     privileged: true
     command: ["./scripts/workers"]
     volumes:
       - ./judge0.conf:/judge0.conf:ro
+      - judge0_box_data:/box
     depends_on:
       judge0-db:
         condition: service_healthy
@@ -60,3 +62,4 @@ services:
 volumes:
   judge0_db_data:
   judge0_redis_data:
+  judge0_box_data:

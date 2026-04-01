@@ -160,3 +160,17 @@ bash infra/scripts/reset.sh
 ## MVP language targets (course support)
 
 C, C++, C#, Python, Java
+
+## Production operations (DevOps)
+
+For production-oriented deployment and operations (including GCP single-VM checklist), see:
+
+- `docs/devops-production-checklist.md`
+
+Recommended minimal production sequence:
+
+1. Configure production `.env` (do not commit secrets).
+2. Start services: `docker compose up -d --build`
+3. Apply migrations: `docker compose exec backend npx prisma migrate deploy`
+4. (Optional) controlled seed: `docker compose exec backend npm run prisma:seed`
+5. Verify readiness: `GET /api/health/ready` and run smoke checks.

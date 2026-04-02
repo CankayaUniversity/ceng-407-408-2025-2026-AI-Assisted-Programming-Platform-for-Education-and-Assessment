@@ -17,51 +17,46 @@ const pool = new Pool({
 const adapter = new PrismaPg(pool as ConstructorParameters<typeof PrismaPg>[0]);
 const prisma = new PrismaClient({ adapter });
 
-/** Judge0 runs the file as a Node program: read stdin, print stdout. */
+/** Judge0 seed examples for Python (MVP supports C/Python). */
 const SUM_DESCRIPTION =
   "Read two integers from standard input (one line, space-separated) and print their sum as a single line.";
 
-const SUM_STARTER = `const fs = require('fs');
-const input = fs.readFileSync(0, 'utf8').trim();
-const [a, b] = input.split(/\\s+/).map((x) => parseInt(x, 10));
-// TODO: print a + b on one line
+const SUM_STARTER = `line = input().strip()
+a, b = map(int, line.split())
+# TODO: print a + b on one line
 `;
 
-const SUM_REFERENCE = `const fs = require('fs');
-const input = fs.readFileSync(0, 'utf8').trim();
-const [a, b] = input.split(/\\s+/).map((x) => parseInt(x, 10));
-console.log(a + b);
+const SUM_REFERENCE = `line = input().strip()
+a, b = map(int, line.split())
+print(a + b)
 `;
 
 const PAL_DESCRIPTION =
   "Read one line from standard input and print true if it is a palindrome, otherwise false (lowercase booleans).";
 
-const PAL_STARTER = `const fs = require('fs');
-const s = fs.readFileSync(0, 'utf8').trim();
-// TODO: print true or false on one line
+const PAL_STARTER = `s = input().strip()
+# TODO: print true or false on one line
 `;
 
-const PAL_REFERENCE = `const fs = require('fs');
-const s = fs.readFileSync(0, 'utf8').trim();
-const ok = s === s.split('').reverse().join('');
-console.log(ok);
+const PAL_REFERENCE = `s = input().strip()
+ok = s == s[::-1]
+print(str(ok).lower())
 `;
 
 const FACT_DESCRIPTION =
   "Read a positive integer n from standard input and print n factorial (n!) on one line.";
 
-const FACT_STARTER = `const fs = require('fs');
-const n = parseInt(fs.readFileSync(0, 'utf8').trim(), 10);
-// TODO: print factorial of n on one line
+const FACT_STARTER = `n = int(input().strip())
+# TODO: print factorial of n on one line
 `;
 
-const FACT_REFERENCE = `const fs = require('fs');
-const n = parseInt(fs.readFileSync(0, 'utf8').trim(), 10);
-function fact(x) {
-  if (x <= 1) return 1;
-  return x * fact(x - 1);
-}
-console.log(fact(n));
+const FACT_REFERENCE = `n = int(input().strip())
+def fact(x: int) -> int:
+    if x <= 1:
+        return 1
+    return x * fact(x - 1)
+
+print(fact(n))
 `;
 
 type TestSpec = { input: string; expectedOutput: string; isHidden: boolean };
@@ -181,12 +176,16 @@ async function main() {
     starterCode: SUM_STARTER,
     referenceSolution: SUM_REFERENCE,
     difficulty: "easy",
-    language: "javascript",
+    language: "python",
     createdById: teacher.id,
     testCases: [
       { input: "2 3", expectedOutput: "5", isHidden: false },
       { input: "10 20", expectedOutput: "30", isHidden: true },
     ],
+  });
+  await prisma.problem.update({
+    where: { id: problem1.id },
+    data: { tags: ["math", "basics", "io"] },
   });
 
   const problem2 = await upsertProblemWithTests({
@@ -195,12 +194,16 @@ async function main() {
     starterCode: PAL_STARTER,
     referenceSolution: PAL_REFERENCE,
     difficulty: "easy",
-    language: "javascript",
+    language: "python",
     createdById: teacher.id,
     testCases: [
       { input: "level", expectedOutput: "true", isHidden: false },
       { input: "hello", expectedOutput: "false", isHidden: true },
     ],
+  });
+  await prisma.problem.update({
+    where: { id: problem2.id },
+    data: { tags: ["strings", "two-pointers"] },
   });
 
   const problem3 = await upsertProblemWithTests({
@@ -209,12 +212,16 @@ async function main() {
     starterCode: FACT_STARTER,
     referenceSolution: FACT_REFERENCE,
     difficulty: "medium",
-    language: "javascript",
+    language: "python",
     createdById: teacher.id,
     testCases: [
       { input: "5", expectedOutput: "120", isHidden: false },
       { input: "1", expectedOutput: "1", isHidden: true },
     ],
+  });
+  await prisma.problem.update({
+    where: { id: problem3.id },
+    data: { tags: ["math", "recursion"] },
   });
 
   await prisma.systemFlag.upsert({
@@ -242,13 +249,51 @@ async function main() {
         userId: student.id,
         problemId: problem1.id,
         code: SUM_REFERENCE.trim(),
-        language: "javascript",
+        language: "python",
         status: "accepted",
         stdout: "5",
         executionTime: 12.5,
         memory: 1024,
       },
     });
+  }
+
+  const latestSubmission = await prisma.submission.findFirst({
+    where: {
+      userId: student.id,
+      problemId: problem1.id,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (latestSubmission) {
+    const existingAttempt = await prisma.submissionAttempt.findFirst({
+      where: {
+        submissionId: latestSubmission.id,
+      },
+    });
+
+    if (!existingAttempt) {
+      await prisma.submissionAttempt.create({
+        data: {
+          userId: student.id,
+          problemId: problem1.id,
+          submissionId: latestSubmission.id,
+          language: "python",
+          mode: "tests",
+          judge0StatusId: 3,
+          judge0Status: "Accepted",
+          statusCategory: "accepted",
+          passedPublicCount: 1,
+          totalPublicCount: 1,
+          passedHiddenCount: 1,
+          totalHiddenCount: 1,
+          stdout: "5",
+          executionTime: 12.5,
+          memory: 1024,
+        },
+      });
+    }
   }
 
   const existingAiLog = await prisma.aiLog.findFirst({
@@ -270,7 +315,7 @@ async function main() {
         studentQuestion: "Why is my palindrome code failing?",
         responseText: "Check whether you are comparing the reversed string correctly.",
         requestPayload: {
-          code: "const fs = require('fs'); console.log(false);",
+          code: "s = input().strip()\nprint(str(s == s[::-1]).lower())",
           question: "Why is my palindrome code failing?",
         },
         responsePayload: {
@@ -278,6 +323,62 @@ async function main() {
         },
       },
     });
+  }
+
+  const latestAiLog = await prisma.aiLog.findFirst({
+    where: {
+      userId: student.id,
+      problemId: problem2.id,
+      promptVersion: "mentor_v1",
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (latestAiLog) {
+    const existingHint = await prisma.hintEvent.findFirst({
+      where: {
+        aiLogId: latestAiLog.id,
+      },
+    });
+
+    if (!existingHint) {
+      await prisma.hintEvent.create({
+        data: {
+          userId: student.id,
+          problemId: problem2.id,
+          aiLogId: latestAiLog.id,
+          sequence: 1,
+          mode: "hint",
+        },
+      });
+    }
+
+    const existingAudit = await prisma.aiInteractionAudit.findFirst({
+      where: {
+        aiLogId: latestAiLog.id,
+      },
+    });
+
+    if (!existingAudit) {
+      await prisma.aiInteractionAudit.create({
+        data: {
+          userId: student.id,
+          problemId: problem2.id,
+          aiLogId: latestAiLog.id,
+          mentorRaw: latestAiLog.responseText,
+          validatorJson: {
+            riskScore: 0.05,
+            decision: "allow",
+            violations: [],
+          },
+          policyAction: "allow",
+          finalText: latestAiLog.responseText,
+          mentorModel: latestAiLog.modelName,
+          validatorModel: "validator-heuristic",
+          durationMs: 1000,
+        },
+      });
+    }
   }
 
   console.log("Seed completed successfully.");

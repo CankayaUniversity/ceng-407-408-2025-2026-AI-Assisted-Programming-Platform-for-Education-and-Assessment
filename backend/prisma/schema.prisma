@@ -26,6 +26,9 @@ model User {
   problems     Problem[]
   submissions  Submission[]
   aiLogs       AiLog[]
+  attempts     SubmissionAttempt[]
+  hintEvents   HintEvent[]
+  audits       AiInteractionAudit[]
 }
 
 model Problem {
@@ -36,6 +39,7 @@ model Problem {
   referenceSolution String?
   difficulty        String?
   language          String       @default("javascript")
+  tags              String[]     @default([])
   createdById       Int
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
@@ -44,6 +48,9 @@ model Problem {
   testCases         TestCase[]
   submissions       Submission[]
   aiLogs            AiLog[]
+  attempts          SubmissionAttempt[]
+  hintEvents        HintEvent[]
+  audits            AiInteractionAudit[]
 }
 
 model TestCase {
@@ -73,6 +80,8 @@ model Submission {
   user          User      @relation(fields: [userId], references: [id])
   problem       Problem   @relation(fields: [problemId], references: [id])
   aiLogs        AiLog[]
+  attempts      SubmissionAttempt[]
+  audits        AiInteractionAudit[]
 }
 
 model AiLog {
@@ -92,6 +101,8 @@ model AiLog {
   user            User        @relation(fields: [userId], references: [id])
   problem         Problem     @relation(fields: [problemId], references: [id])
   submission      Submission? @relation(fields: [submissionId], references: [id])
+  hintEvents      HintEvent[]
+  audits          AiInteractionAudit[]
 }
 
 model SystemFlag {
@@ -99,4 +110,79 @@ model SystemFlag {
   key       String   @unique
   value     Json
   updatedAt DateTime @updatedAt
+}
+
+model SubmissionAttempt {
+  id                Int         @id @default(autoincrement())
+  userId            Int
+  problemId         Int?
+  submissionId      Int?
+  language          String
+  mode              String      @default("tests")
+  judge0StatusId    Int?
+  judge0Status      String?
+  statusCategory    String?
+  passedPublicCount Int         @default(0)
+  totalPublicCount  Int         @default(0)
+  passedHiddenCount Int         @default(0)
+  totalHiddenCount  Int         @default(0)
+  stdout            String?
+  stderr            String?
+  compileOutput     String?
+  executionTime     Float?
+  memory            Int?
+  createdAt         DateTime    @default(now())
+
+  user              User        @relation(fields: [userId], references: [id])
+  problem           Problem?    @relation(fields: [problemId], references: [id])
+  submission        Submission? @relation(fields: [submissionId], references: [id])
+  hintEvents        HintEvent[]
+  audits            AiInteractionAudit[]
+
+  @@index([userId, problemId, createdAt])
+  @@index([problemId, createdAt])
+}
+
+model HintEvent {
+  id         Int                @id @default(autoincrement())
+  userId     Int
+  problemId  Int
+  attemptId  Int?
+  aiLogId    Int?
+  sequence   Int                @default(1)
+  mode       String             @default("hint")
+  createdAt  DateTime           @default(now())
+
+  user       User               @relation(fields: [userId], references: [id])
+  problem    Problem            @relation(fields: [problemId], references: [id])
+  attempt    SubmissionAttempt? @relation(fields: [attemptId], references: [id])
+  aiLog      AiLog?             @relation(fields: [aiLogId], references: [id])
+
+  @@index([userId, problemId, createdAt])
+}
+
+model AiInteractionAudit {
+  id             Int                @id @default(autoincrement())
+  userId         Int
+  problemId      Int?
+  submissionId   Int?
+  attemptId      Int?
+  aiLogId        Int?
+  mentorRaw      String?
+  validatorJson  Json?
+  policyAction   String
+  finalText      String
+  mentorModel    String?
+  validatorModel String?
+  durationMs     Int?
+  createdAt      DateTime           @default(now())
+
+  user           User               @relation(fields: [userId], references: [id])
+  problem        Problem?           @relation(fields: [problemId], references: [id])
+  submission     Submission?        @relation(fields: [submissionId], references: [id])
+  attempt        SubmissionAttempt? @relation(fields: [attemptId], references: [id])
+  aiLog          AiLog?             @relation(fields: [aiLogId], references: [id])
+
+  @@index([userId, problemId, createdAt])
+  @@index([problemId, createdAt])
 }

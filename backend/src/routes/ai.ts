@@ -1,24 +1,56 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/requireAuth";
+import { createAiInteractionAudit } from "../services/audit";
 import { getMentorReply, type MentorRequestInput } from "../services/mentor";
+import { applyPolicy } from "../services/policy";
+import { validateMentorReply } from "../services/validator";
 
 const router = Router();
 
 const PROMPT_VERSION = "mentor_v1";
+const VALIDATOR_MODEL = process.env.OLLAMA_VALIDATOR_MODEL ?? "validator-heuristic";
 
 router.use(requireAuth);
 
 function parseMentorBody(body: Record<string, unknown>): MentorRequestInput {
+  const studentQuestion =
+    typeof body.studentQuestion === "string"
+      ? body.studentQuestion
+      : typeof body.question === "string"
+        ? body.question
+        : null;
+
+  const studentCode =
+    typeof body.studentCode === "string"
+      ? body.studentCode
+      : typeof body.sourceCode === "string"
+        ? body.sourceCode
+        : typeof body.code === "string"
+          ? body.code
+          : null;
+
+  const stdout =
+    typeof body.stdout === "string"
+      ? body.stdout
+      : typeof body.output === "string"
+        ? body.output
+        : null;
+
   return {
     problemDescription:
       typeof body.problemDescription === "string" ? body.problemDescription : null,
     assignmentText: typeof body.assignmentText === "string" ? body.assignmentText : null,
-    studentCode: typeof body.studentCode === "string" ? body.studentCode : null,
-    errorMessage: typeof body.errorMessage === "string" ? body.errorMessage : null,
-    studentQuestion: typeof body.studentQuestion === "string" ? body.studentQuestion : null,
+    studentCode,
+    errorMessage:
+      typeof body.errorMessage === "string"
+        ? body.errorMessage
+        : typeof body.stderr === "string"
+          ? body.stderr
+          : null,
+    studentQuestion,
     runStatus: typeof body.runStatus === "string" ? body.runStatus : null,
-    stdout: typeof body.stdout === "string" ? body.stdout : null,
+    stdout,
     language: typeof body.language === "string" ? body.language : null,
     mode: typeof body.mode === "string" ? body.mode : null,
     hintLevel: typeof body.hintLevel === "number" ? body.hintLevel : null,
@@ -39,30 +71,20 @@ function parseProblemId(body: Record<string, unknown>): number | undefined {
   return undefined;
 }
 
-router.post("/chat", async (req, res) => {
+async function handleAiRequest(req: Request, res: Response) {
   const body = req.body as Record<string, unknown>;
   const input = parseMentorBody(body);
   const problemId = parseProblemId(body);
+  const submissionId =
+    typeof body.submissionId === "number"
+      ? body.submissionId
+      : typeof body.submissionId === "string" && body.submissionId.trim() !== ""
+        ? Number.parseInt(body.submissionId, 10)
+        : undefined;
+  const mode = typeof body.mode === "string" ? body.mode.trim().toLowerCase() : "practice";
+  const startedAt = Date.now();
 
   const result = await getMentorReply(input);
-
-  if (result.success && problemId !== undefined) {
-    const problem = await prisma.problem.findUnique({ where: { id: problemId } });
-    if (problem) {
-      await prisma.aiLog.create({
-        data: {
-          userId: req.auth!.userId,
-          problemId,
-          mode: "practice",
-          promptVersion: PROMPT_VERSION,
-          modelName: process.env.OLLAMA_MODEL ?? "ai-mentor",
-          studentQuestion: input.studentQuestion ?? null,
-          responseText: result.mentorReply,
-          requestPayload: body as object,
-        },
-      });
-    }
-  }
 
   if (!result.success) {
     res.status(503).json({
@@ -73,10 +95,107 @@ router.post("/chat", async (req, res) => {
     return;
   }
 
+  const validator = await validateMentorReply(result.mentorReply);
+  const policy = applyPolicy({
+    mentorReply: result.mentorReply,
+    validator,
+    studentQuestion: input.studentQuestion,
+  });
+
+  const problem =
+    problemId !== undefined
+      ? await prisma.problem.findUnique({ where: { id: problemId } })
+      : null;
+
+  const linkedAttempt =
+    submissionId !== undefined
+      ? await prisma.submissionAttempt.findFirst({
+          where: {
+            submissionId,
+            userId: req.auth!.userId,
+          },
+          orderBy: { createdAt: "desc" },
+        })
+      : problemId !== undefined
+        ? await prisma.submissionAttempt.findFirst({
+            where: {
+              userId: req.auth!.userId,
+              problemId,
+            },
+            orderBy: { createdAt: "desc" },
+          })
+        : null;
+
+  let aiLogId: number | null = null;
+
+  if (problem) {
+    const aiLog = await prisma.aiLog.create({
+      data: {
+        userId: req.auth!.userId,
+        problemId,
+        submissionId: submissionId ?? null,
+        mode,
+        promptVersion: PROMPT_VERSION,
+        modelName: process.env.OLLAMA_MODEL ?? "ai-mentor",
+        studentQuestion: input.studentQuestion ?? null,
+        responseText: policy.finalText,
+        requestPayload: body as object,
+        responsePayload: {
+          mentorRaw: result.mentorReply,
+          validator,
+          policyAction: policy.action,
+        },
+      },
+    });
+
+    aiLogId = aiLog.id;
+
+    if (mode === "hint" || mode === "tip") {
+      const lastHint = await prisma.hintEvent.findFirst({
+        where: {
+          userId: req.auth!.userId,
+          problemId,
+        },
+        orderBy: [{ sequence: "desc" }, { createdAt: "desc" }],
+      });
+
+      await prisma.hintEvent.create({
+        data: {
+          userId: req.auth!.userId,
+          problemId,
+          attemptId: linkedAttempt?.id ?? null,
+          aiLogId: aiLog.id,
+          sequence: (lastHint?.sequence ?? 0) + 1,
+          mode,
+        },
+      });
+    }
+  }
+
+  await createAiInteractionAudit({
+    userId: req.auth!.userId,
+    problemId: problem?.id ?? null,
+    submissionId: submissionId ?? null,
+    attemptId: linkedAttempt?.id ?? null,
+    aiLogId,
+    mentorRaw: result.mentorReply,
+    validatorJson: validator,
+    policyAction: policy.action,
+    finalText: policy.finalText,
+    mentorModel: process.env.OLLAMA_MODEL ?? "ai-mentor",
+    validatorModel: VALIDATOR_MODEL,
+    durationMs: Date.now() - startedAt,
+  });
+
   res.json({
     success: true,
-    mentorReply: result.mentorReply,
+    mentorReply: policy.finalText,
+    validator,
+    policyAction: policy.action,
   });
-});
+}
+
+router.post("/chat", handleAiRequest);
+router.post("/hint", handleAiRequest);
 
 export { router as aiRouter };

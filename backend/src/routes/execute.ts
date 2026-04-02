@@ -3,6 +3,7 @@ import { prisma } from "../lib/prisma";
 import { resolveLanguageId } from "../lib/judge0Languages";
 import { requireAuth } from "../middleware/requireAuth";
 import { runInJudge0, type Judge0RunResult } from "../services/judge0";
+import { summarizeAttemptResults } from "../services/submissionAttempts";
 
 const router = Router();
 
@@ -10,6 +11,24 @@ router.use(requireAuth);
 
 const ACCEPTED_STATUS_ID = 3;
 const SUBMISSION_STDOUT_MAX = 50_000;
+const SUPPORTED_LANGUAGES = new Set(["c", "python"]);
+
+function normalizeLanguage(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const key = value.trim().toLowerCase();
+  if (!key) {
+    return undefined;
+  }
+  if (key === "py" || key === "python3") {
+    return "python";
+  }
+  if (key === "python" || key === "c") {
+    return key;
+  }
+  return undefined;
+}
 
 function parseOptionalInt(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isInteger(value)) {
@@ -82,7 +101,7 @@ function buildSubmissionPayload(params: {
 
   let stdout = chunks.join("\n---\n");
   if (stdout.length > SUBMISSION_STDOUT_MAX) {
-    stdout = `${stdout.slice(0, SUBMISSION_STDOUT_MAX)}\n…(truncated)`;
+    stdout = `${stdout.slice(0, SUBMISSION_STDOUT_MAX)}\n...(truncated)`;
   }
 
   return {
@@ -104,6 +123,14 @@ router.post("/", async (req, res) => {
 
   const problemId = parseOptionalInt(body.problemId);
   const languageIdBody = parseOptionalInt(body.languageId);
+  const languageBodyRaw = typeof body.language === "string" ? body.language : undefined;
+  const languageBody = normalizeLanguage(languageBodyRaw);
+  if (languageBodyRaw && !languageBody) {
+    res.status(400).json({
+      error: "Unsupported language. First MVP supports only C and Python.",
+    });
+    return;
+  }
   const stdinRaw = typeof body.stdin === "string" ? body.stdin : "";
 
   const role = req.auth!.role;
@@ -123,9 +150,19 @@ router.post("/", async (req, res) => {
         return;
       }
 
+      const problemLanguage = normalizeLanguage(problem.language);
+      const effectiveLanguage = languageBody ?? problemLanguage;
+      if (!effectiveLanguage || !SUPPORTED_LANGUAGES.has(effectiveLanguage)) {
+        res.status(400).json({
+          error:
+            "Problem language is not supported for MVP. Use request body language as c or python.",
+        });
+        return;
+      }
+
       let langId: number;
       try {
-        langId = resolveLanguageId(problem.language, languageIdBody);
+        langId = resolveLanguageId(effectiveLanguage);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         res.status(400).json({ error: msg });
@@ -186,18 +223,52 @@ router.post("/", async (req, res) => {
       const submissionPayload = buildSubmissionPayload({
         results: internalRuns.map((r) => ({ index: r.index, passed: r.passed, jr: r.jr })),
       });
+      const attemptSummary = summarizeAttemptResults(
+        results.map((result) => ({
+          hidden: result.hidden,
+          passed: result.passed,
+          status: result.status,
+          stdout: result.stdout,
+          stderr: result.stderr,
+          compileOutput: result.compileOutput,
+          time: result.time,
+          memory: result.memory,
+        })),
+      );
 
       const submission = await prisma.submission.create({
         data: {
           userId: req.auth!.userId,
           problemId,
           code: sourceCode,
-          language: problem.language,
+          language: effectiveLanguage,
           status: allPassed ? "accepted" : "failed",
           stdout: submissionPayload.stdout,
           stderr: submissionPayload.stderr,
           executionTime: submissionPayload.executionTime,
           memory: submissionPayload.memory,
+        },
+      });
+
+      await prisma.submissionAttempt.create({
+        data: {
+          userId: req.auth!.userId,
+          problemId,
+          submissionId: submission.id,
+          language: effectiveLanguage,
+          mode: "tests",
+          judge0StatusId: attemptSummary.judge0StatusId,
+          judge0Status: attemptSummary.judge0Status,
+          statusCategory: attemptSummary.statusCategory,
+          passedPublicCount: attemptSummary.passedPublicCount,
+          totalPublicCount: attemptSummary.totalPublicCount,
+          passedHiddenCount: attemptSummary.passedHiddenCount,
+          totalHiddenCount: attemptSummary.totalHiddenCount,
+          stdout: attemptSummary.stdout,
+          stderr: attemptSummary.stderr,
+          compileOutput: attemptSummary.compileOutput,
+          executionTime: attemptSummary.executionTime,
+          memory: attemptSummary.memory,
         },
       });
 
@@ -212,17 +283,65 @@ router.post("/", async (req, res) => {
       return;
     }
 
-    if (languageIdBody === undefined) {
+    if (languageIdBody === undefined && !languageBody) {
       res.status(400).json({
-        error: "Provide problemId to run tests, or languageId with no problemId for a raw run",
+        error: "Provide problemId to run tests, or language/languageId for a raw run",
       });
+      return;
+    }
+
+    let rawLanguageId: number;
+    try {
+      if (languageIdBody !== undefined) {
+        rawLanguageId = languageIdBody;
+      } else {
+        rawLanguageId = resolveLanguageId(languageBody!);
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      res.status(400).json({ error: msg });
       return;
     }
 
     const jr = await runInJudge0({
       sourceCode,
-      languageId: languageIdBody,
+      languageId: rawLanguageId,
       stdin: stdinRaw,
+    });
+
+    const rawAttemptSummary = summarizeAttemptResults([
+      {
+        hidden: false,
+        passed: jr.statusId === ACCEPTED_STATUS_ID,
+        status: jr.statusDescription,
+        stdout: jr.stdout,
+        stderr: jr.stderr,
+        compileOutput: jr.compileOutput,
+        time: jr.time,
+        memory: jr.memory,
+      },
+    ]);
+
+    await prisma.submissionAttempt.create({
+      data: {
+        userId: req.auth!.userId,
+        problemId: null,
+        submissionId: null,
+        language: languageBody ?? String(rawLanguageId),
+        mode: "raw",
+        judge0StatusId: jr.statusId,
+        judge0Status: jr.statusDescription,
+        statusCategory: rawAttemptSummary.statusCategory,
+        passedPublicCount: rawAttemptSummary.passedPublicCount,
+        totalPublicCount: rawAttemptSummary.totalPublicCount,
+        passedHiddenCount: 0,
+        totalHiddenCount: 0,
+        stdout: jr.stdout || null,
+        stderr: jr.stderr || null,
+        compileOutput: jr.compileOutput || null,
+        executionTime: parseExecutionTimeMs(jr.time),
+        memory: jr.memory ?? null,
+      },
     });
 
     res.json({
@@ -234,7 +353,7 @@ router.post("/", async (req, res) => {
       compileOutput: jr.compileOutput,
       time: jr.time,
       memory: jr.memory,
-      languageId: languageIdBody,
+      languageId: rawLanguageId,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

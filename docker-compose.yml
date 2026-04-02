@@ -62,6 +62,15 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
+    # NVIDIA GPU (ör. RTX 5070 Ti): Docker Desktop’ta Settings → Resources → GPU açık olmalı.
+    # Linux’ta: nvidia-container-toolkit kurulu olmalı. GPU yoksa bu bloğu yorum satırı yapın.
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
 
   openwebui:
     image: ghcr.io/open-webui/open-webui:main

@@ -5,14 +5,10 @@ services:
       dockerfile: Dockerfile
     container_name: app-frontend
     ports:
-      - "5173:5173"
-    env_file:
-      - .env
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+      - "5173:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped
 
   backend:
@@ -26,16 +22,13 @@ services:
       - .env
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
     depends_on:
       postgres:
         condition: service_healthy
       openwebui:
-        condition: service_started
+        condition: service_healthy
       ollama:
-        condition: service_started
+        condition: service_healthy
     restart: unless-stopped
 
   postgres:
@@ -62,8 +55,14 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
-    # NVIDIA GPU (ör. RTX 5070 Ti): Docker Desktop’ta Settings → Resources → GPU açık olmalı.
-    # Linux’ta: nvidia-container-toolkit kurulu olmalı. GPU yoksa bu bloğu yorum satırı yapın.
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+    # NVIDIA GPU: Docker Desktop → Settings → Resources → GPU açık olmalı.
+    # Linux: nvidia-container-toolkit kurulu olmalı. GPU yoksa bu bloğu yorum satırı yapın.
     deploy:
       resources:
         reservations:
@@ -77,7 +76,8 @@ services:
     container_name: openwebui
     restart: unless-stopped
     depends_on:
-      - ollama
+      ollama:
+        condition: service_healthy
     ports:
       - "8080:8080"
     environment:
@@ -87,6 +87,12 @@ services:
       - openwebui_data:/app/backend/data
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/health')\" || exit 1"]
+      interval: 15s
+      timeout: 10s
+      start_period: 60s
+      retries: 5
 
 volumes:
   postgres_data:

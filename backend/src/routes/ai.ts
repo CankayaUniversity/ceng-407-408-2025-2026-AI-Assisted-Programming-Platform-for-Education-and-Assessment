@@ -71,6 +71,23 @@ function parseProblemId(body: Record<string, unknown>): number | undefined {
   return undefined;
 }
 
+function buildMentorFallback(input: MentorRequestInput): string {
+  const question = (input.studentQuestion ?? "").trim();
+  const runStatus = (input.runStatus ?? "").trim().toLowerCase();
+
+  if (runStatus === "idle") {
+    return question
+      ? `Soruna odaklanalim: "${question}". Once kisa bir test girdisiyle kodu calistir ve aldigin cikti/hatayi paylas; sonra adim adim duzeltelim.`
+      : "Kodu once kisa bir test girdisiyle calistir. Cikti veya hata mesajini paylasirsan bir sonraki adimi birlikte netlestirebiliriz.";
+  }
+
+  if (question) {
+    return `Soruna odaklanalim: "${question}". Tek bir adima odaklan: girdi, beklenen cikti ve mevcut ciktiyi karsilastir; fark olan ilk noktayi izole et.`;
+  }
+
+  return "Tek bir adima odaklanalim: girdi, beklenen cikti ve mevcut ciktiyi karsilastir; fark olan ilk noktayi izole et ve o parcayi duzelt.";
+}
+
 async function handleAiRequest(req: Request, res: Response) {
   const body = req.body as Record<string, unknown>;
   const input = parseMentorBody(body);
@@ -85,19 +102,13 @@ async function handleAiRequest(req: Request, res: Response) {
   const startedAt = Date.now();
 
   const result = await getMentorReply(input);
+  const fallbackUsed = !result.success;
+  const mentorRaw = result.success ? result.mentorReply : buildMentorFallback(input);
+  const mentorModel = result.success ? process.env.OLLAMA_MODEL ?? "ai-mentor" : "fallback-local";
 
-  if (!result.success) {
-    res.status(503).json({
-      success: false,
-      error: result.error,
-      mentorReply: "",
-    });
-    return;
-  }
-
-  const validator = await validateMentorReply(result.mentorReply);
+  const validator = await validateMentorReply(mentorRaw);
   const policy = applyPolicy({
-    mentorReply: result.mentorReply,
+    mentorReply: mentorRaw,
     validator,
     studentQuestion: input.studentQuestion,
   });
@@ -136,14 +147,16 @@ async function handleAiRequest(req: Request, res: Response) {
         submissionId: submissionId ?? null,
         mode,
         promptVersion: PROMPT_VERSION,
-        modelName: process.env.OLLAMA_MODEL ?? "ai-mentor",
+        modelName: mentorModel,
         studentQuestion: input.studentQuestion ?? null,
         responseText: policy.finalText,
         requestPayload: body as object,
         responsePayload: {
-          mentorRaw: result.mentorReply,
+          mentorRaw,
+          mentorError: result.success ? null : result.error,
           validator,
           policyAction: policy.action,
+          fallbackUsed,
         },
       },
     });
@@ -178,11 +191,11 @@ async function handleAiRequest(req: Request, res: Response) {
     submissionId: submissionId ?? null,
     attemptId: linkedAttempt?.id ?? null,
     aiLogId,
-    mentorRaw: result.mentorReply,
+    mentorRaw,
     validatorJson: validator,
     policyAction: policy.action,
     finalText: policy.finalText,
-    mentorModel: process.env.OLLAMA_MODEL ?? "ai-mentor",
+    mentorModel,
     validatorModel: VALIDATOR_MODEL,
     durationMs: Date.now() - startedAt,
   });
@@ -190,6 +203,8 @@ async function handleAiRequest(req: Request, res: Response) {
   res.json({
     success: true,
     mentorReply: policy.finalText,
+    fallbackUsed,
+    ...(result.success ? {} : { warning: "Mentor service unavailable, fallback reply used." }),
     validator,
     policyAction: policy.action,
   });

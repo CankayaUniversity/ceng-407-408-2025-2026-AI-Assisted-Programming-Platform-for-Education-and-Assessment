@@ -19,6 +19,8 @@ RAILS_ENV=production
 RAILS_MAX_THREADS=4
 COUNT=2
 SECRET_KEY_BASE=replace-with-a-long-random-secret
+ENABLE_PER_PROCESS_AND_THREAD_TIME_LIMIT=true
+ENABLE_PER_PROCESS_AND_THREAD_MEMORY_LIMIT=true
 
 # ---------- Resource Limits ----------
 CPU_TIME_LIMIT=5

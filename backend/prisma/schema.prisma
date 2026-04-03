@@ -43,6 +43,7 @@ model User {
   submissions        Submission[]
   aiLogs             AiLog[]
   submissionAttempts SubmissionAttempt[]
+  hintEvents         HintEvent[]
 }
 
 model Problem {
@@ -62,6 +63,7 @@ model Problem {
   submissions        Submission[]
   aiLogs             AiLog[]
   submissionAttempts SubmissionAttempt[]
+  hintEvents         HintEvent[]
 }
 
 model TestCase {
@@ -119,6 +121,25 @@ model SubmissionAttempt {
   user             User              @relation(fields: [userId], references: [id])
   problem          Problem?          @relation(fields: [problemId], references: [id])
   submission       Submission?       @relation(fields: [submissionId], references: [id])
+  hintEvents       HintEvent[]
+
+  @@index([userId, problemId, createdAt])
+  @@index([problemId, createdAt])
+}
+
+model HintEvent {
+  id         Int                @id @default(autoincrement())
+  userId     Int
+  problemId  Int
+  attemptId  Int?
+  aiLogId    Int?
+  sequence   Int
+  createdAt  DateTime           @default(now())
+
+  user       User               @relation(fields: [userId], references: [id])
+  problem    Problem            @relation(fields: [problemId], references: [id])
+  attempt    SubmissionAttempt? @relation(fields: [attemptId], references: [id])
+  aiLog      AiLog?             @relation(fields: [aiLogId], references: [id])
 
   @@index([userId, problemId, createdAt])
   @@index([problemId, createdAt])
@@ -141,6 +162,7 @@ model AiLog {
   user            User        @relation(fields: [userId], references: [id])
   problem         Problem     @relation(fields: [problemId], references: [id])
   submission      Submission? @relation(fields: [submissionId], references: [id])
+  hintEvents      HintEvent[]
 }
 
 model SystemFlag {

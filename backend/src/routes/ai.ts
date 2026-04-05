@@ -51,6 +51,7 @@ function parseMentorBody(body: Record<string, unknown>): MentorRequestInput {
     studentQuestion,
     runStatus: typeof body.runStatus === "string" ? body.runStatus : null,
     stdout,
+    stderr: typeof body.stderr === "string" ? body.stderr : null,
     language: typeof body.language === "string" ? body.language : null,
     mode: typeof body.mode === "string" ? body.mode : null,
     hintLevel: typeof body.hintLevel === "number" ? body.hintLevel : null,
@@ -71,6 +72,20 @@ function parseProblemId(body: Record<string, unknown>): number | undefined {
     }
   }
 
+  return undefined;
+}
+
+function parseSubmissionId(body: Record<string, unknown>): number | undefined {
+  const raw = body.submissionId;
+  if (typeof raw === "number" && Number.isInteger(raw)) {
+    return raw;
+  }
+  if (typeof raw === "string" && raw.trim() !== "") {
+    const n = Number.parseInt(raw, 10);
+    if (!Number.isNaN(n)) {
+      return n;
+    }
+  }
   return undefined;
 }
 
@@ -95,12 +110,7 @@ async function handleAiRequest(req: Request, res: Response) {
   const body = req.body as Record<string, unknown>;
   const input = parseMentorBody(body);
   const problemId = parseProblemId(body);
-  const submissionId =
-    typeof body.submissionId === "number"
-      ? body.submissionId
-      : typeof body.submissionId === "string" && body.submissionId.trim() !== ""
-        ? Number.parseInt(body.submissionId, 10)
-        : undefined;
+  const submissionId = parseSubmissionId(body);
   const mode = typeof body.mode === "string" ? body.mode.trim().toLowerCase() : "practice";
   const startedAt = Date.now();
 
@@ -117,9 +127,7 @@ async function handleAiRequest(req: Request, res: Response) {
   });
 
   const problem =
-    problemId !== undefined
-      ? await prisma.problem.findUnique({ where: { id: problemId } })
-      : null;
+    problemId !== undefined ? await prisma.problem.findUnique({ where: { id: problemId } }) : null;
 
   const linkedAttempt =
     submissionId !== undefined
@@ -218,4 +226,3 @@ router.post("/chat", handleAiRequest);
 router.post("/hint", handleAiRequest);
 
 export { router as aiRouter };
-export default router;

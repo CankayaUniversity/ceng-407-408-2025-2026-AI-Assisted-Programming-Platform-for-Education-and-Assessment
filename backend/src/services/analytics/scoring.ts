@@ -1,10 +1,10 @@
 type AttemptLike = {
   createdAt: Date;
-  statusCategory: string | null;
-  passedPublicCount: number;
-  totalPublicCount: number;
-  passedHiddenCount: number;
-  totalHiddenCount: number;
+  normalizedStatus: string;
+  publicPassed: number | null;
+  publicTotal: number | null;
+  hiddenPassed: number | null;
+  hiddenTotal: number | null;
 };
 
 type HintLike = {
@@ -22,7 +22,7 @@ function safeRatio(numerator: number, denominator: number): number | null {
 function countByCategory(attempts: AttemptLike[]) {
   const counts: Record<string, number> = {};
   for (const attempt of attempts) {
-    const key = attempt.statusCategory ?? "unknown";
+    const key = attempt.normalizedStatus ?? "unknown";
     counts[key] = (counts[key] ?? 0) + 1;
   }
   return counts;
@@ -35,32 +35,32 @@ export function buildStudentProblemMetrics(attempts: AttemptLike[], hints: HintL
   const firstAttempt = orderedAttempts[0] ?? null;
   const latestAttempt = orderedAttempts[orderedAttempts.length - 1] ?? null;
   const firstAccepted =
-    orderedAttempts.find((attempt) => attempt.statusCategory === "accepted") ?? null;
+    orderedAttempts.find((attempt) => attempt.normalizedStatus === "accepted") ?? null;
 
   const totalPublicPassed = orderedAttempts.reduce(
-    (sum, attempt) => sum + attempt.passedPublicCount,
+    (sum, attempt) => sum + (attempt.publicPassed ?? 0),
     0,
   );
   const totalPublic = orderedAttempts.reduce(
-    (sum, attempt) => sum + attempt.totalPublicCount,
+    (sum, attempt) => sum + (attempt.publicTotal ?? 0),
     0,
   );
   const totalHiddenPassed = orderedAttempts.reduce(
-    (sum, attempt) => sum + attempt.passedHiddenCount,
+    (sum, attempt) => sum + (attempt.hiddenPassed ?? 0),
     0,
   );
   const totalHidden = orderedAttempts.reduce(
-    (sum, attempt) => sum + attempt.totalHiddenCount,
+    (sum, attempt) => sum + (attempt.hiddenTotal ?? 0),
     0,
   );
 
   const publicImprovement =
     latestAttempt && firstAttempt
-      ? latestAttempt.passedPublicCount - firstAttempt.passedPublicCount
+      ? (latestAttempt.publicPassed ?? 0) - (firstAttempt.publicPassed ?? 0)
       : 0;
   const hiddenImprovement =
     latestAttempt && firstAttempt
-      ? latestAttempt.passedHiddenCount - firstAttempt.passedHiddenCount
+      ? (latestAttempt.hiddenPassed ?? 0) - (firstAttempt.hiddenPassed ?? 0)
       : 0;
 
   return {
@@ -68,9 +68,9 @@ export function buildStudentProblemMetrics(attempts: AttemptLike[], hints: HintL
     solutionSuccess: {
       publicPassRate: safeRatio(totalPublicPassed, totalPublic),
       hiddenPassRate: safeRatio(totalHiddenPassed, totalHidden),
-      acceptedAttempts: orderedAttempts.filter((attempt) => attempt.statusCategory === "accepted")
+      acceptedAttempts: orderedAttempts.filter((attempt) => attempt.normalizedStatus === "accepted")
         .length,
-      latestStatus: latestAttempt?.statusCategory ?? null,
+      latestStatus: latestAttempt?.normalizedStatus ?? null,
     },
     processQuality: {
       timeToFirstAcceptedMs:

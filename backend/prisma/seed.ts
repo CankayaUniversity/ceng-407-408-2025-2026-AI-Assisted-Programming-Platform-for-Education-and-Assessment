@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { PrismaClient } from "@prisma/client";
+import { AttemptMode, NormalizedStatus, PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
 import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -279,18 +279,19 @@ async function main() {
           userId: student.id,
           problemId: problem1.id,
           submissionId: latestSubmission.id,
+          mode: AttemptMode.tests,
           language: "python",
-          mode: "tests",
-          judge0StatusId: 3,
+          sourceCode: latestSubmission.code,
           judge0Status: "Accepted",
-          statusCategory: "accepted",
-          passedPublicCount: 1,
-          totalPublicCount: 1,
-          passedHiddenCount: 1,
-          totalHiddenCount: 1,
+          normalizedStatus: NormalizedStatus.accepted,
+          publicPassed: 1,
+          publicTotal: 1,
+          hiddenPassed: 1,
+          hiddenTotal: 1,
+          allPassed: true,
           stdout: "5",
-          executionTime: 12.5,
-          memory: 1024,
+          executionTimeMs: 12_500,
+          memoryKb: 1024,
         },
       });
     }

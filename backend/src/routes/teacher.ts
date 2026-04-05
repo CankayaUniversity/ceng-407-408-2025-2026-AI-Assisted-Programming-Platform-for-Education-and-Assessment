@@ -31,7 +31,7 @@ router.get("/students", async (_req, res) => {
       email: student.email,
       totalAttempts: student.attempts.length,
       totalHints: student.hintEvents.length,
-      acceptedAttempts: student.attempts.filter((attempt) => attempt.statusCategory === "accepted")
+      acceptedAttempts: student.attempts.filter((attempt) => attempt.normalizedStatus === "accepted")
         .length,
     })),
   });
@@ -146,7 +146,7 @@ router.get("/problems/:id/analytics", async (req, res) => {
   }
 
   const attempts = problem.attempts;
-  const acceptedAttempts = attempts.filter((attempt) => attempt.statusCategory === "accepted");
+  const acceptedAttempts = attempts.filter((attempt) => attempt.normalizedStatus === "accepted");
   const distinctStudents = new Set(attempts.map((attempt) => attempt.userId));
 
   res.json({
@@ -175,7 +175,7 @@ router.get("/class/overview", async (_req, res) => {
     prisma.hintEvent.count(),
   ]);
 
-  const acceptedAttempts = attempts.filter((attempt) => attempt.statusCategory === "accepted");
+  const acceptedAttempts = attempts.filter((attempt) => attempt.normalizedStatus === "accepted");
 
   res.json({
     data: {

@@ -143,10 +143,11 @@ async function handleAiRequest(req: Request, res: Response) {
   let aiLogId: number | null = null;
 
   if (problem) {
+    const pid = problem.id;
     const aiLog = await prisma.aiLog.create({
       data: {
         userId: req.auth!.userId,
-        problemId,
+        problemId: pid,
         submissionId: submissionId ?? null,
         mode,
         promptVersion: PROMPT_VERSION,
@@ -170,7 +171,7 @@ async function handleAiRequest(req: Request, res: Response) {
       const lastHint = await prisma.hintEvent.findFirst({
         where: {
           userId: req.auth!.userId,
-          problemId,
+          problemId: pid,
         },
         orderBy: [{ sequence: "desc" }, { createdAt: "desc" }],
       });
@@ -178,7 +179,7 @@ async function handleAiRequest(req: Request, res: Response) {
       await prisma.hintEvent.create({
         data: {
           userId: req.auth!.userId,
-          problemId,
+          problemId: pid,
           attemptId: linkedAttempt?.id ?? null,
           aiLogId: aiLog.id,
           sequence: (lastHint?.sequence ?? 0) + 1,

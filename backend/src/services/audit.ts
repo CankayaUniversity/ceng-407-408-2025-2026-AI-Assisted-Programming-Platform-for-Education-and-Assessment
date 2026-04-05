@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 
 export async function createAiInteractionAudit(params: {
@@ -22,7 +23,10 @@ export async function createAiInteractionAudit(params: {
       attemptId: params.attemptId ?? null,
       aiLogId: params.aiLogId ?? null,
       mentorRaw: params.mentorRaw ?? null,
-      validatorJson: params.validatorJson as object | null,
+      validatorJson:
+        params.validatorJson === undefined || params.validatorJson === null
+          ? undefined
+          : (params.validatorJson as Prisma.InputJsonValue),
       policyAction: params.policyAction,
       finalText: params.finalText,
       mentorModel: params.mentorModel ?? null,

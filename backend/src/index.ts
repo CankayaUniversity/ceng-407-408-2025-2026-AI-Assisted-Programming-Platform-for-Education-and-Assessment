@@ -5,6 +5,9 @@ import { authRouter } from "./routes/auth";
 import { problemsRouter } from "./routes/problems";
 import { aiRouter } from "./routes/ai";
 import { executeRouter } from "./routes/execute";
+import { studentRouter } from "./routes/student";
+import { teacherRouter } from "./routes/teacher";
+import { adminRouter } from "./routes/admin";
 import { liveHandler, readyHandler } from "./routes/health";
 
 const app = express();
@@ -17,6 +20,9 @@ app.use("/api/auth", authRouter);
 app.use("/api/problems", problemsRouter);
 app.use("/api/ai", aiRouter);
 app.use("/api/execute", executeRouter);
+app.use("/api/student", studentRouter);
+app.use("/api/teacher", teacherRouter);
+app.use("/api/admin", adminRouter);
 
 app.get("/health", liveHandler);
 app.get("/api/health/live", liveHandler);

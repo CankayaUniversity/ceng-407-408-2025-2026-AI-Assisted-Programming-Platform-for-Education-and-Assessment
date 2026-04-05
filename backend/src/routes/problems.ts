@@ -16,6 +16,7 @@ router.get("/", async (_req, res) => {
       description: true,
       difficulty: true,
       language: true,
+      tags: true,
       createdAt: true,
     },
   });
@@ -49,6 +50,7 @@ router.get("/:id", async (req, res) => {
     starterCode: problem.starterCode,
     difficulty: problem.difficulty,
     language: problem.language,
+    tags: problem.tags,
     createdAt: problem.createdAt,
   };
 

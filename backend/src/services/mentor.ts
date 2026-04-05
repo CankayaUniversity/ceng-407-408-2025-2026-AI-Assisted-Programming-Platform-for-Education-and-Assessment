@@ -1,5 +1,5 @@
 /**
- * Mentor prompts and Ollama calls (ported from the legacy Python module).
+ * Mentor prompts and Ollama calls.
  */
 
 export type MentorRequestInput = {
@@ -10,6 +10,7 @@ export type MentorRequestInput = {
   studentQuestion?: string | null;
   runStatus?: string | null;
   stdout?: string | null;
+  stderr?: string | null;
   language?: string | null;
   mode?: string | null;
   hintLevel?: number | null;
@@ -75,10 +76,13 @@ Answer using only the context below.
 ${input.language ?? "Unknown"}
 
 [ASSIGNMENT]
-${input.assignmentText ?? "No assignment provided."}
+${input.assignmentText || "Use the code as the primary source of truth."}
 
 [CODE]
 ${input.studentCode ?? "No code provided."}
+
+[STDERR]
+${input.stderr ?? "No stderr"}
 
 [RUN_STATUS]
 ${normalizedStatus}
@@ -104,9 +108,17 @@ Rules:
 - Avoid giving precise variable or syntax corrections directly.
 - Keep hints slightly abstract so the student has to think.
 - Keep answers short and clear.
+- If the assignment does NOT match the code, trust the code.
+- Always prioritize analyzing the student's code.
+- Do NOT assume a different problem than the given code.
 - Focus on the most important issue first.
 - Even for syntax errors, do NOT give the exact corrected code.
 - Guide instead of fixing directly.
+- Think briefly about the student's mistake before giving a hint.
+- Briefly explain your reasoning before the guidance.
+- Do not sound repetitive.
+- Avoid using the same phrases in every answer.
+- Give a natural explanation, then guide.
 `.trim();
 
   if (normalizedStatus === "idle") {
@@ -115,8 +127,7 @@ Rules:
 - You cannot confirm behavior from execution.
 - Do not claim it works.
 - Do not claim exact output.
-- Suggest running the code to verify behavior.
-- If appropriate, encourage the student to click the run button.
+- Suggest running the code only when it is genuinely useful.
 `;
   }
 
@@ -151,12 +162,16 @@ async function callModel(prompt: string): Promise<string> {
   const url = getOllamaGenerateUrl();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 120_000);
+
   try {
+    const model = getModelName();
+    console.log("[mentor] model:", model);
+
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: getModelName(),
+        model,
         prompt,
         stream: false,
         options: {
@@ -166,10 +181,12 @@ async function callModel(prompt: string): Promise<string> {
       }),
       signal: controller.signal,
     });
+
     if (!res.ok) {
       const text = await res.text();
       throw new Error(`Ollama HTTP ${res.status}: ${text.slice(0, 200)}`);
     }
+
     const data = (await res.json()) as { response?: string };
     const text = data.response ?? "";
     return text.trim() ? text : "";
@@ -180,26 +197,41 @@ async function callModel(prompt: string): Promise<string> {
 
 function looksLikeSolution(text: string): boolean {
   const lower = text.toLowerCase();
-  const patterns = ["```", "def ", "for ", "while ", "return ", "console.log", "#include"];
-  return patterns.filter((p) => lower.includes(p)).length >= 3;
+
+  if (lower.includes("```")) return true;
+  if (lower.includes("complete solution")) return true;
+  if (lower.includes("full code")) return true;
+  if (lower.includes("copy and paste")) return true;
+
+  return false;
 }
 
 function enforceIdleHint(text: string, runStatus: string | null | undefined): string {
   if ((runStatus ?? "").trim().toLowerCase() !== "idle") {
     return text;
   }
-  if (text.toLowerCase().includes("run")) {
+
+  const lower = text.toLowerCase();
+
+  if (lower.includes("run") || lower.includes("execute")) {
     return text;
   }
-  return `${text}\n\nTry running the code to see what error you get.`;
+
+  if (lower.includes("error") || lower.includes("output")) {
+    return `${text}\n\nTry running the code to verify what happens.`;
+  }
+
+  return text;
 }
 
 function violatesIdleRule(text: string, runStatus: string | null | undefined): boolean {
   if ((runStatus ?? "").trim().toLowerCase() !== "idle") {
     return false;
   }
+
   const lower = text.toLowerCase();
   const bad = ["it works", "it prints", "successfully", "output is", "correct"];
+
   return bad.some((p) => lower.includes(p));
 }
 
@@ -220,6 +252,7 @@ export async function getMentorReply(input: MentorRequestInput): Promise<MentorR
 
   try {
     let prompt: string;
+
     if (messageMode === "casual") {
       prompt = buildCasualPrompt(input.studentQuestion);
     } else {
@@ -235,7 +268,9 @@ export async function getMentorReply(input: MentorRequestInput): Promise<MentorR
 IMPORTANT:
 Do not assume execution results.
 Do not say the code works or prints something.
-`;
+Do not claim success.
+`.trim();
+
         responseText = await callModel(retryPrompt);
       }
 
@@ -244,8 +279,10 @@ Do not say the code works or prints something.
 
 IMPORTANT:
 Do not provide full code or full solution.
-Explain instead.
-`;
+Keep the reasoning but guide instead.
+Do not reduce the answer to a generic hint.
+`.trim();
+
         responseText = await callModel(retryPrompt);
       }
 

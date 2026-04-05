@@ -1,7 +1,9 @@
 import type { RequestHandler } from "express";
 import { verifyAccessToken } from "../lib/authTokens";
+import type { Request, Response, NextFunction } from "express";
 
 export const requireAuth: RequestHandler = (req, res, next) => {
+  
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) {
     res.status(401).json({ error: "Missing or invalid Authorization header" });

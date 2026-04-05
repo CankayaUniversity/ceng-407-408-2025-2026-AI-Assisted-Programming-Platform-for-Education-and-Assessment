@@ -21,8 +21,6 @@ app.use("/api/execute", executeRouter);
 app.get("/health", liveHandler);
 app.get("/api/health/live", liveHandler);
 app.get("/api/health/ready", readyHandler);
-
-/** Backward-compatible alias: full dependency probe (same as /api/health/ready). */
 app.get("/api/health", readyHandler);
 
 app.listen(port, "0.0.0.0", () => {

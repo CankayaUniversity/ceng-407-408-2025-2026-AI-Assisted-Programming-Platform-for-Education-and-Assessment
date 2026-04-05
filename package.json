@@ -14,5 +14,33 @@
     "db:seed": "docker compose exec backend npm run prisma:seed",
     "setup": "npm run db:migrate && npm run db:seed",
     "smoke": "node scripts/smoke-test.mjs"
+  },
+  "version": "1.0.0",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CankayaUniversity/ceng-407-408-2025-2026-AI-Assisted-Programming-Platform-for-Education-and-Assessment.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/CankayaUniversity/ceng-407-408-2025-2026-AI-Assisted-Programming-Platform-for-Education-and-Assessment/issues"
+  },
+  "homepage": "https://github.com/CankayaUniversity/ceng-407-408-2025-2026-AI-Assisted-Programming-Platform-for-Education-and-Assessment#readme",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.5.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.2"
   }
 }

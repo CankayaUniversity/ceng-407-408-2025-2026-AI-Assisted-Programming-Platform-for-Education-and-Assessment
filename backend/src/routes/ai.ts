@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/requireAuth";
 import { getMentorReply, type MentorRequestInput } from "../services/mentor";
@@ -60,9 +61,36 @@ router.post("/chat", async (req, res) => {
   const submissionId = parseSubmissionId(body);
   const userId = req.auth!.userId;
 
+  const mentorStartedAt = Date.now();
   const result = await getMentorReply(input);
+  const latencyMsMentor = Date.now() - mentorStartedAt;
 
   if (!result.success) {
+    if (problemId !== undefined) {
+      const problem = await prisma.problem.findUnique({
+        where: { id: problemId },
+      });
+
+      if (problem) {
+        await prisma.aIInteractionAudit.create({
+          data: {
+            userId,
+            problemId,
+            attemptId: null,
+            mentorModel: process.env.OLLAMA_MODEL ?? "ai-mentor",
+            validatorModel: null,
+            mentorRaw: "",
+            policyAction: "block",
+            finalText: "",
+            rewriteCount: 0,
+            latencyMsMentor,
+            latencyMsValidator: null,
+            errorCode: result.error ?? "mentor_error",
+          },
+        });
+      }
+    }
+
     res.status(503).json({
       success: false,
       error: result.error,
@@ -75,7 +103,9 @@ router.post("/chat", async (req, res) => {
   let hintSequence: number | null = null;
 
   if (problemId !== undefined) {
-    const problem = await prisma.problem.findUnique({ where: { id: problemId } });
+    const problem = await prisma.problem.findUnique({
+      where: { id: problemId },
+    });
 
     if (problem) {
       const aiLog = await prisma.aiLog.create({
@@ -88,7 +118,7 @@ router.post("/chat", async (req, res) => {
           modelName: process.env.OLLAMA_MODEL ?? "ai-mentor",
           studentQuestion: input.studentQuestion ?? null,
           responseText: result.mentorReply,
-          requestPayload: body as object,
+          requestPayload: body as Prisma.InputJsonValue,
         },
       });
 
@@ -110,6 +140,23 @@ router.post("/chat", async (req, res) => {
           attemptId: null,
           aiLogId: aiLog.id,
           sequence: hintSequence,
+        },
+      });
+
+      await prisma.aIInteractionAudit.create({
+        data: {
+          userId,
+          problemId,
+          attemptId: null,
+          mentorModel: process.env.OLLAMA_MODEL ?? "ai-mentor",
+          validatorModel: null,
+          mentorRaw: result.mentorReply,
+          policyAction: "allow",
+          finalText: result.mentorReply,
+          rewriteCount: 0,
+          latencyMsMentor,
+          latencyMsValidator: null,
+          errorCode: null,
         },
       });
     }

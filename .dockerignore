@@ -1,0 +1,12 @@
+node_modules
+.git
+.gitignore
+.env
+.env.*
+*.md
+.vscode
+.cursor
+.github
+infra
+npm-debug.log
+yarn-error.log

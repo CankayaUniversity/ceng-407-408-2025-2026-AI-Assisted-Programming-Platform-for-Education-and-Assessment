@@ -1,6 +1,6 @@
 services:
   judge0-server:
-    image: judge0/judge0:latest
+    image: mrkushalsm/judge0:latest
     container_name: judge0-server
     restart: always
     privileged: true
@@ -9,14 +9,21 @@ services:
     volumes:
       - ./judge0.conf:/judge0.conf:ro
       - judge0_box_data:/box
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
     depends_on:
       judge0-db:
         condition: service_healthy
       judge0-redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:2358/about || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
 
   judge0-worker:
-    image: judge0/judge0:latest
+    image: mrkushalsm/judge0:latest
     container_name: judge0-worker
     restart: always
     privileged: true
@@ -24,11 +31,18 @@ services:
     volumes:
       - ./judge0.conf:/judge0.conf:ro
       - judge0_box_data:/box
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
     depends_on:
       judge0-db:
         condition: service_healthy
       judge0-redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f resque || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
 
   judge0-db:
     image: postgres:16

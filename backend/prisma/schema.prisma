@@ -62,6 +62,9 @@ model Problem {
   referenceSolution   String?
   difficulty          String?
   language            String               @default("javascript")
+  tags                String[]             @default([])
+  category            String?
+  metadata            Json?
   createdById         Int
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt

@@ -76,6 +76,9 @@ async function upsertProblemWithTests(params: {
   referenceSolution: string;
   difficulty: string;
   language: string;
+  tags: string[];
+  category?: string;
+  metadata?: Record<string, unknown>;
   createdById: number;
   testCases: TestSpec[];
 }) {
@@ -83,12 +86,15 @@ async function upsertProblemWithTests(params: {
     where: { title: params.title },
   });
 
-  const common = {
+    const common = {
     description: params.description,
     starterCode: params.starterCode,
     referenceSolution: params.referenceSolution,
     difficulty: params.difficulty,
     language: params.language,
+    tags: params.tags,
+    category: params.category ?? null,
+    metadata: params.metadata ?? undefined,
   };
 
   if (existing) {
@@ -214,13 +220,20 @@ async function main() {
 
   await resetDemoData();
 
-  const problem1 = await upsertProblemWithTests({
+    const problem1 = await upsertProblemWithTests({
     title: "Sum of Two Numbers",
     description: SUM_DESCRIPTION,
     starterCode: SUM_STARTER,
     referenceSolution: SUM_REFERENCE,
     difficulty: "easy",
     language: "javascript",
+    tags: ["math", "basics", "input-output"],
+    category: "fundamentals",
+    metadata: {
+      difficultyBand: "easy",
+      topic: "arithmetic",
+      expectedConcepts: ["stdin", "parsing", "addition"],
+    },
     createdById: teacher.id,
     testCases: [
       { input: "2 3", expectedOutput: "5", isHidden: false },
@@ -229,13 +242,20 @@ async function main() {
     ],
   });
 
-  const problem2 = await upsertProblemWithTests({
+    const problem2 = await upsertProblemWithTests({
     title: "Check Palindrome",
     description: PAL_DESCRIPTION,
     starterCode: PAL_STARTER,
     referenceSolution: PAL_REFERENCE,
     difficulty: "easy",
     language: "javascript",
+    tags: ["string", "basics", "boolean"],
+    category: "strings",
+    metadata: {
+      difficultyBand: "easy",
+      topic: "palindrome",
+      expectedConcepts: ["reverse", "comparison"],
+    },
     createdById: teacher.id,
     testCases: [
       { input: "level", expectedOutput: "true", isHidden: false },
@@ -244,13 +264,20 @@ async function main() {
     ],
   });
 
-  const problem3 = await upsertProblemWithTests({
+    const problem3 = await upsertProblemWithTests({
     title: "Factorial",
     description: FACT_DESCRIPTION,
     starterCode: FACT_STARTER,
     referenceSolution: FACT_REFERENCE,
     difficulty: "medium",
     language: "javascript",
+    tags: ["math", "recursion", "loops"],
+    category: "algorithms",
+    metadata: {
+      difficultyBand: "medium",
+      topic: "factorial",
+      expectedConcepts: ["recursion", "iteration"],
+    },
     createdById: teacher.id,
     testCases: [
       { input: "5", expectedOutput: "120", isHidden: false },

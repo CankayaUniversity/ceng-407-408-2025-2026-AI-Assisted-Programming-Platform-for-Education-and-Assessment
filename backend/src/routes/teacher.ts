@@ -18,7 +18,7 @@ router.get("/students", async (_req, res) => {
   const students = await prisma.user.findMany({
     where: { role: { is: { name: "student" } } },
     include: {
-      attempts: true,
+      submissionAttempts: true,
       hintEvents: true,
     },
     orderBy: { id: "asc" },
@@ -29,9 +29,9 @@ router.get("/students", async (_req, res) => {
       id: student.id,
       name: student.name,
       email: student.email,
-      totalAttempts: student.attempts.length,
+      totalAttempts: student.submissionAttempts.length,
       totalHints: student.hintEvents.length,
-      acceptedAttempts: student.attempts.filter((attempt) => attempt.normalizedStatus === "accepted")
+      acceptedAttempts: student.submissionAttempts.filter((attempt) => attempt.normalizedStatus === "accepted")
         .length,
     })),
   });
@@ -48,7 +48,7 @@ router.get("/students/:id/summary", async (req, res) => {
     where: { id: studentId },
     include: {
       role: true,
-      attempts: {
+      submissionAttempts: {
         orderBy: { createdAt: "asc" },
       },
       hintEvents: {
@@ -62,7 +62,7 @@ router.get("/students/:id/summary", async (req, res) => {
     return;
   }
 
-  const metrics = buildStudentProblemMetrics(student.attempts, student.hintEvents);
+  const metrics = buildStudentProblemMetrics(student.submissionAttempts, student.hintEvents);
   res.json({
     data: {
       student: {
@@ -135,7 +135,7 @@ router.get("/problems/:id/analytics", async (req, res) => {
   const problem = await prisma.problem.findUnique({
     where: { id: problemId },
     include: {
-      attempts: true,
+      submissionAttempts: true,
       hintEvents: true,
     },
   });
@@ -145,7 +145,7 @@ router.get("/problems/:id/analytics", async (req, res) => {
     return;
   }
 
-  const attempts = problem.attempts;
+  const attempts = problem.submissionAttempts;
   const acceptedAttempts = attempts.filter((attempt) => attempt.normalizedStatus === "accepted");
   const distinctStudents = new Set(attempts.map((attempt) => attempt.userId));
 

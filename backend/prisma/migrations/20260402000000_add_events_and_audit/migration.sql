@@ -4,8 +4,13 @@ CREATE TYPE "AttemptMode" AS ENUM ('raw', 'tests');
 -- CreateEnum
 CREATE TYPE "NormalizedStatus" AS ENUM ('accepted', 'wrong_answer', 'syntax_error', 'runtime_error', 'time_limit_exceeded', 'memory_limit_exceeded', 'compile_error', 'internal_error');
 
+-- CreateEnum
+CREATE TYPE "PolicyAction" AS ENUM ('allow', 'rewrite', 'fallback_safe_hint', 'block');
+
 -- AlterTable
-ALTER TABLE "Problem" ADD COLUMN "tags" TEXT[] DEFAULT ARRAY[]::TEXT[];
+ALTER TABLE "Problem" ADD COLUMN "tags" TEXT[] DEFAULT ARRAY[]::TEXT[],
+ADD COLUMN "category" TEXT,
+ADD COLUMN "metadata" JSONB;
 
 -- CreateTable
 CREATE TABLE "SubmissionAttempt" (
@@ -48,23 +53,24 @@ CREATE TABLE "HintEvent" (
 );
 
 -- CreateTable
-CREATE TABLE "AiInteractionAudit" (
+CREATE TABLE "AIInteractionAudit" (
     "id" SERIAL NOT NULL,
     "userId" INTEGER NOT NULL,
-    "problemId" INTEGER,
-    "submissionId" INTEGER,
+    "problemId" INTEGER NOT NULL,
     "attemptId" INTEGER,
-    "aiLogId" INTEGER,
-    "mentorRaw" TEXT,
-    "validatorJson" JSONB,
-    "policyAction" TEXT NOT NULL,
-    "finalText" TEXT NOT NULL,
-    "mentorModel" TEXT,
+    "mentorModel" TEXT NOT NULL,
     "validatorModel" TEXT,
-    "durationMs" INTEGER,
+    "mentorRaw" TEXT NOT NULL,
+    "validatorJson" JSONB,
+    "policyAction" "PolicyAction" NOT NULL,
+    "finalText" TEXT NOT NULL,
+    "rewriteCount" INTEGER NOT NULL DEFAULT 0,
+    "latencyMsMentor" INTEGER,
+    "latencyMsValidator" INTEGER,
+    "errorCode" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "AiInteractionAudit_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "AIInteractionAudit_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -80,10 +86,10 @@ CREATE INDEX "HintEvent_userId_problemId_createdAt_idx" ON "HintEvent"("userId",
 CREATE INDEX "HintEvent_problemId_createdAt_idx" ON "HintEvent"("problemId", "createdAt");
 
 -- CreateIndex
-CREATE INDEX "AiInteractionAudit_userId_problemId_createdAt_idx" ON "AiInteractionAudit"("userId", "problemId", "createdAt");
+CREATE INDEX "AIInteractionAudit_userId_problemId_createdAt_idx" ON "AIInteractionAudit"("userId", "problemId", "createdAt");
 
 -- CreateIndex
-CREATE INDEX "AiInteractionAudit_problemId_createdAt_idx" ON "AiInteractionAudit"("problemId", "createdAt");
+CREATE INDEX "AIInteractionAudit_problemId_createdAt_idx" ON "AIInteractionAudit"("problemId", "createdAt");
 
 -- AddForeignKey
 ALTER TABLE "SubmissionAttempt" ADD CONSTRAINT "SubmissionAttempt_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -107,16 +113,10 @@ ALTER TABLE "HintEvent" ADD CONSTRAINT "HintEvent_attemptId_fkey" FOREIGN KEY ("
 ALTER TABLE "HintEvent" ADD CONSTRAINT "HintEvent_aiLogId_fkey" FOREIGN KEY ("aiLogId") REFERENCES "AiLog"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "AiInteractionAudit" ADD CONSTRAINT "AiInteractionAudit_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "AIInteractionAudit" ADD CONSTRAINT "AIInteractionAudit_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "AiInteractionAudit" ADD CONSTRAINT "AiInteractionAudit_problemId_fkey" FOREIGN KEY ("problemId") REFERENCES "Problem"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "AIInteractionAudit" ADD CONSTRAINT "AIInteractionAudit_problemId_fkey" FOREIGN KEY ("problemId") REFERENCES "Problem"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "AiInteractionAudit" ADD CONSTRAINT "AiInteractionAudit_submissionId_fkey" FOREIGN KEY ("submissionId") REFERENCES "Submission"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "AiInteractionAudit" ADD CONSTRAINT "AiInteractionAudit_attemptId_fkey" FOREIGN KEY ("attemptId") REFERENCES "SubmissionAttempt"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "AiInteractionAudit" ADD CONSTRAINT "AiInteractionAudit_aiLogId_fkey" FOREIGN KEY ("aiLogId") REFERENCES "AiLog"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "AIInteractionAudit" ADD CONSTRAINT "AIInteractionAudit_attemptId_fkey" FOREIGN KEY ("attemptId") REFERENCES "SubmissionAttempt"("id") ON DELETE SET NULL ON UPDATE CASCADE;

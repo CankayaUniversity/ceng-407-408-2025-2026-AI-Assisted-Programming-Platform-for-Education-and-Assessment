@@ -1,37 +1,39 @@
-import type { Prisma } from "@prisma/client";
+import type { Prisma, PolicyAction } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 
 export async function createAiInteractionAudit(params: {
   userId: number;
-  problemId?: number | null;
-  submissionId?: number | null;
+  problemId: number;
   attemptId?: number | null;
-  aiLogId?: number | null;
-  mentorRaw?: string | null;
-  validatorJson?: unknown;
-  policyAction: string;
-  finalText: string;
-  mentorModel?: string | null;
+  mentorModel: string;
   validatorModel?: string | null;
-  durationMs?: number | null;
+  mentorRaw: string;
+  validatorJson?: unknown;
+  policyAction: PolicyAction;
+  finalText: string;
+  rewriteCount?: number;
+  latencyMsMentor?: number | null;
+  latencyMsValidator?: number | null;
+  errorCode?: string | null;
 }) {
-  return prisma.aiInteractionAudit.create({
+  return prisma.aIInteractionAudit.create({
     data: {
       userId: params.userId,
-      problemId: params.problemId ?? null,
-      submissionId: params.submissionId ?? null,
+      problemId: params.problemId,
       attemptId: params.attemptId ?? null,
-      aiLogId: params.aiLogId ?? null,
-      mentorRaw: params.mentorRaw ?? null,
+      mentorModel: params.mentorModel,
+      validatorModel: params.validatorModel ?? null,
+      mentorRaw: params.mentorRaw,
       validatorJson:
         params.validatorJson === undefined || params.validatorJson === null
           ? undefined
           : (params.validatorJson as Prisma.InputJsonValue),
       policyAction: params.policyAction,
       finalText: params.finalText,
-      mentorModel: params.mentorModel ?? null,
-      validatorModel: params.validatorModel ?? null,
-      durationMs: params.durationMs ?? null,
+      rewriteCount: params.rewriteCount ?? 0,
+      latencyMsMentor: params.latencyMsMentor ?? null,
+      latencyMsValidator: params.latencyMsValidator ?? null,
+      errorCode: params.errorCode ?? null,
     },
   });
 }

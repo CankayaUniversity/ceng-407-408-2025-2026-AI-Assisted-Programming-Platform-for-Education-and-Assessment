@@ -1,140 +1,288 @@
-# Backend - Database Mapping
+# Backend ↔ Database Mapping
 
-## Auth
+## Overview
 
-### POST /auth/login
-Uses:
-- User
-- Role
+This document maps the current backend routes and backend behavior to database tables.
 
-Expected behavior:
-- check email
-- verify password hash
-- return user info / token logic from backend layer
+The mapping now reflects the expanded event-oriented schema:
+- `Submission`
+- `SubmissionAttempt`
+- `AiLog`
+- `HintEvent`
+- `AIInteractionAudit`
+- `SystemFlag`
 
 ---
 
-## Problems
+## 1. Auth Routes
 
-### GET /problems
-Uses:
-- Problem
+### `POST /api/auth/register`
+Writes:
+- `User`
 
-Expected response fields:
-- id
-- title
-- difficulty
-- language
-- createdAt
+Reads:
+- `Role`
 
-### GET /problems/:id
-Uses:
-- Problem
-- TestCase
+### `POST /api/auth/login`
+Reads:
+- `User`
+- `Role`
 
-Expected response fields:
+### `GET /api/auth/me`
+Reads:
+- `User`
+- `Role`
+
+---
+
+## 2. Problem Routes
+
+### `GET /api/problems`
+Reads:
+- `Problem`
+
+Returned fields:
 - id
 - title
 - description
-- starterCode
 - difficulty
 - language
-
-Important rule:
-- hidden test cases should not be returned to frontend
-
----
-
-## Execute
-
-### POST /execute
-Uses:
-- Submission
-
-Expected DB write:
-- userId
-- problemId
-- code
-- language
-- status
-- stdout
-- stderr
-- executionTime
-- memory
 - createdAt
 
-Purpose:
-- persist run/submission attempts
-- provide base for submission history
+Future optional fields:
+- tags
+- category
+- metadata
+
+### `GET /api/problems/:id`
+Reads:
+- `Problem`
+- `TestCase`
+
+Role behavior:
+- student: only public test cases are returned
+- teacher: full test case data and reference solution can be returned
+
+Important:
+- hidden test case contents must never be exposed to students
 
 ---
 
-## Student History
+## 3. Execute Route
 
-### GET /student/history
-Uses:
-- Submission
+### `POST /api/execute`
 
-Suggested query:
-- filter by userId
-- optionally filter by problemId
-- order by createdAt desc
+#### Raw Run Mode
+Condition:
+- request includes `languageId`
+- request does not include `problemId`
 
-Purpose:
-- show previous attempts
-- support MVP history without requiring a separate snapshot table
+Writes:
+- `SubmissionAttempt`
 
----
+Typical fields:
+- mode = `raw`
+- userId
+- sourceCode
+- language
+- judge0Status
+- normalizedStatus
+- stdout/stderr/compileOutput
+- executionTimeMs
+- memoryKb
 
-## AI Hint
+#### Test Run Mode
+Condition:
+- request includes `problemId`
 
-### POST /ai/hint
-Uses:
-- AiLog
+Reads:
+- `Problem`
+- `TestCase`
 
-Expected DB write:
+Writes:
+- `Submission`
+- `SubmissionAttempt`
+
+`Submission` role:
+- higher-level record of the test submission
+
+`SubmissionAttempt` role:
+- detailed execution/event record
+
+Typical test-mode attempt fields:
+- mode = `tests`
 - userId
 - problemId
-- submissionId (optional)
+- submissionId
+- sourceCode
+- normalizedStatus
+- publicPassed/publicTotal
+- hiddenPassed/hiddenTotal
+- allPassed
+- stdout/stderr/compileOutput
+- executionTimeMs
+- memoryKb
+
+Important:
+- student-facing response must redact hidden test output details
+
+---
+
+## 4. AI Route
+
+### `POST /api/ai/chat`
+
+Reads:
+- optional `Problem`
+- optional `Submission` context from request payload
+
+Writes:
+- `AiLog`
+- `HintEvent`
+- `AIInteractionAudit`
+
+#### AiLog
+Purpose:
+- record the user question and AI response
+
+Typical fields:
+- userId
+- problemId
+- optional submissionId
 - mode
 - promptVersion
 - modelName
 - studentQuestion
 - responseText
 - requestPayload
-- responsePayload
-- createdAt
 
+#### HintEvent
 Purpose:
-- persist AI interaction history
-- support later audit/history needs
+- count and sequence hint usage per student/problem
+
+Typical fields:
+- userId
+- problemId
+- optional attemptId
+- optional aiLogId
+- sequence
+
+#### AIInteractionAudit
+Purpose:
+- keep an audit-oriented record of the AI pipeline
+
+Typical fields:
+- userId
+- problemId
+- optional attemptId
+- mentorModel
+- validatorModel
+- mentorRaw
+- validatorJson
+- policyAction
+- finalText
+- rewriteCount
+- latencyMsMentor
+- latencyMsValidator
+- errorCode
+
+Current implementation notes:
+- validator fields may be null for now
+- policyAction is currently simple (`allow` / error path)
+- audit exists now so future validator/policy integration can plug in cleanly
 
 ---
 
-## AI History
+## 5. System Flags
 
-### GET /student/history/ai
-Uses:
-- AiLog
+### `PATCH /api/admin/exam-mode` or equivalent future admin route
+Reads/Writes:
+- `SystemFlag`
 
-Suggested query:
-- filter by userId
-- optionally filter by problemId
-- order by createdAt desc
+Current key:
+- `exam_mode_enabled`
 
 Purpose:
-- show previous AI help requests and responses
+- keep exam mode state centralized in DB
 
 ---
 
-## Admin
+## 6. Student History Data Sources
 
-### PATCH /admin/exam-mode
-Uses:
-- SystemFlag
+### Basic/Legacy View
+Can still read from:
+- `Submission`
 
-Flag used:
-- exam_mode_enabled
+### Preferred Detailed History
+Should read from:
+- `SubmissionAttempt`
 
-Purpose:
-- allow backend/admin logic to change system behavior during exam mode
+Because `SubmissionAttempt` stores:
+- raw vs tests mode
+- normalized status
+- full execution detail
+- timing/memory
+- pass counts
+
+---
+
+## 7. AI History Data Sources
+
+### User-facing AI history
+Can read from:
+- `AiLog`
+
+### Audit/debug history
+Should read from:
+- `AIInteractionAudit`
+
+### Help dependency analytics
+Should read from:
+- `HintEvent`
+
+---
+
+## 8. Teacher Analytics Data Sources
+
+### A — Solution success
+Use:
+- `SubmissionAttempt`
+- fields like `allPassed`, `publicPassed`, `hiddenPassed`, `normalizedStatus`
+
+### B — Process quality
+Use:
+- `SubmissionAttempt`
+- attempt counts
+- time ordering
+- change across attempts
+
+### C — Error profile
+Use:
+- `SubmissionAttempt.normalizedStatus`
+
+### D — Help dependency
+Use:
+- `HintEvent`
+- optional relation to attempts
+- sequence values
+
+### E — Code quality
+Future source:
+- planned code quality snapshot table or analysis job
+
+### F — Learning trend
+Use:
+- `Problem.tags`
+- `Problem.category`
+- `Problem.metadata`
+- `SubmissionAttempt` timeline
+
+---
+
+## Short Summary
+
+Main mapping direction:
+- execute → `Submission` + `SubmissionAttempt`
+- ai/chat → `AiLog` + `HintEvent` + `AIInteractionAudit`
+- student history → mainly `SubmissionAttempt`
+- teacher analytics → attempts + hints + problem metadata

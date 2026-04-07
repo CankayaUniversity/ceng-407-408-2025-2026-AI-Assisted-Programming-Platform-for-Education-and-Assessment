@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from "express";
+import { PolicyAction } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/requireAuth";
-import { createAiInteractionAudit } from "../services/audit";
 import { getMentorReply, type MentorRequestInput } from "../services/mentor";
 import { applyPolicy } from "../services/policy";
 import { validateMentorReply } from "../services/validator";
@@ -106,15 +106,29 @@ function buildMentorFallback(input: MentorRequestInput): string {
   return "Tek bir adima odaklanalim: girdi, beklenen cikti ve mevcut ciktiyi karsilastir; fark olan ilk noktayi izole et ve o parcayi duzelt.";
 }
 
+function toPolicyAction(action: string): PolicyAction {
+  switch (action) {
+    case "allow":
+      return PolicyAction.allow;
+    case "rewrite":
+      return PolicyAction.rewrite;
+    case "block":
+      return PolicyAction.block;
+    default:
+      return PolicyAction.fallback_safe_hint;
+  }
+}
+
 async function handleAiRequest(req: Request, res: Response) {
   const body = req.body as Record<string, unknown>;
   const input = parseMentorBody(body);
   const problemId = parseProblemId(body);
   const submissionId = parseSubmissionId(body);
   const mode = typeof body.mode === "string" ? body.mode.trim().toLowerCase() : "practice";
-  const startedAt = Date.now();
+  const mentorStartedAt = Date.now();
 
   const result = await getMentorReply(input);
+  const latencyMsMentor = Date.now() - mentorStartedAt;
   const fallbackUsed = !result.success;
   const mentorRaw = result.success ? result.mentorReply : buildMentorFallback(input);
   const mentorModel = result.success ? process.env.OLLAMA_MODEL ?? "ai-mentor" : "fallback-local";
@@ -195,22 +209,25 @@ async function handleAiRequest(req: Request, res: Response) {
         },
       });
     }
-  }
 
-  await createAiInteractionAudit({
-    userId: req.auth!.userId,
-    problemId: problem?.id ?? null,
-    submissionId: submissionId ?? null,
-    attemptId: linkedAttempt?.id ?? null,
-    aiLogId,
-    mentorRaw,
-    validatorJson: validator,
-    policyAction: policy.action,
-    finalText: policy.finalText,
-    mentorModel,
-    validatorModel: VALIDATOR_MODEL,
-    durationMs: Date.now() - startedAt,
-  });
+    await prisma.aIInteractionAudit.create({
+      data: {
+        userId: req.auth!.userId,
+        problemId: pid,
+        attemptId: linkedAttempt?.id ?? null,
+        mentorModel,
+        validatorModel: VALIDATOR_MODEL,
+        mentorRaw,
+        validatorJson: validator as object,
+        policyAction: toPolicyAction(policy.action),
+        finalText: policy.finalText,
+        rewriteCount: 0,
+        latencyMsMentor,
+        latencyMsValidator: null,
+        errorCode: result.success ? null : (result.error ?? "mentor_error"),
+      },
+    });
+  }
 
   res.json({
     success: true,

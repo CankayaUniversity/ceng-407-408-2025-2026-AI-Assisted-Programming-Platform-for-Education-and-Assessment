@@ -1,5 +1,4 @@
 import "dotenv/config";
-import { AttemptMode, NormalizedStatus } from "@prisma/client";
 import bcrypt from "bcrypt";
 import { prisma, pgPool } from "../src/lib/prisma";
 
@@ -7,7 +6,6 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is not defined in .env");
 }
 
-/** Judge0 seed examples for Python (MVP supports C/Python). */
 const SUM_DESCRIPTION =
   "Read two integers from standard input (one line, space-separated) and print their sum as a single line.";
 
@@ -49,7 +47,11 @@ def fact(x: int) -> int:
 print(fact(n))
 `;
 
-type TestSpec = { input: string; expectedOutput: string; isHidden: boolean };
+type TestSpec = {
+  input: string;
+  expectedOutput: string;
+  isHidden: boolean;
+};
 
 async function upsertProblemWithTests(params: {
   title: string;
@@ -58,6 +60,9 @@ async function upsertProblemWithTests(params: {
   referenceSolution: string;
   difficulty: string;
   language: string;
+  tags: string[];
+  category?: string;
+  metadata?: Record<string, unknown>;
   createdById: number;
   testCases: TestSpec[];
 }) {
@@ -71,10 +76,14 @@ async function upsertProblemWithTests(params: {
     referenceSolution: params.referenceSolution,
     difficulty: params.difficulty,
     language: params.language,
+    tags: params.tags,
+    category: params.category ?? null,
+    metadata: params.metadata ?? undefined,
   };
 
   if (existing) {
     await prisma.testCase.deleteMany({ where: { problemId: existing.id } });
+
     return prisma.problem.update({
       where: { id: existing.id },
       data: {
@@ -106,6 +115,16 @@ async function upsertProblemWithTests(params: {
   });
 }
 
+async function resetDemoData() {
+  await prisma.hintEvent.deleteMany();
+  await prisma.aIInteractionAudit.deleteMany();
+  await prisma.aiLog.deleteMany();
+  await prisma.submissionAttempt.deleteMany();
+  await prisma.submission.deleteMany();
+  await prisma.testCase.deleteMany();
+  await prisma.problem.deleteMany();
+}
+
 async function main() {
   const studentRole = await prisma.role.upsert({
     where: { name: "student" },
@@ -129,7 +148,11 @@ async function main() {
 
   const teacher = await prisma.user.upsert({
     where: { email: "teacher1@demo.com" },
-    update: {},
+    update: {
+      name: "Teacher Demo",
+      passwordHash: hashedPassword,
+      roleId: teacherRole.id,
+    },
     create: {
       name: "Teacher Demo",
       email: "teacher1@demo.com",
@@ -140,7 +163,11 @@ async function main() {
 
   const student = await prisma.user.upsert({
     where: { email: "student1@demo.com" },
-    update: {},
+    update: {
+      name: "Student Demo",
+      passwordHash: hashedPassword,
+      roleId: studentRole.id,
+    },
     create: {
       name: "Student Demo",
       email: "student1@demo.com",
@@ -149,9 +176,13 @@ async function main() {
     },
   });
 
-  await prisma.user.upsert({
+  const admin = await prisma.user.upsert({
     where: { email: "admin1@demo.com" },
-    update: {},
+    update: {
+      name: "Admin Demo",
+      passwordHash: hashedPassword,
+      roleId: adminRole.id,
+    },
     create: {
       name: "Admin Demo",
       email: "admin1@demo.com",
@@ -160,22 +191,34 @@ async function main() {
     },
   });
 
+  await prisma.systemFlag.upsert({
+    where: { key: "exam_mode_enabled" },
+    update: { value: false },
+    create: { key: "exam_mode_enabled", value: false },
+  });
+
+  await resetDemoData();
+
   const problem1 = await upsertProblemWithTests({
     title: "Sum of Two Numbers",
     description: SUM_DESCRIPTION,
     starterCode: SUM_STARTER,
     referenceSolution: SUM_REFERENCE,
     difficulty: "easy",
-    language: "python",
+    language: "javascript",
+    tags: ["math", "basics", "input-output"],
+    category: "fundamentals",
+    metadata: {
+      difficultyBand: "easy",
+      topic: "arithmetic",
+      expectedConcepts: ["stdin", "parsing", "addition"],
+    },
     createdById: teacher.id,
     testCases: [
       { input: "2 3", expectedOutput: "5", isHidden: false },
       { input: "10 20", expectedOutput: "30", isHidden: true },
+      { input: "7 8", expectedOutput: "15", isHidden: false },
     ],
-  });
-  await prisma.problem.update({
-    where: { id: problem1.id },
-    data: { tags: ["math", "basics", "io"] },
   });
 
   const problem2 = await upsertProblemWithTests({
@@ -184,16 +227,20 @@ async function main() {
     starterCode: PAL_STARTER,
     referenceSolution: PAL_REFERENCE,
     difficulty: "easy",
-    language: "python",
+    language: "javascript",
+    tags: ["string", "basics", "boolean"],
+    category: "strings",
+    metadata: {
+      difficultyBand: "easy",
+      topic: "palindrome",
+      expectedConcepts: ["reverse", "comparison"],
+    },
     createdById: teacher.id,
     testCases: [
       { input: "level", expectedOutput: "true", isHidden: false },
       { input: "hello", expectedOutput: "false", isHidden: true },
+      { input: "abba", expectedOutput: "true", isHidden: false },
     ],
-  });
-  await prisma.problem.update({
-    where: { id: problem2.id },
-    data: { tags: ["strings", "two-pointers"] },
   });
 
   const problem3 = await upsertProblemWithTests({
@@ -202,183 +249,384 @@ async function main() {
     starterCode: FACT_STARTER,
     referenceSolution: FACT_REFERENCE,
     difficulty: "medium",
-    language: "python",
+    language: "javascript",
+    tags: ["math", "recursion", "loops"],
+    category: "algorithms",
+    metadata: {
+      difficultyBand: "medium",
+      topic: "factorial",
+      expectedConcepts: ["recursion", "iteration"],
+    },
     createdById: teacher.id,
     testCases: [
       { input: "5", expectedOutput: "120", isHidden: false },
       { input: "1", expectedOutput: "1", isHidden: true },
+      { input: "3", expectedOutput: "6", isHidden: false },
     ],
   });
-  await prisma.problem.update({
-    where: { id: problem3.id },
-    data: { tags: ["math", "recursion"] },
-  });
 
-  await prisma.systemFlag.upsert({
-    where: { key: "exam_mode_enabled" },
-    update: {
-      value: false,
-    },
-    create: {
-      key: "exam_mode_enabled",
-      value: false,
-    },
-  });
-
-  const existingSubmission = await prisma.submission.findFirst({
-    where: {
+  // Submissions
+  const sumAcceptedSubmission = await prisma.submission.create({
+    data: {
       userId: student.id,
       problemId: problem1.id,
+      code: SUM_REFERENCE.trim(),
+      language: "javascript",
       status: "accepted",
+      stdout: "Test 1: PASS\n---\nTest 2: PASS\n---\nTest 3: PASS",
+      stderr: null,
+      executionTime: 14,
+      memory: 1024,
     },
   });
 
-  if (!existingSubmission) {
-    await prisma.submission.create({
-      data: {
+  const sumFailedSubmission = await prisma.submission.create({
+    data: {
+      userId: student.id,
+      problemId: problem1.id,
+      code: `const fs = require('fs');
+const input = fs.readFileSync(0, 'utf8').trim();
+const [a, b] = input.split(/\\s+/).map(Number);
+console.log(a - b);`,
+      language: "javascript",
+      status: "failed",
+      stdout: "Test 1: FAIL\nstdout:\n-1",
+      stderr: null,
+      executionTime: 12,
+      memory: 1024,
+    },
+  });
+
+  const palAcceptedSubmission = await prisma.submission.create({
+    data: {
+      userId: student.id,
+      problemId: problem2.id,
+      code: PAL_REFERENCE.trim(),
+      language: "javascript",
+      status: "accepted",
+      stdout: "Test 1: PASS\n---\nTest 2: PASS\n---\nTest 3: PASS",
+      stderr: null,
+      executionTime: 15,
+      memory: 1100,
+    },
+  });
+
+  // SubmissionAttempts
+  const rawAttempt = await prisma.submissionAttempt.create({
+    data: {
+      userId: student.id,
+      problemId: null,
+      submissionId: null,
+      mode: "raw",
+      language: "python",
+      sourceCode: "print('hello')",
+      judge0Status: "Accepted",
+      normalizedStatus: "accepted",
+      publicPassed: null,
+      publicTotal: null,
+      hiddenPassed: null,
+      hiddenTotal: null,
+      allPassed: true,
+      stdout: "hello\n",
+      stderr: null,
+      compileOutput: null,
+      executionTimeMs: 8,
+      memoryKb: 512,
+    },
+  });
+
+  const sumWrongAttempt = await prisma.submissionAttempt.create({
+    data: {
+      userId: student.id,
+      problemId: problem1.id,
+      submissionId: sumFailedSubmission.id,
+      mode: "tests",
+      language: "javascript",
+      sourceCode: `const fs = require('fs');
+const input = fs.readFileSync(0, 'utf8').trim();
+const [a, b] = input.split(/\\s+/).map(Number);
+console.log(a - b);`,
+      judge0Status: "Wrong Answer",
+      normalizedStatus: "wrong_answer",
+      publicPassed: 0,
+      publicTotal: 2,
+      hiddenPassed: 0,
+      hiddenTotal: 1,
+      allPassed: false,
+      stdout: "Test 1: FAIL\nstdout:\n-1",
+      stderr: null,
+      compileOutput: null,
+      executionTimeMs: 12,
+      memoryKb: 1024,
+    },
+  });
+
+  const sumCompileAttempt = await prisma.submissionAttempt.create({
+    data: {
+      userId: student.id,
+      problemId: problem1.id,
+      submissionId: null,
+      mode: "tests",
+      language: "javascript",
+      sourceCode: `const fs = require('fs');
+const input = fs.readFileSync(0, 'utf8').trim();
+const [a, b] = input.split(/\\s+/).map(Number);
+console.log(a + );`,
+      judge0Status: "Compilation Error",
+      normalizedStatus: "compile_error",
+      publicPassed: 0,
+      publicTotal: 2,
+      hiddenPassed: 0,
+      hiddenTotal: 1,
+      allPassed: false,
+      stdout: null,
+      stderr: "SyntaxError: Unexpected token ')'",
+      compileOutput: "SyntaxError: Unexpected token ')'",
+      executionTimeMs: 0,
+      memoryKb: 0,
+    },
+  });
+
+  const sumAcceptedAttempt = await prisma.submissionAttempt.create({
+    data: {
+      userId: student.id,
+      problemId: problem1.id,
+      submissionId: sumAcceptedSubmission.id,
+      mode: "tests",
+      language: "javascript",
+      sourceCode: SUM_REFERENCE.trim(),
+      judge0Status: "Accepted",
+      normalizedStatus: "accepted",
+      publicPassed: 2,
+      publicTotal: 2,
+      hiddenPassed: 1,
+      hiddenTotal: 1,
+      allPassed: true,
+      stdout: "All tests passed",
+      stderr: null,
+      compileOutput: null,
+      executionTimeMs: 14,
+      memoryKb: 1024,
+    },
+  });
+
+  const palAcceptedAttempt = await prisma.submissionAttempt.create({
+    data: {
+      userId: student.id,
+      problemId: problem2.id,
+      submissionId: palAcceptedSubmission.id,
+      mode: "tests",
+      language: "javascript",
+      sourceCode: PAL_REFERENCE.trim(),
+      judge0Status: "Accepted",
+      normalizedStatus: "accepted",
+      publicPassed: 2,
+      publicTotal: 2,
+      hiddenPassed: 1,
+      hiddenTotal: 1,
+      allPassed: true,
+      stdout: "All tests passed",
+      stderr: null,
+      compileOutput: null,
+      executionTimeMs: 15,
+      memoryKb: 1100,
+    },
+  });
+
+  const factorialRuntimeAttempt = await prisma.submissionAttempt.create({
+    data: {
+      userId: student.id,
+      problemId: problem3.id,
+      submissionId: null,
+      mode: "tests",
+      language: "javascript",
+      sourceCode: `throw new Error("boom");`,
+      judge0Status: "Runtime Error",
+      normalizedStatus: "runtime_error",
+      publicPassed: 0,
+      publicTotal: 2,
+      hiddenPassed: 0,
+      hiddenTotal: 1,
+      allPassed: false,
+      stdout: null,
+      stderr: "Error: boom",
+      compileOutput: null,
+      executionTimeMs: 5,
+      memoryKb: 900,
+    },
+  });
+
+  // AiLogs
+  const aiLog1 = await prisma.aiLog.create({
+    data: {
+      userId: student.id,
+      problemId: problem1.id,
+      submissionId: sumFailedSubmission.id,
+      mode: "practice",
+      promptVersion: "mentor_v1",
+      modelName: "ai-mentor",
+      studentQuestion: "Nerede hata yapıyorum?",
+      responseText:
+        "Toplama yerine çıkarma yapıyor olabilirsin. İşlemi ve örnek girdiyi tekrar kontrol et.",
+      requestPayload: {
+        problemId: problem1.id,
+        studentQuestion: "Nerede hata yapıyorum?",
+      },
+      responsePayload: {
+        mentorReply:
+          "Toplama yerine çıkarma yapıyor olabilirsin. İşlemi ve örnek girdiyi tekrar kontrol et.",
+      },
+    },
+  });
+
+  const aiLog2 = await prisma.aiLog.create({
+    data: {
+      userId: student.id,
+      problemId: problem1.id,
+      submissionId: sumAcceptedSubmission.id,
+      mode: "practice",
+      promptVersion: "mentor_v1",
+      modelName: "ai-mentor",
+      studentQuestion: "Kodum şimdi doğru mu?",
+      responseText:
+        "Evet, mevcut yaklaşımın doğru görünüyor. Şimdi edge case'leri de düşün.",
+      requestPayload: {
+        problemId: problem1.id,
+        studentQuestion: "Kodum şimdi doğru mu?",
+      },
+      responsePayload: {
+        mentorReply:
+          "Evet, mevcut yaklaşımın doğru görünüyor. Şimdi edge case'leri de düşün.",
+      },
+    },
+  });
+
+  const aiLog3 = await prisma.aiLog.create({
+    data: {
+      userId: student.id,
+      problemId: problem2.id,
+      submissionId: palAcceptedSubmission.id,
+      mode: "practice",
+      promptVersion: "mentor_v1",
+      modelName: "ai-mentor",
+      studentQuestion: "Palindrome için daha kısa yol var mı?",
+      responseText:
+        "String'i ters çevirip karşılaştırmak kısa ve okunabilir bir yöntemdir.",
+      requestPayload: {
+        problemId: problem2.id,
+        studentQuestion: "Palindrome için daha kısa yol var mı?",
+      },
+      responsePayload: {
+        mentorReply:
+          "String'i ters çevirip karşılaştırmak kısa ve okunabilir bir yöntemdir.",
+      },
+    },
+  });
+
+  // HintEvents
+  await prisma.hintEvent.createMany({
+    data: [
+      {
         userId: student.id,
         problemId: problem1.id,
-        code: SUM_REFERENCE.trim(),
-        language: "python",
-        status: "accepted",
-        stdout: "5",
-        executionTime: 12.5,
-        memory: 1024,
+        attemptId: sumWrongAttempt.id,
+        aiLogId: aiLog1.id,
+        sequence: 1,
       },
-    });
-  }
-
-  const latestSubmission = await prisma.submission.findFirst({
-    where: {
-      userId: student.id,
-      problemId: problem1.id,
-    },
-    orderBy: { createdAt: "desc" },
-  });
-
-  if (latestSubmission) {
-    const existingAttempt = await prisma.submissionAttempt.findFirst({
-      where: {
-        submissionId: latestSubmission.id,
+      {
+        userId: student.id,
+        problemId: problem1.id,
+        attemptId: sumAcceptedAttempt.id,
+        aiLogId: aiLog2.id,
+        sequence: 2,
       },
-    });
-
-    if (!existingAttempt) {
-      await prisma.submissionAttempt.create({
-        data: {
-          userId: student.id,
-          problemId: problem1.id,
-          submissionId: latestSubmission.id,
-          mode: AttemptMode.tests,
-          language: "python",
-          sourceCode: latestSubmission.code,
-          judge0Status: "Accepted",
-          normalizedStatus: NormalizedStatus.accepted,
-          publicPassed: 1,
-          publicTotal: 1,
-          hiddenPassed: 1,
-          hiddenTotal: 1,
-          allPassed: true,
-          stdout: "5",
-          executionTimeMs: 12_500,
-          memoryKb: 1024,
-        },
-      });
-    }
-  }
-
-  const existingAiLog = await prisma.aiLog.findFirst({
-    where: {
-      userId: student.id,
-      problemId: problem2.id,
-      promptVersion: "mentor_v1",
-    },
-  });
-
-  if (!existingAiLog) {
-    await prisma.aiLog.create({
-      data: {
+      {
         userId: student.id,
         problemId: problem2.id,
-        mode: "practice",
-        promptVersion: "mentor_v1",
-        modelName: "gpt-4o-mini",
-        studentQuestion: "Why is my palindrome code failing?",
-        responseText: "Check whether you are comparing the reversed string correctly.",
-        requestPayload: {
-          code: "s = input().strip()\nprint(str(s == s[::-1]).lower())",
-          question: "Why is my palindrome code failing?",
-        },
-        responsePayload: {
-          observation: "The current code always prints false.",
-        },
+        attemptId: palAcceptedAttempt.id,
+        aiLogId: aiLog3.id,
+        sequence: 1,
       },
-    });
-  }
-
-  const latestAiLog = await prisma.aiLog.findFirst({
-    where: {
-      userId: student.id,
-      problemId: problem2.id,
-      promptVersion: "mentor_v1",
-    },
-    orderBy: { createdAt: "desc" },
+    ],
   });
 
-  if (latestAiLog) {
-    const existingHint = await prisma.hintEvent.findFirst({
-      where: {
-        aiLogId: latestAiLog.id,
-      },
-    });
-
-    if (!existingHint) {
-      await prisma.hintEvent.create({
-        data: {
-          userId: student.id,
-          problemId: problem2.id,
-          aiLogId: latestAiLog.id,
-          sequence: 1,
-          mode: "hint",
+  // AIInteractionAudits
+  await prisma.aIInteractionAudit.createMany({
+    data: [
+      {
+        userId: student.id,
+        problemId: problem1.id,
+        attemptId: sumWrongAttempt.id,
+        mentorModel: "ai-mentor",
+        validatorModel: null,
+        mentorRaw:
+          "Toplama yerine çıkarma yapıyor olabilirsin. İşlemi ve örnek girdiyi tekrar kontrol et.",
+        validatorJson: {
+          decision: "allow",
+          reason: "safe mentor hint",
         },
-      });
-    }
-
-    const existingAudit = await prisma.aiInteractionAudit.findFirst({
-      where: {
-        aiLogId: latestAiLog.id,
+        policyAction: "allow",
+        finalText:
+          "Toplama yerine çıkarma yapıyor olabilirsin. İşlemi ve örnek girdiyi tekrar kontrol et.",
+        rewriteCount: 0,
+        latencyMsMentor: 420,
+        latencyMsValidator: null,
+        errorCode: null,
       },
-    });
-
-    if (!existingAudit) {
-      await prisma.aiInteractionAudit.create({
-        data: {
-          userId: student.id,
-          problemId: problem2.id,
-          aiLogId: latestAiLog.id,
-          mentorRaw: latestAiLog.responseText,
-          validatorJson: {
-            riskScore: 0.05,
-            decision: "allow",
-            violations: [],
-          },
-          policyAction: "allow",
-          finalText: latestAiLog.responseText,
-          mentorModel: latestAiLog.modelName,
-          validatorModel: "validator-heuristic",
-          durationMs: 1000,
+      {
+        userId: student.id,
+        problemId: problem1.id,
+        attemptId: sumAcceptedAttempt.id,
+        mentorModel: "ai-mentor",
+        validatorModel: null,
+        mentorRaw:
+          "Evet, mevcut yaklaşımın doğru görünüyor. Şimdi edge case'leri de düşün.",
+        validatorJson: {
+          decision: "allow",
+          reason: "safe mentor confirmation",
         },
-      });
-    }
-  }
+        policyAction: "allow",
+        finalText:
+          "Evet, mevcut yaklaşımın doğru görünüyor. Şimdi edge case'leri de düşün.",
+        rewriteCount: 0,
+        latencyMsMentor: 390,
+        latencyMsValidator: null,
+        errorCode: null,
+      },
+      {
+        userId: student.id,
+        problemId: problem3.id,
+        attemptId: factorialRuntimeAttempt.id,
+        mentorModel: "ai-mentor",
+        validatorModel: null,
+        mentorRaw: "",
+        validatorJson: null,
+        policyAction: "block",
+        finalText: "",
+        rewriteCount: 0,
+        latencyMsMentor: 250,
+        latencyMsValidator: null,
+        errorCode: "mentor_error",
+      },
+    ],
+  });
 
   console.log("Seed completed successfully.");
+  console.log({
+    teacherEmail: teacher.email,
+    studentEmail: student.email,
+    adminEmail: admin.email,
+    problemIds: [problem1.id, problem2.id, problem3.id],
+    sampleRawAttemptId: rawAttempt.id,
+    sumAcceptedSubmissionId: sumAcceptedSubmission.id,
+    adminId: admin.id,
+  });
 }
 
 main()
-  .catch((error) => {
-    console.error("Seed failed:", error);
-    process.exit(1);
+  .catch(async (e) => {
+    console.error("Seed failed:", e);
+    process.exitCode = 1;
   })
   .finally(async () => {
     await prisma.$disconnect();

@@ -7,15 +7,14 @@ const globalForPrisma = globalThis as unknown as {
   pool: Pool | undefined;
 };
 
-function createClient() {
+function createClient(): { prisma: PrismaClient; pool: Pool } {
   const url = process.env.DATABASE_URL;
   if (!url) {
     throw new Error("DATABASE_URL is not set");
   }
   const pool = new Pool({ connectionString: url });
-  // Prisma adapter bundles its own @types/pg; cast avoids duplicate Pool typings.
   const adapter = new PrismaPg(pool as unknown as ConstructorParameters<typeof PrismaPg>[0]);
-  const prisma = new PrismaClient({ adapter });
+  const prisma = new PrismaClient({ adapter }) as unknown as PrismaClient;
   return { prisma, pool };
 }
 

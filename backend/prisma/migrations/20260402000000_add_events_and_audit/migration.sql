@@ -1,3 +1,9 @@
+-- CreateEnum
+CREATE TYPE "AttemptMode" AS ENUM ('raw', 'tests');
+
+-- CreateEnum
+CREATE TYPE "NormalizedStatus" AS ENUM ('accepted', 'wrong_answer', 'syntax_error', 'runtime_error', 'time_limit_exceeded', 'memory_limit_exceeded', 'compile_error', 'internal_error');
+
 -- AlterTable
 ALTER TABLE "Problem" ADD COLUMN "tags" TEXT[] DEFAULT ARRAY[]::TEXT[];
 
@@ -7,20 +13,21 @@ CREATE TABLE "SubmissionAttempt" (
     "userId" INTEGER NOT NULL,
     "problemId" INTEGER,
     "submissionId" INTEGER,
+    "mode" "AttemptMode" NOT NULL,
     "language" TEXT NOT NULL,
-    "mode" TEXT NOT NULL DEFAULT 'tests',
-    "judge0StatusId" INTEGER,
+    "sourceCode" TEXT NOT NULL,
     "judge0Status" TEXT,
-    "statusCategory" TEXT,
-    "passedPublicCount" INTEGER NOT NULL DEFAULT 0,
-    "totalPublicCount" INTEGER NOT NULL DEFAULT 0,
-    "passedHiddenCount" INTEGER NOT NULL DEFAULT 0,
-    "totalHiddenCount" INTEGER NOT NULL DEFAULT 0,
+    "normalizedStatus" "NormalizedStatus" NOT NULL,
+    "publicPassed" INTEGER,
+    "publicTotal" INTEGER,
+    "hiddenPassed" INTEGER,
+    "hiddenTotal" INTEGER,
+    "allPassed" BOOLEAN,
     "stdout" TEXT,
     "stderr" TEXT,
     "compileOutput" TEXT,
-    "executionTime" DOUBLE PRECISION,
-    "memory" INTEGER,
+    "executionTimeMs" DOUBLE PRECISION,
+    "memoryKb" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "SubmissionAttempt_pkey" PRIMARY KEY ("id")
@@ -68,6 +75,9 @@ CREATE INDEX "SubmissionAttempt_problemId_createdAt_idx" ON "SubmissionAttempt"(
 
 -- CreateIndex
 CREATE INDEX "HintEvent_userId_problemId_createdAt_idx" ON "HintEvent"("userId", "problemId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "HintEvent_problemId_createdAt_idx" ON "HintEvent"("problemId", "createdAt");
 
 -- CreateIndex
 CREATE INDEX "AiInteractionAudit_userId_problemId_createdAt_idx" ON "AiInteractionAudit"("userId", "problemId", "createdAt");

@@ -1,21 +1,11 @@
 import "dotenv/config";
-import { AttemptMode, NormalizedStatus, PrismaClient } from "@prisma/client";
+import { AttemptMode, NormalizedStatus } from "@prisma/client";
 import bcrypt from "bcrypt";
-import { Pool } from "pg";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { prisma, pgPool } from "../src/lib/prisma";
 
-const connectionString = process.env.DATABASE_URL;
-
-if (!connectionString) {
+if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is not defined in .env");
 }
-
-const pool = new Pool({
-  connectionString,
-});
-
-const adapter = new PrismaPg(pool as ConstructorParameters<typeof PrismaPg>[0]);
-const prisma = new PrismaClient({ adapter });
 
 /** Judge0 seed examples for Python (MVP supports C/Python). */
 const SUM_DESCRIPTION =
@@ -392,5 +382,5 @@ main()
   })
   .finally(async () => {
     await prisma.$disconnect();
-    await pool.end();
+    await pgPool.end();
   });

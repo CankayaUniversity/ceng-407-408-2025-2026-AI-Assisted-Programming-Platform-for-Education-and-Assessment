@@ -13,7 +13,8 @@ ENV DATABASE_URL=$DATABASE_URL
 RUN npx prisma generate
 
 COPY . .
-RUN npm run build
+RUN npm run build \
+ && npx tsc --outDir dist-seed --rootDir . --skipLibCheck --esModuleInterop prisma/seed.ts
 
 # ── production stage ──
 FROM node:20-bookworm-slim
@@ -24,6 +25,7 @@ COPY package*.json ./
 RUN npm ci --omit=dev
 
 COPY --from=build /app/dist ./dist
+COPY --from=build /app/dist-seed ./dist-seed
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/prisma.config.ts ./prisma.config.ts

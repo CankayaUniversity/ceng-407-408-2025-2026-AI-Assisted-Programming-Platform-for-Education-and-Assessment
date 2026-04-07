@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": [
+    "seed.ts",
+    "../src/lib/prisma.ts",
+    "../src/lib/prisma.d.ts",
+    "../src/types/prisma-client-augment.d.ts"
+  ]
+}

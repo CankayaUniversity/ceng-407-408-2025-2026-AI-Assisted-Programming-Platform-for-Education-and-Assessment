@@ -185,7 +185,15 @@ async function main() {
   });
   await prisma.problem.update({
     where: { id: problem1.id },
-    data: { tags: ["math", "basics", "io"] },
+    data: {
+      tags: ["math", "basics", "io"],
+      category: "fundamentals",
+      metadata: {
+        topic: "arithmetic",
+        inputFormat: "two integers",
+        difficultyBand: "intro",
+      },
+    },
   });
 
   const problem2 = await upsertProblemWithTests({
@@ -203,7 +211,15 @@ async function main() {
   });
   await prisma.problem.update({
     where: { id: problem2.id },
-    data: { tags: ["strings", "two-pointers"] },
+    data: {
+      tags: ["strings", "two-pointers"],
+      category: "strings",
+      metadata: {
+        topic: "palindrome",
+        technique: "two-pointers",
+        difficultyBand: "intro",
+      },
+    },
   });
 
   const problem3 = await upsertProblemWithTests({
@@ -221,7 +237,15 @@ async function main() {
   });
   await prisma.problem.update({
     where: { id: problem3.id },
-    data: { tags: ["math", "recursion"] },
+    data: {
+      tags: ["math", "recursion"],
+      category: "math",
+      metadata: {
+        topic: "factorial",
+        technique: "recursion",
+        difficultyBand: "core",
+      },
+    },
   });
 
   await prisma.systemFlag.upsert({

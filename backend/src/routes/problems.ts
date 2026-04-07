@@ -17,6 +17,8 @@ router.get("/", async (_req, res) => {
       difficulty: true,
       language: true,
       tags: true,
+      category: true,
+      metadata: true,
       createdAt: true,
     },
   });
@@ -51,6 +53,8 @@ router.get("/:id", async (req, res) => {
     difficulty: problem.difficulty,
     language: problem.language,
     tags: problem.tags,
+    category: problem.category,
+    metadata: problem.metadata,
     createdAt: problem.createdAt,
   };
 

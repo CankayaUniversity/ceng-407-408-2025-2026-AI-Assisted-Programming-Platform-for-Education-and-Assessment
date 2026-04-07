@@ -117,6 +117,8 @@ router.get("/students/:id/problems/:problemId/detail", async (req, res) => {
         title: problem.title,
         difficulty: problem.difficulty,
         tags: problem.tags,
+        category: problem.category,
+        metadata: problem.metadata,
       },
       metrics: buildStudentProblemMetrics(attempts, hints),
       attempts,
@@ -157,6 +159,8 @@ router.get("/problems/:id/analytics", async (req, res) => {
         difficulty: problem.difficulty,
         language: problem.language,
         tags: problem.tags,
+        category: problem.category,
+        metadata: problem.metadata,
       },
       analytics: {
         totalAttempts: attempts.length,

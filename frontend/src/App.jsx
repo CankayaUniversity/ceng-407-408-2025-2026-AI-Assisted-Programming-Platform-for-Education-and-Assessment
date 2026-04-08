@@ -13,8 +13,7 @@ import AnalyticsPage from "./pages/student/AnalyticsPage";
 import TeacherDashboardPage from "./pages/teacher/TeacherDashboardPage";
 import StudentsPage from "./pages/teacher/StudentsPage";
 import QuestionsPage from "./pages/teacher/QuestionsPage";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000";
+import { API_BASE } from "./apiBase";
 const DEMO_EMAIL = import.meta.env.VITE_DEMO_EMAIL ?? "student1@demo.com";
 const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD ?? "123456";
 

@@ -20,8 +20,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 
 import SectionCard from "../common/SectionCard";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000";
+import { API_BASE } from "../../apiBase";
 
 const EMPTY_FORM = {
   title: "",

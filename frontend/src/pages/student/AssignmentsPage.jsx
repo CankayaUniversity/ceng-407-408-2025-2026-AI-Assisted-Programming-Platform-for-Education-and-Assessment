@@ -17,8 +17,7 @@ import { useNavigate } from "react-router-dom";
 
 import AppLayout from "../../components/layout/AppLayout";
 import SectionCard from "../../components/common/SectionCard";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000";
+import { API_BASE } from "../../apiBase";
 
 function difficultyColor(d) {
   const v = (d ?? "").toLowerCase();

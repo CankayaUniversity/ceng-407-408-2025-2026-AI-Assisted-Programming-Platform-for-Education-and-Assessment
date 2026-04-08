@@ -4,8 +4,7 @@ import { Stack } from "@mui/material";
 import AppLayout from "../../components/layout/AppLayout";
 import StudentDetailModal from "../../components/teacher/StudentDetailModal";
 import StudentProgressTable from "../../components/teacher/StudentProgressTable";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000";
+import { API_BASE } from "../../apiBase";
 
 export default function StudentsPage({ currentUser, token, handleLogout, navItems }) {
   const [students, setStudents] = useState([]);

@@ -4,8 +4,7 @@ import { Stack } from "@mui/material";
 import AppLayout from "../../components/layout/AppLayout";
 import ClassOverviewCard from "../../components/teacher/ClassOverviewCard";
 import ExamModeCard from "../../components/teacher/ExamModeCard";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000";
+import { API_BASE } from "../../apiBase";
 
 export default function TeacherDashboardPage({ currentUser, token, handleLogout, navItems }) {
   const [examMode, setExamMode] = useState(false);

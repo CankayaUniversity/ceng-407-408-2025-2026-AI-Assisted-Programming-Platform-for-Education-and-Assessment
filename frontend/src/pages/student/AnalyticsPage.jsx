@@ -16,8 +16,7 @@ import {
 
 import AppLayout from "../../components/layout/AppLayout";
 import SectionCard from "../../components/common/SectionCard";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000";
+import { API_BASE } from "../../apiBase";
 
 function StatBox({ label, value, color = "text.primary" }) {
   return (

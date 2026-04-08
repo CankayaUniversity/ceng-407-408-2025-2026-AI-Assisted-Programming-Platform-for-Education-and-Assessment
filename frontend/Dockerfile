@@ -3,6 +3,10 @@ FROM node:20-bookworm-slim AS build
 
 WORKDIR /app
 
+# Empty = relative /api (nginx proxies to backend). Override only if needed.
+ARG VITE_API_BASE_URL=
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+
 COPY package*.json ./
 RUN npm ci
 

@@ -1,4 +1,5 @@
 import "dotenv/config";
+import type { Prisma } from "@prisma/client";
 import bcrypt from "bcrypt";
 import { prisma, pgPool } from "../src/lib/prisma";
 
@@ -78,7 +79,7 @@ async function upsertProblemWithTests(params: {
     language: params.language,
     tags: params.tags,
     category: params.category ?? null,
-    metadata: params.metadata ?? undefined,
+    metadata: (params.metadata ?? undefined) as Prisma.InputJsonValue | undefined,
   };
 
   if (existing) {
@@ -103,7 +104,7 @@ async function upsertProblemWithTests(params: {
     data: {
       title: params.title,
       ...common,
-      createdById: params.createdById,
+      createdBy: { connect: { id: params.createdById } },
       testCases: {
         create: params.testCases.map((tc) => ({
           input: tc.input,

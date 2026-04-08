@@ -7,7 +7,7 @@ const router = Router();
 
 router.use(requireAuth);
 
-router.get("/exam-mode", requireRole("admin"), async (_req, res) => {
+router.get("/exam-mode", async (_req, res) => {
   const flag = await prisma.systemFlag.findUnique({
     where: { key: "exam_mode_enabled" },
   });
@@ -20,7 +20,7 @@ router.get("/exam-mode", requireRole("admin"), async (_req, res) => {
   });
 });
 
-router.patch("/exam-mode", requireRole("admin"), async (req, res) => {
+router.patch("/exam-mode", requireRole("admin", "teacher"), async (req, res) => {
   const enabled = Boolean((req.body as { enabled?: unknown }).enabled);
 
   const flag = await prisma.systemFlag.upsert({

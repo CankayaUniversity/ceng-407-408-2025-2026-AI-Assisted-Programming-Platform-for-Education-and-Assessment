@@ -3,7 +3,7 @@ import { PolicyAction } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/requireAuth";
 import { getMentorReply, type MentorRequestInput } from "../services/mentor";
-import { applyPolicy } from "../services/policy";
+import { applyPolicyWithRetry } from "../services/policy";
 import { validateMentorReply } from "../services/validator";
 
 const router = Router();
@@ -120,6 +120,17 @@ function toPolicyAction(action: string): PolicyAction {
 }
 
 async function handleAiRequest(req: Request, res: Response) {
+  const examFlag = await prisma.systemFlag.findUnique({
+    where: { key: "exam_mode_enabled" },
+  });
+  if (examFlag?.value === true) {
+    res.status(403).json({
+      success: false,
+      error: "Exam mode is active. AI Mentor is currently disabled.",
+    });
+    return;
+  }
+
   const body = req.body as Record<string, unknown>;
   const input = parseMentorBody(body);
   const problemId = parseProblemId(body);
@@ -133,11 +144,15 @@ async function handleAiRequest(req: Request, res: Response) {
   const mentorRaw = result.success ? result.mentorReply : buildMentorFallback(input);
   const mentorModel = result.success ? process.env.OLLAMA_MODEL ?? "ai-mentor" : "fallback-local";
 
+  const validatorStartedAt = Date.now();
   const validator = await validateMentorReply(mentorRaw);
-  const policy = applyPolicy({
+  const latencyMsValidator = Date.now() - validatorStartedAt;
+
+  const policy = await applyPolicyWithRetry({
     mentorReply: mentorRaw,
     validator,
     studentQuestion: input.studentQuestion,
+    originalInput: input,
   });
 
   const problem =
@@ -221,9 +236,9 @@ async function handleAiRequest(req: Request, res: Response) {
         validatorJson: validator as object,
         policyAction: toPolicyAction(policy.action),
         finalText: policy.finalText,
-        rewriteCount: 0,
+        rewriteCount: policy.rewriteCount,
         latencyMsMentor,
-        latencyMsValidator: null,
+        latencyMsValidator: validator.source === "ai" ? latencyMsValidator : null,
         errorCode: result.success ? null : (result.error ?? "mentor_error"),
       },
     });

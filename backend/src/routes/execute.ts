@@ -11,7 +11,7 @@ router.use(requireAuth);
 
 const ACCEPTED_STATUS_ID = 3;
 const SUBMISSION_STDOUT_MAX = 50_000;
-const SUPPORTED_LANGUAGES = new Set(["c", "python"]);
+const SUPPORTED_LANGUAGES = new Set(["c", "python", "javascript", "js", "java", "cpp", "c++", "csharp", "c#"]);
 
 function normalizeLanguage(value: unknown): string | undefined {
   if (typeof value !== "string") {

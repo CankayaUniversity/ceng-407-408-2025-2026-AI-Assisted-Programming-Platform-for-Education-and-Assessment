@@ -24,16 +24,26 @@ router.get("/students", async (_req, res) => {
     orderBy: { id: "asc" },
   });
 
+  const totalProblems = await prisma.problem.count();
+
   res.json({
-    data: students.map((student) => ({
-      id: student.id,
-      name: student.name,
-      email: student.email,
-      totalAttempts: student.submissionAttempts.length,
-      totalHints: student.hintEvents.length,
-      acceptedAttempts: student.submissionAttempts.filter((attempt) => attempt.normalizedStatus === "accepted")
-        .length,
-    })),
+    data: students.map((student) => {
+      const accepted = student.submissionAttempts.filter(
+        (a) => a.normalizedStatus === "accepted",
+      );
+      const distinctSolved = new Set(accepted.map((a) => a.problemId)).size;
+
+      return {
+        id: student.id,
+        name: student.name,
+        email: student.email,
+        totalAttempts: student.submissionAttempts.length,
+        totalHints: student.hintEvents.length,
+        acceptedAttempts: accepted.length,
+        distinctProblemsSolved: distinctSolved,
+      };
+    }),
+    meta: { totalProblems },
   });
 });
 

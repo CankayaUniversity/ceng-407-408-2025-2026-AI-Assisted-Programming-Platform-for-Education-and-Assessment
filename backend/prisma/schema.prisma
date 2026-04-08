@@ -6,6 +6,29 @@ datasource db {
   provider = "postgresql"
 }
 
+enum AttemptMode {
+  raw
+  tests
+}
+
+enum NormalizedStatus {
+  accepted
+  wrong_answer
+  syntax_error
+  runtime_error
+  time_limit_exceeded
+  memory_limit_exceeded
+  compile_error
+  internal_error
+}
+
+enum PolicyAction {
+  allow
+  rewrite
+  fallback_safe_hint
+  block
+}
+
 model Role {
   id    Int    @id @default(autoincrement())
   name  String @unique
@@ -14,84 +37,171 @@ model Role {
 }
 
 model User {
-  id           Int          @id @default(autoincrement())
-  name         String
-  email        String       @unique
-  passwordHash String
-  roleId       Int
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id                  Int                  @id @default(autoincrement())
+  name                String
+  email               String               @unique
+  passwordHash        String
+  roleId              Int
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 
-  role         Role         @relation(fields: [roleId], references: [id])
-  problems     Problem[]
-  submissions  Submission[]
-  aiLogs       AiLog[]
+  role                Role                 @relation(fields: [roleId], references: [id])
+  problems            Problem[]
+  submissions         Submission[]
+  aiLogs              AiLog[]
+  submissionAttempts  SubmissionAttempt[]
+  hintEvents          HintEvent[]
+  aiInteractionAudits AIInteractionAudit[]
 }
 
 model Problem {
-  id                Int          @id @default(autoincrement())
-  title             String
-  description       String
-  starterCode       String?
-  referenceSolution String?
-  difficulty        String?
-  language          String       @default("javascript")
-  createdById       Int
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  id                  Int                  @id @default(autoincrement())
+  title               String
+  description         String
+  starterCode         String?
+  referenceSolution   String?
+  difficulty          String?
+  language            String               @default("javascript")
+  tags                String[]             @default([])
+  category            String?
+  metadata            Json?
+  createdById         Int
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 
-  createdBy         User         @relation(fields: [createdById], references: [id])
-  testCases         TestCase[]
-  submissions       Submission[]
-  aiLogs            AiLog[]
+  createdBy           User                 @relation(fields: [createdById], references: [id])
+  testCases           TestCase[]
+  submissions         Submission[]
+  aiLogs              AiLog[]
+  submissionAttempts  SubmissionAttempt[]
+  hintEvents          HintEvent[]
+  aiInteractionAudits AIInteractionAudit[]
 }
 
 model TestCase {
-  id             Int       @id @default(autoincrement())
+  id             Int      @id @default(autoincrement())
   problemId      Int
   input          String
   expectedOutput String
-  isHidden       Boolean   @default(false)
-  createdAt      DateTime  @default(now())
+  isHidden       Boolean  @default(false)
+  createdAt      DateTime @default(now())
 
-  problem        Problem   @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
 }
 
 model Submission {
-  id            Int       @id @default(autoincrement())
+  id            Int      @id @default(autoincrement())
   userId        Int
   problemId     Int
   code          String
-  language      String    @default("javascript")
+  language      String   @default("javascript")
   status        String
   stdout        String?
   stderr        String?
   executionTime Float?
   memory        Int?
-  createdAt     DateTime  @default(now())
+  createdAt     DateTime @default(now())
 
-  user          User      @relation(fields: [userId], references: [id])
-  problem       Problem   @relation(fields: [problemId], references: [id])
-  aiLogs        AiLog[]
+  user     User                @relation(fields: [userId], references: [id])
+  problem  Problem             @relation(fields: [problemId], references: [id])
+  aiLogs   AiLog[]
+  attempts SubmissionAttempt[]
+}
+
+model SubmissionAttempt {
+  id                 Int                  @id @default(autoincrement())
+  userId             Int
+  problemId          Int?
+  submissionId       Int?
+  mode               AttemptMode
+  language           String
+  sourceCode         String
+  judge0Status       String?
+  normalizedStatus   NormalizedStatus
+  publicPassed       Int?
+  publicTotal        Int?
+  hiddenPassed       Int?
+  hiddenTotal        Int?
+  allPassed          Boolean?
+  stdout             String?
+  stderr             String?
+  compileOutput      String?
+  executionTimeMs    Float?
+  memoryKb           Int?
+  createdAt          DateTime             @default(now())
+
+  user               User                 @relation(fields: [userId], references: [id])
+  problem            Problem?             @relation(fields: [problemId], references: [id])
+  submission         Submission?          @relation(fields: [submissionId], references: [id])
+  hintEvents         HintEvent[]
+  aiInteractionAudits AIInteractionAudit[]
+
+  @@index([userId, problemId, createdAt])
+  @@index([problemId, createdAt])
+}
+
+model HintEvent {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  problemId Int
+  attemptId Int?
+  aiLogId   Int?
+  sequence  Int      @default(1)
+  mode      String   @default("hint")
+  createdAt DateTime @default(now())
+
+  user    User               @relation(fields: [userId], references: [id])
+  problem Problem            @relation(fields: [problemId], references: [id])
+  attempt SubmissionAttempt?  @relation(fields: [attemptId], references: [id])
+  aiLog   AiLog?             @relation(fields: [aiLogId], references: [id])
+
+  @@index([userId, problemId, createdAt])
+  @@index([problemId, createdAt])
 }
 
 model AiLog {
-  id              Int         @id @default(autoincrement())
+  id              Int      @id @default(autoincrement())
   userId          Int
   problemId       Int
   submissionId    Int?
-  mode            String      @default("practice")
+  mode            String   @default("practice")
   promptVersion   String
   modelName       String
   studentQuestion String?
   responseText    String
   requestPayload  Json?
   responsePayload Json?
-  createdAt       DateTime    @default(now())
+  createdAt       DateTime @default(now())
 
-  user            User        @relation(fields: [userId], references: [id])
-  problem         Problem     @relation(fields: [problemId], references: [id])
-  submission      Submission? @relation(fields: [submissionId], references: [id])
+  user       User        @relation(fields: [userId], references: [id])
+  problem    Problem     @relation(fields: [problemId], references: [id])
+  submission Submission? @relation(fields: [submissionId], references: [id])
+  hintEvents HintEvent[]
+}
+
+model AIInteractionAudit {
+  id                 Int                @id @default(autoincrement())
+  userId             Int
+  problemId          Int
+  attemptId          Int?
+  mentorModel        String
+  validatorModel     String?
+  mentorRaw          String
+  validatorJson      Json?
+  policyAction       PolicyAction
+  finalText          String
+  rewriteCount       Int                @default(0)
+  latencyMsMentor    Int?
+  latencyMsValidator Int?
+  errorCode          String?
+  createdAt          DateTime           @default(now())
+
+  user               User               @relation(fields: [userId], references: [id])
+  problem            Problem            @relation(fields: [problemId], references: [id])
+  attempt            SubmissionAttempt?  @relation(fields: [attemptId], references: [id])
+
+  @@index([userId, problemId, createdAt])
+  @@index([problemId, createdAt])
 }
 
 model SystemFlag {

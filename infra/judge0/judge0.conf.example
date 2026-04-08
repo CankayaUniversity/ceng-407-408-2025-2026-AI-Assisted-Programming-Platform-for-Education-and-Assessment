@@ -20,7 +20,13 @@ RAILS_MAX_THREADS=4
 COUNT=2
 SECRET_KEY_BASE=replace-with-a-long-random-secret
 
-# ---------- Resource Limits ----------
+# ---------- Per-Process Limits (Judge0 Application Layer) ----------
+# These are enforced by Judge0 for EACH submission individually,
+# regardless of the sandbox setting below.
+ENABLE_PER_PROCESS_AND_THREAD_TIME_LIMIT=true
+ENABLE_PER_PROCESS_AND_THREAD_MEMORY_LIMIT=true
+
+# ---------- Resource Limits (Per Submission) ----------
 CPU_TIME_LIMIT=5
 CPU_EXTRA_TIME=1
 WALL_TIME_LIMIT=10
@@ -29,3 +35,26 @@ MEMORY_LIMIT=128000
 MAX_CPU_TIME_LIMIT=15
 MAX_WALL_TIME_LIMIT=20
 MAX_MEMORY_LIMIT=512000
+
+# ---------- Sandbox Strategy ----------
+# Isolation is provided at the DOCKER level (3-layer approach):
+#
+#   Layer 1 - Docker Container Isolation:
+#     PID namespace, filesystem, capability dropping (cap_drop),
+#     security_opt (no-new-privileges). Configured in docker-compose.yml.
+#
+#   Layer 2 - Docker Resource Limits:
+#     memory: 512m, cpus: 1.0, pids_limit: 128 per container.
+#     Prevents resource exhaustion and fork bombs. Configured in docker-compose.yml.
+#
+#   Layer 3 - Judge0 Application Limits (this file):
+#     CPU_TIME_LIMIT, WALL_TIME_LIMIT, MEMORY_LIMIT enforced per submission.
+#
+# isolate's cgroup-based sandbox (ENABLE_SANDBOX=true) requires cgroup v1
+# which is unavailable on Docker Desktop (Windows/macOS use cgroup v2).
+# Docker-level isolation is the industry standard for containerized judges
+# (used by LeetCode, HackerRank, Replit, AWS Lambda).
+#
+# For native Linux servers with cgroup v1, set ENABLE_SANDBOX=true
+# for an additional kernel-level isolation layer.
+ENABLE_SANDBOX=false

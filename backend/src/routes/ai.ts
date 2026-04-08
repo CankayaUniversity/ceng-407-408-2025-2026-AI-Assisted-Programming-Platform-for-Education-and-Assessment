@@ -1,43 +1,60 @@
 import { Router, type Request, type Response } from "express";
+import { PolicyAction } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/requireAuth";
-import { getMentorReplyWithPolicy } from "../services/policy";
-import type { MentorRequestInput } from "../services/mentor";
+import { getMentorReply, type MentorRequestInput } from "../services/mentor";
+import { applyPolicyWithRetry } from "../services/policy";
+import { validateMentorReply } from "../services/validator";
 
 const router = Router();
 
-const PROMPT_VERSION = "mentor_v2_pipeline";
+const PROMPT_VERSION = "mentor_v1";
+const VALIDATOR_MODEL = process.env.OLLAMA_VALIDATOR_MODEL ?? "validator-heuristic";
 
 router.use(requireAuth);
 
 function parseMentorBody(body: Record<string, unknown>): MentorRequestInput {
+  const studentQuestion =
+    typeof body.studentQuestion === "string"
+      ? body.studentQuestion
+      : typeof body.question === "string"
+        ? body.question
+        : null;
+
+  const studentCode =
+    typeof body.studentCode === "string"
+      ? body.studentCode
+      : typeof body.sourceCode === "string"
+        ? body.sourceCode
+        : typeof body.code === "string"
+          ? body.code
+          : null;
+
+  const stdout =
+    typeof body.stdout === "string"
+      ? body.stdout
+      : typeof body.output === "string"
+        ? body.output
+        : null;
+
   return {
     problemDescription:
       typeof body.problemDescription === "string" ? body.problemDescription : null,
-    assignmentText:
-      typeof body.assignmentText === "string" ? body.assignmentText : null,
-    studentCode:
-      typeof body.studentCode === "string" ? body.studentCode : null,
+    assignmentText: typeof body.assignmentText === "string" ? body.assignmentText : null,
+    studentCode,
     errorMessage:
-      typeof body.errorMessage === "string" ? body.errorMessage : null,
-    studentQuestion:
-      typeof body.studentQuestion === "string" ? body.studentQuestion : null,
-    runStatus:
-      typeof body.runStatus === "string" ? body.runStatus : null,
-    stdout:
-      typeof body.stdout === "string" ? body.stdout : null,
-    stderr:
-      typeof body.stderr === "string" ? body.stderr : null,
-    language:
-      typeof body.language === "string" ? body.language : null,
-    mode:
-      typeof body.mode === "string" ? body.mode : null,
-    hintLevel:
-      typeof body.hintLevel === "number" ? body.hintLevel : null,
-    history:
-      Array.isArray(body.history)
-        ? body.history.filter((v): v is string => typeof v === "string")
-        : null,
+      typeof body.errorMessage === "string"
+        ? body.errorMessage
+        : typeof body.stderr === "string"
+          ? body.stderr
+          : null,
+    studentQuestion,
+    runStatus: typeof body.runStatus === "string" ? body.runStatus : null,
+    stdout,
+    stderr: typeof body.stderr === "string" ? body.stderr : null,
+    language: typeof body.language === "string" ? body.language : null,
+    mode: typeof body.mode === "string" ? body.mode : null,
+    hintLevel: typeof body.hintLevel === "number" ? body.hintLevel : null,
   };
 }
 
@@ -58,63 +75,186 @@ function parseProblemId(body: Record<string, unknown>): number | undefined {
   return undefined;
 }
 
-router.post("/chat", async (req: Request, res: Response) => {
-  
-  try {
-    const body = req.body as Record<string, unknown>;
-    const input = parseMentorBody(body);
-    const problemId = parseProblemId(body);
-    console.log("[AI INPUT]", {
-      assignment: input.assignmentText,
-      code: input.studentCode?.slice(0, 100),
-      question: input.studentQuestion,
-    });
-    const result = await getMentorReplyWithPolicy(input);
-
-    if (!result.success) {
-      res.status(503).json({
-        success: false,
-        error: result.error,
-        mentorReply: "",
-      });
-      return;
+function parseSubmissionId(body: Record<string, unknown>): number | undefined {
+  const raw = body.submissionId;
+  if (typeof raw === "number" && Number.isInteger(raw)) {
+    return raw;
+  }
+  if (typeof raw === "string" && raw.trim() !== "") {
+    const n = Number.parseInt(raw, 10);
+    if (!Number.isNaN(n)) {
+      return n;
     }
+  }
+  return undefined;
+}
 
-    if (problemId !== undefined) {
-      const problem = await prisma.problem.findUnique({ where: { id: problemId } });
+function buildMentorFallback(input: MentorRequestInput): string {
+  const question = (input.studentQuestion ?? "").trim();
+  const runStatus = (input.runStatus ?? "").trim().toLowerCase();
 
-      if (problem) {
-        await prisma.aiLog.create({
-          data: {
-            userId: req.auth!.userId,
-            problemId,
-            mode: "practice",
-            promptVersion: PROMPT_VERSION,
-            modelName: process.env.OLLAMA_MODEL ?? "ai-mentor",
-            studentQuestion: input.studentQuestion ?? null,
-            responseText: result.mentorReply,
-            requestPayload: body as object,
-            responsePayload: result.audit as unknown as object,
-          },
-        });
-      }
-    }
+  if (runStatus === "idle") {
+    return question
+      ? `Soruna odaklanalim: "${question}". Once kisa bir test girdisiyle kodu calistir ve aldigin cikti/hatayi paylas; sonra adim adim duzeltelim.`
+      : "Kodu once kisa bir test girdisiyle calistir. Cikti veya hata mesajini paylasirsan bir sonraki adimi birlikte netlestirebiliriz.";
+  }
 
-    res.json({
-      success: true,
-      mentorReply: result.mentorReply,
-      audit: result.audit,
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    
-    res.status(500).json({
+  if (question) {
+    return `Soruna odaklanalim: "${question}". Tek bir adima odaklan: girdi, beklenen cikti ve mevcut ciktiyi karsilastir; fark olan ilk noktayi izole et.`;
+  }
+
+  return "Tek bir adima odaklanalim: girdi, beklenen cikti ve mevcut ciktiyi karsilastir; fark olan ilk noktayi izole et ve o parcayi duzelt.";
+}
+
+function toPolicyAction(action: string): PolicyAction {
+  switch (action) {
+    case "allow":
+      return PolicyAction.allow;
+    case "rewrite":
+      return PolicyAction.rewrite;
+    case "block":
+      return PolicyAction.block;
+    default:
+      return PolicyAction.fallback_safe_hint;
+  }
+}
+
+async function handleAiRequest(req: Request, res: Response) {
+  const examFlag = await prisma.systemFlag.findUnique({
+    where: { key: "exam_mode_enabled" },
+  });
+  if (examFlag?.value === true) {
+    res.status(403).json({
       success: false,
-      error: message,
-      mentorReply: "",
+      error: "Exam mode is active. AI Mentor is currently disabled.",
+    });
+    return;
+  }
+
+  const body = req.body as Record<string, unknown>;
+  const input = parseMentorBody(body);
+  const problemId = parseProblemId(body);
+  const submissionId = parseSubmissionId(body);
+  const mode = typeof body.mode === "string" ? body.mode.trim().toLowerCase() : "practice";
+  const mentorStartedAt = Date.now();
+
+  const result = await getMentorReply(input);
+  const latencyMsMentor = Date.now() - mentorStartedAt;
+  const fallbackUsed = !result.success;
+  const mentorRaw = result.success ? result.mentorReply : buildMentorFallback(input);
+  const mentorModel = result.success ? process.env.OLLAMA_MODEL ?? "ai-mentor" : "fallback-local";
+
+  const validatorStartedAt = Date.now();
+  const validator = await validateMentorReply(mentorRaw);
+  const latencyMsValidator = Date.now() - validatorStartedAt;
+
+  const policy = await applyPolicyWithRetry({
+    mentorReply: mentorRaw,
+    validator,
+    studentQuestion: input.studentQuestion,
+    originalInput: input,
+  });
+
+  const problem =
+    problemId !== undefined ? await prisma.problem.findUnique({ where: { id: problemId } }) : null;
+
+  const linkedAttempt =
+    submissionId !== undefined
+      ? await prisma.submissionAttempt.findFirst({
+          where: {
+            submissionId,
+            userId: req.auth!.userId,
+          },
+          orderBy: { createdAt: "desc" },
+        })
+      : problemId !== undefined
+        ? await prisma.submissionAttempt.findFirst({
+            where: {
+              userId: req.auth!.userId,
+              problemId,
+            },
+            orderBy: { createdAt: "desc" },
+          })
+        : null;
+
+  let aiLogId: number | null = null;
+
+  if (problem) {
+    const pid = problem.id;
+    const aiLog = await prisma.aiLog.create({
+      data: {
+        userId: req.auth!.userId,
+        problemId: pid,
+        submissionId: submissionId ?? null,
+        mode,
+        promptVersion: PROMPT_VERSION,
+        modelName: mentorModel,
+        studentQuestion: input.studentQuestion ?? null,
+        responseText: policy.finalText,
+        requestPayload: body as object,
+        responsePayload: {
+          mentorRaw,
+          mentorError: result.success ? null : result.error,
+          validator,
+          policyAction: policy.action,
+          fallbackUsed,
+        },
+      },
+    });
+
+    aiLogId = aiLog.id;
+
+    if (mode === "hint" || mode === "tip") {
+      const lastHint = await prisma.hintEvent.findFirst({
+        where: {
+          userId: req.auth!.userId,
+          problemId: pid,
+        },
+        orderBy: [{ sequence: "desc" }, { createdAt: "desc" }],
+      });
+
+      await prisma.hintEvent.create({
+        data: {
+          userId: req.auth!.userId,
+          problemId: pid,
+          attemptId: linkedAttempt?.id ?? null,
+          aiLogId: aiLog.id,
+          sequence: (lastHint?.sequence ?? 0) + 1,
+          mode,
+        },
+      });
+    }
+
+    await prisma.aIInteractionAudit.create({
+      data: {
+        userId: req.auth!.userId,
+        problemId: pid,
+        attemptId: linkedAttempt?.id ?? null,
+        mentorModel,
+        validatorModel: VALIDATOR_MODEL,
+        mentorRaw,
+        validatorJson: validator as object,
+        policyAction: toPolicyAction(policy.action),
+        finalText: policy.finalText,
+        rewriteCount: policy.rewriteCount,
+        latencyMsMentor,
+        latencyMsValidator: validator.source === "ai" ? latencyMsValidator : null,
+        errorCode: result.success ? null : (result.error ?? "mentor_error"),
+      },
     });
   }
-});
+
+  res.json({
+    success: true,
+    mentorReply: policy.finalText,
+    fallbackUsed,
+    ...(result.success ? {} : { warning: "Mentor service unavailable, fallback reply used." }),
+    validator,
+    policyAction: policy.action,
+  });
+}
+
+router.post("/chat", handleAiRequest);
+router.post("/hint", handleAiRequest);
 
 export { router as aiRouter };
-export default router;

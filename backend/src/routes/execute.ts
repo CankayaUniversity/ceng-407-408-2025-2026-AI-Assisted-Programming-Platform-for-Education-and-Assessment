@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { resolveLanguageId } from "../lib/judge0Languages";
 import { requireAuth } from "../middleware/requireAuth";
+import { AttemptMode } from "@prisma/client";
 import { runInJudge0, type Judge0RunResult } from "../services/judge0";
 
 const router = Router();
@@ -10,6 +11,24 @@ router.use(requireAuth);
 
 const ACCEPTED_STATUS_ID = 3;
 const SUBMISSION_STDOUT_MAX = 50_000;
+const SUPPORTED_LANGUAGES = new Set(["c", "python", "javascript", "js", "java", "cpp", "c++", "csharp", "c#"]);
+
+function normalizeLanguage(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const key = value.trim().toLowerCase();
+  if (!key) {
+    return undefined;
+  }
+  if (key === "py" || key === "python3") {
+    return "python";
+  }
+  if (key === "python" || key === "c") {
+    return key;
+  }
+  return undefined;
+}
 
 function parseOptionalInt(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isInteger(value)) {
@@ -43,8 +62,11 @@ function parseExecutionTimeMs(time: string | null): number | undefined {
   if (time == null || time === "") {
     return undefined;
   }
-  const n = Number.parseFloat(time);
-  return Number.isFinite(n) ? n : undefined;
+  const seconds = Number.parseFloat(time);
+  if (!Number.isFinite(seconds)) {
+    return undefined;
+  }
+  return seconds * 1000;
 }
 
 function buildSubmissionPayload(params: {
@@ -53,11 +75,18 @@ function buildSubmissionPayload(params: {
     passed: boolean;
     jr: Judge0RunResult;
   }>;
-}): { stdout: string | null; stderr: string | null; executionTime?: number; memory?: number } {
+}): {
+  stdout: string | null;
+  stderr: string | null;
+  compileOutput: string | null;
+  executionTimeMs?: number;
+  memoryKb?: number;
+} {
   const chunks: string[] = [];
   let lastStderr = "";
-  let lastTime: number | undefined;
-  let lastMem: number | undefined;
+  let lastCompileOutput = "";
+  let lastTimeMs: number | undefined;
+  let lastMemKb: number | undefined;
 
   for (const r of params.results) {
     chunks.push(
@@ -70,27 +99,103 @@ function buildSubmissionPayload(params: {
     }
     if (r.jr.compileOutput) {
       chunks.push(`compile_output:\n${r.jr.compileOutput}`);
+      lastCompileOutput = r.jr.compileOutput;
     }
     const t = parseExecutionTimeMs(r.jr.time);
     if (t !== undefined) {
-      lastTime = t;
+      lastTimeMs = t;
     }
     if (r.jr.memory != null) {
-      lastMem = r.jr.memory;
+      lastMemKb = r.jr.memory;
     }
   }
 
   let stdout = chunks.join("\n---\n");
   if (stdout.length > SUBMISSION_STDOUT_MAX) {
-    stdout = `${stdout.slice(0, SUBMISSION_STDOUT_MAX)}\n…(truncated)`;
+    stdout = `${stdout.slice(0, SUBMISSION_STDOUT_MAX)}\n...(truncated)`;
   }
 
   return {
     stdout: stdout || null,
     stderr: lastStderr || null,
-    executionTime: lastTime,
-    memory: lastMem,
+    compileOutput: lastCompileOutput || null,
+    executionTimeMs: lastTimeMs,
+    memoryKb: lastMemKb,
   };
+}
+
+function normalizeJudge0Status(
+  jr: Judge0RunResult,
+):
+  | "accepted"
+  | "wrong_answer"
+  | "syntax_error"
+  | "runtime_error"
+  | "time_limit_exceeded"
+  | "memory_limit_exceeded"
+  | "compile_error"
+  | "internal_error" {
+  const statusId = jr.statusId ?? -1;
+  const statusText = (jr.statusDescription ?? "").toLowerCase();
+
+  if (statusId === 3) return "accepted";
+  if (statusId === 4) return "wrong_answer";
+  if (statusId === 5) return "time_limit_exceeded";
+  if (statusId === 6) return "compile_error";
+  if (statusId === 7) return "runtime_error";
+  if (statusId === 8) return "runtime_error";
+  if (statusId === 9) return "runtime_error";
+  if (statusId === 10) return "runtime_error";
+  if (statusId === 11) return "runtime_error";
+  if (statusId === 12) return "runtime_error";
+  if (statusId === 13) return "internal_error";
+  if (statusId === 14) return "internal_error";
+
+  if (statusText.includes("syntax")) return "syntax_error";
+  if (statusText.includes("compile")) return "compile_error";
+  if (statusText.includes("time")) return "time_limit_exceeded";
+  if (statusText.includes("memory")) return "memory_limit_exceeded";
+  if (statusText.includes("runtime")) return "runtime_error";
+  if (statusText.includes("wrong answer")) return "wrong_answer";
+
+  return "internal_error";
+}
+
+function aggregateNormalizedStatus(
+  runs: Judge0RunResult[],
+):
+  | "accepted"
+  | "wrong_answer"
+  | "syntax_error"
+  | "runtime_error"
+  | "time_limit_exceeded"
+  | "memory_limit_exceeded"
+  | "compile_error"
+  | "internal_error" {
+  const normalized = runs.map(normalizeJudge0Status);
+
+  if (normalized.every((s) => s === "accepted")) {
+    return "accepted";
+  }
+  if (normalized.includes("compile_error")) {
+    return "compile_error";
+  }
+  if (normalized.includes("syntax_error")) {
+    return "syntax_error";
+  }
+  if (normalized.includes("runtime_error")) {
+    return "runtime_error";
+  }
+  if (normalized.includes("time_limit_exceeded")) {
+    return "time_limit_exceeded";
+  }
+  if (normalized.includes("memory_limit_exceeded")) {
+    return "memory_limit_exceeded";
+  }
+  if (normalized.includes("wrong_answer")) {
+    return "wrong_answer";
+  }
+  return "internal_error";
 }
 
 /** Run all test cases for a problem, or a single raw run (playground / terminal). */
@@ -104,9 +209,18 @@ router.post("/", async (req, res) => {
 
   const problemId = parseOptionalInt(body.problemId);
   const languageIdBody = parseOptionalInt(body.languageId);
+  const languageBodyRaw = typeof body.language === "string" ? body.language : undefined;
+  const languageBody = normalizeLanguage(languageBodyRaw);
+  if (languageBodyRaw && !languageBody) {
+    res.status(400).json({
+      error: "Unsupported language. First MVP supports only C and Python.",
+    });
+    return;
+  }
   const stdinRaw = typeof body.stdin === "string" ? body.stdin : "";
 
   const role = req.auth!.role;
+  const userId = req.auth!.userId;
 
   try {
     if (problemId !== undefined) {
@@ -114,18 +228,30 @@ router.post("/", async (req, res) => {
         where: { id: problemId },
         include: { testCases: { orderBy: { id: "asc" } } },
       });
+
       if (!problem) {
         res.status(404).json({ error: "Problem not found" });
         return;
       }
+
       if (problem.testCases.length === 0) {
         res.status(400).json({ error: "No test cases configured for this problem" });
         return;
       }
 
+      const problemLanguage = normalizeLanguage(problem.language);
+      const effectiveLanguage = languageBody ?? problemLanguage;
+      if (!effectiveLanguage || !SUPPORTED_LANGUAGES.has(effectiveLanguage)) {
+        res.status(400).json({
+          error:
+            "Problem language is not supported for MVP. Use request body language as c or python.",
+        });
+        return;
+      }
+
       let langId: number;
       try {
-        langId = resolveLanguageId(problem.language, languageIdBody);
+        langId = resolveLanguageId(effectiveLanguage);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         res.status(400).json({ error: msg });
@@ -136,6 +262,7 @@ router.post("/", async (req, res) => {
         index: number;
         jr: Judge0RunResult;
         passed: boolean;
+        hidden: boolean;
       }> = [];
 
       const results: Array<{
@@ -152,6 +279,10 @@ router.post("/", async (req, res) => {
       }> = [];
 
       let allPassed = true;
+      let publicPassed = 0;
+      let publicTotal = 0;
+      let hiddenPassed = 0;
+      let hiddenTotal = 0;
 
       for (let i = 0; i < problem.testCases.length; i++) {
         const tc = problem.testCases[i];
@@ -161,16 +292,28 @@ router.post("/", async (req, res) => {
           stdin: tc.input,
           expectedOutput: tc.expectedOutput,
         });
+
         const passed = jr.statusId === ACCEPTED_STATUS_ID;
         if (!passed) {
           allPassed = false;
         }
-        internalRuns.push({ index: i + 1, jr, passed });
+
+        if (tc.isHidden) {
+          hiddenTotal += 1;
+          if (passed) hiddenPassed += 1;
+        } else {
+          publicTotal += 1;
+          if (passed) publicPassed += 1;
+        }
+
+        internalRuns.push({ index: i + 1, jr, passed, hidden: tc.isHidden });
+
         const redacted = redactIfHidden(role, tc.isHidden, {
           stdout: jr.stdout,
           stderr: jr.stderr,
           compileOutput: jr.compileOutput,
         });
+
         results.push({
           index: i + 1,
           testCaseId: tc.id,
@@ -184,20 +327,50 @@ router.post("/", async (req, res) => {
       }
 
       const submissionPayload = buildSubmissionPayload({
-        results: internalRuns.map((r) => ({ index: r.index, passed: r.passed, jr: r.jr })),
+        results: internalRuns.map((r) => ({
+          index: r.index,
+          passed: r.passed,
+          jr: r.jr,
+        })),
       });
+      const aggregateStatus = aggregateNormalizedStatus(
+        internalRuns.map((r) => r.jr),
+      );
 
       const submission = await prisma.submission.create({
         data: {
-          userId: req.auth!.userId,
+          userId,
           problemId,
           code: sourceCode,
-          language: problem.language,
+          language: effectiveLanguage,
           status: allPassed ? "accepted" : "failed",
           stdout: submissionPayload.stdout,
           stderr: submissionPayload.stderr,
-          executionTime: submissionPayload.executionTime,
-          memory: submissionPayload.memory,
+          executionTime: submissionPayload.executionTimeMs,
+          memory: submissionPayload.memoryKb,
+        },
+      });
+
+      await prisma.submissionAttempt.create({
+        data: {
+          userId,
+          problemId,
+          submissionId: submission.id,
+          mode: AttemptMode.tests,
+          language: effectiveLanguage,
+          sourceCode,
+          judge0Status: allPassed ? "Accepted" : "Failed",
+          normalizedStatus: aggregateStatus,
+          publicPassed,
+          publicTotal,
+          hiddenPassed,
+          hiddenTotal,
+          allPassed,
+          stdout: submissionPayload.stdout,
+          stderr: submissionPayload.stderr,
+          compileOutput: submissionPayload.compileOutput,
+          executionTimeMs: submissionPayload.executionTimeMs,
+          memoryKb: submissionPayload.memoryKb,
         },
       });
 
@@ -206,23 +379,67 @@ router.post("/", async (req, res) => {
         problemId,
         languageId: langId,
         allPassed,
+        publicPassed,
+        publicTotal,
+        hiddenPassed,
+        hiddenTotal,
         results,
         submissionId: submission.id,
       });
       return;
     }
 
-    if (languageIdBody === undefined) {
+    if (languageIdBody === undefined && !languageBody) {
       res.status(400).json({
-        error: "Provide problemId to run tests, or languageId with no problemId for a raw run",
+        error: "Provide problemId to run tests, or language/languageId for a raw run",
       });
+      return;
+    }
+
+    let rawLanguageId: number;
+    try {
+      if (languageIdBody !== undefined) {
+        rawLanguageId = languageIdBody;
+      } else {
+        rawLanguageId = resolveLanguageId(languageBody!);
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      res.status(400).json({ error: msg });
       return;
     }
 
     const jr = await runInJudge0({
       sourceCode,
-      languageId: languageIdBody,
+      languageId: rawLanguageId,
       stdin: stdinRaw,
+    });
+
+    const normalizedStatus = normalizeJudge0Status(jr);
+    const executionTimeMs = parseExecutionTimeMs(jr.time);
+    const langLabel = languageBody ?? String(rawLanguageId);
+
+    await prisma.submissionAttempt.create({
+      data: {
+        userId,
+        problemId: null,
+        submissionId: null,
+        mode: AttemptMode.raw,
+        language: langLabel,
+        sourceCode,
+        judge0Status: jr.statusDescription,
+        normalizedStatus,
+        publicPassed: null,
+        publicTotal: null,
+        hiddenPassed: null,
+        hiddenTotal: null,
+        allPassed: jr.statusId === ACCEPTED_STATUS_ID,
+        stdout: jr.stdout || null,
+        stderr: jr.stderr || null,
+        compileOutput: jr.compileOutput || null,
+        executionTimeMs,
+        memoryKb: jr.memory ?? null,
+      },
     });
 
     res.json({
@@ -234,7 +451,7 @@ router.post("/", async (req, res) => {
       compileOutput: jr.compileOutput,
       time: jr.time,
       memory: jr.memory,
-      languageId: languageIdBody,
+      languageId: rawLanguageId,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

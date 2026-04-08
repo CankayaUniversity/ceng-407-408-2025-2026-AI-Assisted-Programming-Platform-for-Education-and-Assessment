@@ -28,11 +28,22 @@ npm run down:all
 
 ## Core stack
 
-- Frontend: React + Vite
+- Frontend: React + Vite + Material-UI
 - Backend: Node.js + Express + TypeScript
 - Database: PostgreSQL + Prisma
 - AI runtime: Ollama (Open WebUI optional interface)
-- Code execution: Judge0
+- Code execution: Judge0 (Docker-sandboxed)
+
+## Supported languages
+
+| Language | Run (raw) | Submit (test cases) |
+|----------|-----------|---------------------|
+| Python | Yes | Yes |
+| C | Yes | Yes |
+| C++ | Yes | Yes |
+| C# | Yes | Yes |
+| JavaScript | Yes | Yes |
+| Java | Yes | Yes |
 
 ## Common operations
 
@@ -54,9 +65,12 @@ npm run logs
 ## Key API endpoints
 
 - Auth: `/api/auth/register`, `/api/auth/login`, `/api/auth/me`
-- Problems: `/api/problems`, `/api/problems/:id`
-- AI chat: `/api/ai/chat`
+- Problems: `/api/problems`, `/api/problems/:id` (CRUD for teachers)
+- AI chat: `/api/ai/chat`, `/api/ai/hint`
 - Code run: `/api/execute`
+- Student: `/api/student/history`, `/api/student/history/ai`
+- Teacher: `/api/teacher/students`, `/api/teacher/class/overview`
+- Admin: `/api/admin/exam-mode`
 - Health: `/health`, `/api/health/live`, `/api/health/ready`
 
 ## Operations and deployment
@@ -65,25 +79,30 @@ npm run logs
 
 - Docker Desktop (or Docker Engine + Compose v2)
 - `.env` created from `.env.example`
-- Optional local Judge0 config: `infra/judge0/judge0.conf` from example
+- Judge0 config: `infra/judge0/judge0.conf` created from `judge0.conf.example`
 
-### Judge0 cgroup compatibility
+### Judge0 sandbox strategy
 
-The official Judge0 image (`judge0/judge0`) requires cgroup v1, but modern
-kernels (Ubuntu 22.04+, WSL 2 kernel 6.6+) enforce cgroup v2 and no longer
-allow downgrading. This causes sandbox failures:
+Code execution uses a **3-layer Docker-level sandbox**:
 
-```
-Cannot write /sys/fs/cgroup/memory/box-*/tasks: No such file or directory
-```
+| Layer | What | Where |
+|-------|------|-------|
+| **1 — Docker Container** | PID namespace, filesystem, process isolation | docker-compose.yml |
+| **2 — Docker Resource Limits** | memory: 512m, cpus: 1.0, pids: 128 | docker-compose.yml |
+| **3 — Judge0 App Limits** | CPU_TIME_LIMIT: 5s, WALL_TIME_LIMIT: 10s, MEMORY_LIMIT: 128MB | judge0.conf |
+
+Judge0's internal `isolate` sandbox (`ENABLE_SANDBOX`) requires cgroup v1, which is
+unavailable on Docker Desktop (Windows/macOS use cgroup v2 via WSL2/HyperKit).
+Docker-level isolation is the industry standard for containerized code judges and
+provides equivalent security through container namespace isolation and hard resource limits.
+
+On native Linux servers with cgroup v1 support, set `ENABLE_SANDBOX=true` in
+`judge0.conf` for an additional kernel-level isolation layer.
 
 This project uses a community-maintained fork
-([`mrkushalsm/judge0`](https://hub.docker.com/r/mrkushalsm/judge0)) that adds
-a runtime guard for **both cgroup v1 and v2** compatibility. The fork is based
-on the official Judge0 codebase with the isolate sandbox updated to support the
-unified cgroup hierarchy. See
-[judge0/judge0#543](https://github.com/judge0/judge0/issues/543) for upstream
-status. No host-level kernel or GRUB changes are required.
+([`mrkushalsm/judge0`](https://hub.docker.com/r/mrkushalsm/judge0)) based on the
+official Judge0 codebase. See
+[judge0/judge0#543](https://github.com/judge0/judge0/issues/543) for upstream status.
 
 ### Production-like deploy (single server)
 
@@ -103,8 +122,10 @@ docker compose exec backend npm run prisma:seed
 - Backend health is `ok`
 - Login works for demo student and teacher
 - Problem list loads
-- `Run` and `Run Tests` return output
+- `Run` returns stdout/stderr output
+- `Submit` runs test cases and records submission
 - AI chat returns mentor response
+- Exam mode toggle disables AI chat for students
 
 ### Incident quick actions
 

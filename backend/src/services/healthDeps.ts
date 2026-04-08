@@ -5,13 +5,21 @@ const PING_TIMEOUT_MS = 3000;
 async function pingWithTimeout(url: string): Promise<{ ok: boolean; latencyMs: number; error?: string }> {
   const start = Date.now();
   const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), PING_TIMEOUT_MS);
+  const timeoutPromise = new Promise<Response>((_resolve, reject) => {
+    setTimeout(() => {
+      controller.abort();
+      reject(new Error("timeout"));
+    }, PING_TIMEOUT_MS);
+  });
+
   try {
-    const res = await fetch(url, {
+    const fetchPromise = fetch(url, {
       method: "GET",
       signal: controller.signal,
       headers: { Accept: "application/json" },
     });
+
+    const res = (await Promise.race([fetchPromise, timeoutPromise])) as Response;
     const latencyMs = Date.now() - start;
     if (!res.ok) {
       return { ok: false, latencyMs, error: `HTTP ${res.status}` };
@@ -20,8 +28,6 @@ async function pingWithTimeout(url: string): Promise<{ ok: boolean; latencyMs: n
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return { ok: false, latencyMs: Date.now() - start, error: msg };
-  } finally {
-    clearTimeout(t);
   }
 }
 

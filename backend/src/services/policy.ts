@@ -1,49 +1,57 @@
+import type { ValidatorResult } from "./validator";
 import { getMentorReply, type MentorRequestInput } from "./mentor";
-import { runValidator, type ValidatorResult } from "./validator";
 
-export type PolicyResult =
-  | {
-      success: true;
-      mentorReply: string;
-      audit: ValidatorResult;
-    }
-  | {
-      success: false;
-      mentorReply: "";
-      error: string;
-    };
+export type PolicyResult = {
+  action: "allow" | "rewrite" | "block";
+  finalText: string;
+  rewriteCount: number;
+};
 
-function safeHint(): string {
-  return "Focus on one small part of the problem first. Compare what you expect with what your code is actually doing, then inspect the line that causes that mismatch.";
-}
+const SAFE_HINT =
+  "Bu noktada dogrudan cozum vermek yerine seni daha guvenli bir sekilde yonlendirebilirim. Hangi adimda takildigini soyle, birlikte o parcayi inceleyelim.";
 
-export async function getMentorReplyWithPolicy(
-  input: MentorRequestInput,
-): Promise<PolicyResult> {
-  const mentor = await getMentorReply(input);
-
-  if (!mentor.success) {
-    return mentor;
-  }
-
-  const validator = await runValidator({
-    userMessage: input.studentQuestion ?? "",
-    history: Array.isArray(input.history) ? input.history.slice(-3) : [],
-    candidate: mentor.mentorReply,
-  });
-  console.log("[policy] validator decision:", validator.decision, validator.violations);
+export function applyPolicy(params: {
+  mentorReply: string;
+  validator: ValidatorResult;
+  studentQuestion?: string | null;
+}): PolicyResult {
+  const { mentorReply, validator, studentQuestion } = params;
 
   if (validator.decision === "allow") {
+    return { action: "allow", finalText: mentorReply, rewriteCount: 0 };
+  }
+
+  if (validator.decision === "rewrite") {
+    const focus =
+      studentQuestion && studentQuestion.trim()
+        ? `Senin soruna odaklanalim: ${studentQuestion.trim()}`
+        : "Sorununun ana nedenine odaklanalim.";
+
     return {
-      success: true,
-      mentorReply: mentor.mentorReply,
-      audit: validator,
+      action: "rewrite",
+      finalText: `${focus} Cozumu dogrudan vermeden ilerleyelim. Once girdiyi, beklenen ciktiyi ve hata aldigin tek noktayi adim adim kontrol et.`,
+      rewriteCount: 0,
     };
+  }
+
+  return { action: "block", finalText: SAFE_HINT, rewriteCount: 0 };
+}
+
+export async function applyPolicyWithRetry(params: {
+  mentorReply: string;
+  validator: ValidatorResult;
+  studentQuestion?: string | null;
+  originalInput: MentorRequestInput;
+}): Promise<PolicyResult> {
+  const { mentorReply, validator, studentQuestion, originalInput } = params;
+
+  if (validator.decision === "allow") {
+    return { action: "allow", finalText: mentorReply, rewriteCount: 0 };
   }
 
   if (validator.decision === "rewrite") {
     const retry = await getMentorReply({
-      ...input,
+      ...originalInput,
       mode: "mentor",
       studentQuestion: `
 Rewrite your previous answer to be more guiding.
@@ -57,32 +65,25 @@ Rules:
 - Focus on one issue only
 
 Original student question:
-${input.studentQuestion ?? "No question provided."}
+${studentQuestion ?? "No question provided."}
 `.trim(),
     });
 
-    if (!retry.success) {
-      return retry;
+    if (retry.success) {
+      return { action: "rewrite", finalText: retry.mentorReply, rewriteCount: 1 };
     }
 
+    const focus =
+      studentQuestion && studentQuestion.trim()
+        ? `Senin soruna odaklanalim: ${studentQuestion.trim()}`
+        : "Sorununun ana nedenine odaklanalim.";
+
     return {
-      success: true,
-      mentorReply: retry.mentorReply,
-      audit: validator,
+      action: "rewrite",
+      finalText: `${focus} Cozumu dogrudan vermeden ilerleyelim. Once girdiyi, beklenen ciktiyi ve hata aldigin tek noktayi adim adim kontrol et.`,
+      rewriteCount: 1,
     };
   }
 
-  if (validator.decision === "block") {
-    return {
-      success: true,
-      mentorReply: safeHint(),
-      audit: validator,
-    };
-  }
-
-  return {
-    success: true,
-    mentorReply: safeHint(),
-    audit: validator,
-  };
+  return { action: "block", finalText: SAFE_HINT, rewriteCount: 0 };
 }

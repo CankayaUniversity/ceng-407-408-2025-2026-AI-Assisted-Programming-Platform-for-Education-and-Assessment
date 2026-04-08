@@ -10,6 +10,11 @@ export type ValidatorResult = {
   violations: string[];
   reason: string;
 };
+export type ValidatorInput = {
+  userMessage: string;
+  history: string[];
+  candidate: string;
+};
 
 function getOllamaGenerateUrl(): string {
   const base = (process.env.OLLAMA_BASE_URL ?? "http://localhost:11434").replace(/\/$/, "");
@@ -38,52 +43,56 @@ function fallback(reason: string): ValidatorResult {
   };
 }
 
-export async function runValidator(text: string): Promise<ValidatorResult> {
+export async function runValidator(input: ValidatorInput): Promise<ValidatorResult> {
   const prompt = `
-You are a strict but balanced validator for a coding mentor.
+You are a strict response validator for an AI coding mentor.
 
-Return ONLY valid JSON.
-Do not add markdown.
-Do not add extra text.
+You will receive:
+- the user's latest message
+- recent assistant replies (history)
+- a candidate response
 
-JSON format:
+Your job is to decide whether the candidate response is acceptable.
+
+Evaluate based on:
+
+1. Repetition:
+- Is the candidate overly similar to recent assistant replies?
+- Does it reuse the same structure, phrases, or advice?
+- Does it feel like a repeated template response?
+
+2. Relevance:
+- Does it directly answer the user's latest message?
+- If the user is chatting casually or asking about the previous reply, does the response adapt naturally?
+- Or does it force coding guidance unnecessarily?
+
+3. Helpfulness:
+- Is it concise and not unnecessarily verbose?
+- Does it avoid robotic or generic mentor phrases?
+
+4. Solution Leak:
+- Does it give a full solution when it should guide instead?
+
+5. Language Consistency:
+- Is the response in the same language as the user?
+
+Return ONLY valid JSON in this exact format:
+
 {
   "risk_score": 0.0,
-  "decision": "allow",
-  "violations": [],
+  "decision": "allow" | "rewrite" | "fallback_safe_hint" | "block",
+  "violations": ["repetition", "irrelevant", "robotic", "solution_leak", "language_mismatch"],
   "reason": "short explanation"
 }
 
-Rules:
+[USER_MESSAGE]
+${input.userMessage}
 
-BLOCK:
-- full solution
-- direct final answer
-- copy-paste ready code
-- large complete code block
-- solving the assignment for the student
+[RECENT_ASSISTANT_REPLIES]
+${input.history.length > 0 ? input.history.join("\n---\n") : "No recent assistant replies."}
 
-REWRITE:
-- mostly solution-like
-- too explicit
-- too close to giving the exact fix
-- code-heavy answer that should be turned into a hint
-
-ALLOW:
-- short hints
-- reasoning
-- conceptual explanation
-- debugging guidance
-- one-step guidance
-- slightly explicit answers are allowed
-
-Important:
-- Do NOT be overly strict.
-- Prefer "allow" unless the answer clearly solves the task.
-- Small examples can be allowed if they do not solve the assignment.
-
-Text to validate:
-${text}
+[CANDIDATE_RESPONSE]
+${input.candidate}
 `.trim();
 
   try {

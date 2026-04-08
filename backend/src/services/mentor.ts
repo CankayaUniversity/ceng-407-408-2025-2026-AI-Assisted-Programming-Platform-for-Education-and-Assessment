@@ -14,6 +14,7 @@ export type MentorRequestInput = {
   language?: string | null;
   mode?: string | null;
   hintLevel?: number | null;
+  history?: string[] | null;
 };
 
 export type MentorResult =
@@ -29,13 +30,35 @@ const CASUAL_PATTERNS = new Set([
   "how's it going",
   "what's up",
   "sup",
+  "selam",
+  "merhaba",
+  "naber",
+  "nasılsın",
+  "iyi misin",
 ]);
+
+const FOLLOWUP_CHAT_PATTERNS = [
+  "what do you mean",
+  "can you explain again",
+  "what did you mean",
+  "ne demek",
+  "ne demek istedin",
+  "az önce ne demek istedin",
+  "bir daha açıklar mısın",
+  "hala anlamadım",
+];
 
 function detectMessageMode(message: string | null | undefined): "casual" | "mentor" {
   const msg = (message ?? "").trim().toLowerCase();
+
   if (CASUAL_PATTERNS.has(msg)) {
     return "casual";
   }
+
+  if (FOLLOWUP_CHAT_PATTERNS.some((p) => msg.includes(p))) {
+    return "casual";
+  }
+
   return "mentor";
 }
 
@@ -43,19 +66,20 @@ function buildCasualPrompt(message: string | null | undefined): string {
   return `
 You are an AI coding mentor.
 
-The user is making casual conversation.
+The user is making casual conversation or asking about your previous reply.
+
+Language rule:
+- Respond ONLY in the same language as the user's latest message.
+- If the user writes in Turkish, respond fully in Turkish.
+- If the user writes in English, respond fully in English.
 
 Rules:
 - Reply naturally and briefly.
-- Keep it short (1–2 sentences).
-- Do not analyze code unless asked.
+- Keep it short (1 or 2 sentences).
+- Do not analyze code unless the user explicitly asks.
+- Do not switch into coding advice automatically.
 - Do not be robotic.
 - Vary your wording.
-
-Examples:
-- "Hello. How can I help you?"
-- "Hey. What are you working on?"
-- "Hi. Need help with your code?"
 
 User message:
 ${message ?? "No message provided."}
@@ -99,6 +123,12 @@ ${normalizedMode}
 [STUDENT_MESSAGE]
 ${input.studentQuestion ?? "No message provided."}
 
+Language rule:
+- Respond ONLY in the same language as the student's latest message.
+- If the student's latest message is Turkish, your entire response must be in Turkish.
+- If the student's latest message is English, your entire response must be in English.
+- Do not mix languages unless the student does.
+
 Rules:
 - Help the student, do not solve the assignment.
 - Prefer explanation and hints over solutions.
@@ -119,6 +149,7 @@ Rules:
 - Do not sound repetitive.
 - Avoid using the same phrases in every answer.
 - Give a natural explanation, then guide.
+
 `.trim();
 
   if (normalizedStatus === "idle") {
@@ -235,6 +266,34 @@ function violatesIdleRule(text: string, runStatus: string | null | undefined): b
   return bad.some((p) => lower.includes(p));
 }
 
+function similarityScore(a: string, b: string): number {
+  const aa = a.trim().toLowerCase();
+  const bb = b.trim().toLowerCase();
+
+  if (!aa || !bb) return 0;
+  if (aa === bb) return 1;
+
+  const aWords = new Set(aa.split(/\s+/).filter(Boolean));
+  const bWords = new Set(bb.split(/\s+/).filter(Boolean));
+
+  let overlap = 0;
+  for (const word of aWords) {
+    if (bWords.has(word)) overlap++;
+  }
+
+  const union = new Set([...aWords, ...bWords]).size;
+  return union === 0 ? 0 : overlap / union;
+}
+
+function isTooSimilar(
+  candidate: string,
+  history: string[] | null | undefined,
+  threshold = 0.72,
+): boolean {
+  const items = Array.isArray(history) ? history : [];
+  return items.some((prev) => similarityScore(candidate, prev) >= threshold);
+}
+
 function fallbackCasualReply(message: string | null | undefined): string {
   const msg = (message ?? "").toLowerCase();
   if (msg.includes("hi") || msg.includes("hello")) {
@@ -260,6 +319,24 @@ export async function getMentorReply(input: MentorRequestInput): Promise<MentorR
     }
 
     let responseText = await callModel(prompt);
+
+
+    if (messageMode !== "casual") {
+      const recentHistory = Array.isArray(input.history) ? input.history.slice(-3) : [];
+      if (recentHistory.length > 0 && isTooSimilar(responseText, recentHistory)) {
+        const retryPrompt = `${prompt}
+
+IMPORTANT:
+Your reply is too similar to recent assistant replies.
+Do not repeat the same explanation style, structure, or stock phrases.
+Answer the student's latest message directly.
+Be natural and brief.
+`.trim();
+
+        responseText = await callModel(retryPrompt);
+      }
+    }    
+
 
     if (messageMode !== "casual") {
       if (violatesIdleRule(responseText, input.runStatus)) {

@@ -26,7 +26,11 @@ export async function getMentorReplyWithPolicy(
     return mentor;
   }
 
-  const validator = await runValidator(mentor.mentorReply);
+  const validator = await runValidator({
+    userMessage: input.studentQuestion ?? "",
+    history: Array.isArray(input.history) ? input.history.slice(-3) : [],
+    candidate: mentor.mentorReply,
+  });
   console.log("[policy] validator decision:", validator.decision, validator.violations);
 
   if (validator.decision === "allow") {

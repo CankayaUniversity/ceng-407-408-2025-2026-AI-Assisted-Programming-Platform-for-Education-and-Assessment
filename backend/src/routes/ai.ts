@@ -34,6 +34,10 @@ function parseMentorBody(body: Record<string, unknown>): MentorRequestInput {
       typeof body.mode === "string" ? body.mode : null,
     hintLevel:
       typeof body.hintLevel === "number" ? body.hintLevel : null,
+    history:
+      Array.isArray(body.history)
+        ? body.history.filter((v): v is string => typeof v === "string")
+        : null,
   };
 }
 

@@ -198,6 +198,15 @@ function aggregateNormalizedStatus(
   return "internal_error";
 }
 
+/**
+ * Raw-run stdin from the browser often has no trailing `\n`.
+ * Some runtimes block in `input()` until a newline/EOF; Judge0 then feels stuck on "Running".
+ */
+function normalizeInteractiveStdin(s: string): string {
+  if (s.length === 0) return "";
+  return s.endsWith("\n") ? s : `${s}\n`;
+}
+
 /** Run all test cases for a problem, or a single raw run (playground / terminal). */
 router.post("/", async (req, res) => {
   const body = req.body as Record<string, unknown>;
@@ -221,6 +230,10 @@ router.post("/", async (req, res) => {
 
   const role = req.auth!.role;
   const userId = req.auth!.userId;
+
+  console.log(
+    `[execute] user=${userId} role=${role} mode=${problemId !== undefined ? "tests" : "raw"} problemId=${problemId ?? "-"} languageId=${languageIdBody ?? "-"} stdinChars=${stdinRaw.length} codeChars=${sourceCode.length}`,
+  );
 
   try {
     if (problemId !== undefined) {
@@ -412,7 +425,7 @@ router.post("/", async (req, res) => {
     const jr = await runInJudge0({
       sourceCode,
       languageId: rawLanguageId,
-      stdin: stdinRaw,
+      stdin: normalizeInteractiveStdin(stdinRaw),
     });
 
     const normalizedStatus = normalizeJudge0Status(jr);

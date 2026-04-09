@@ -21,6 +21,12 @@ import SectionCard from "../common/SectionCard";
 import AppLayout from "../layout/AppLayout";
 import SubmissionHistory from "./SubmissionHistory";
 
+function monacoLanguage(value) {
+  if (value === "csharp") return "csharp";
+  if (value === "cpp") return "cpp";
+  return value || "python";
+}
+
 export default function StudentWorkspace({
   currentUser,
   selectedProblem,
@@ -37,6 +43,8 @@ export default function StudentWorkspace({
   runTests,
   code,
   setCode,
+  programStdin,
+  setProgramStdin,
   terminal,
   chat,
   chatInput,
@@ -135,9 +143,10 @@ export default function StudentWorkspace({
 
           <Box sx={{ height: 420, overflow: "hidden", border: 1, borderColor: "divider", borderRadius: 3 }}>
             <Editor
+              key={monacoLanguage(selectedLanguage)}
               height="100%"
-              defaultLanguage="javascript"
-              language={selectedLanguage === "csharp" ? "csharp" : selectedLanguage}
+              defaultLanguage={monacoLanguage(selectedLanguage)}
+              language={monacoLanguage(selectedLanguage)}
               value={code}
               onChange={(value) => setCode(value ?? "")}
               theme="vs-dark"
@@ -149,6 +158,22 @@ export default function StudentWorkspace({
               }}
             />
           </Box>
+
+          <TextField
+            label="Program input (stdin)"
+            value={programStdin}
+            onChange={(e) => setProgramStdin(e.target.value)}
+            placeholder="Standard input for Run (all languages)"
+            multiline
+            minRows={3}
+            maxRows={8}
+            fullWidth
+            sx={{
+              mt: 2,
+              "& .MuiInputBase-input": { fontFamily: "monospace", fontSize: 13 },
+            }}
+            helperText="A trailing newline is added if missing (avoids blocking on input/scanf). For multiple reads, put one line per input() call."
+          />
 
           <Box
             component="pre"

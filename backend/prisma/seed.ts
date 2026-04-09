@@ -10,10 +10,8 @@ if (!process.env.DATABASE_URL) {
 const SUM_DESCRIPTION =
   "Read two integers from standard input (one line, space-separated) and print their sum as a single line.";
 
-const SUM_STARTER = `line = input().strip()
-a, b = map(int, line.split())
-# TODO: print a + b on one line
-`;
+/** Student editor starts empty; reference solution is teacher-only. */
+const EMPTY_STARTER = "";
 
 const SUM_REFERENCE = `line = input().strip()
 a, b = map(int, line.split())
@@ -23,10 +21,6 @@ print(a + b)
 const PAL_DESCRIPTION =
   "Read one line from standard input and print true if it is a palindrome, otherwise false (lowercase booleans).";
 
-const PAL_STARTER = `s = input().strip()
-# TODO: print true or false on one line
-`;
-
 const PAL_REFERENCE = `s = input().strip()
 ok = s == s[::-1]
 print(str(ok).lower())
@@ -34,10 +28,6 @@ print(str(ok).lower())
 
 const FACT_DESCRIPTION =
   "Read a positive integer n from standard input and print n factorial (n!) on one line.";
-
-const FACT_STARTER = `n = int(input().strip())
-# TODO: print factorial of n on one line
-`;
 
 const FACT_REFERENCE = `n = int(input().strip())
 def fact(x: int) -> int:
@@ -203,10 +193,10 @@ async function main() {
   const problem1 = await upsertProblemWithTests({
     title: "Sum of Two Numbers",
     description: SUM_DESCRIPTION,
-    starterCode: SUM_STARTER,
+    starterCode: EMPTY_STARTER,
     referenceSolution: SUM_REFERENCE,
     difficulty: "easy",
-    language: "javascript",
+    language: "python",
     tags: ["math", "basics", "input-output"],
     category: "fundamentals",
     metadata: {
@@ -225,10 +215,10 @@ async function main() {
   const problem2 = await upsertProblemWithTests({
     title: "Check Palindrome",
     description: PAL_DESCRIPTION,
-    starterCode: PAL_STARTER,
+    starterCode: EMPTY_STARTER,
     referenceSolution: PAL_REFERENCE,
     difficulty: "easy",
-    language: "javascript",
+    language: "python",
     tags: ["string", "basics", "boolean"],
     category: "strings",
     metadata: {
@@ -247,10 +237,10 @@ async function main() {
   const problem3 = await upsertProblemWithTests({
     title: "Factorial",
     description: FACT_DESCRIPTION,
-    starterCode: FACT_STARTER,
+    starterCode: EMPTY_STARTER,
     referenceSolution: FACT_REFERENCE,
     difficulty: "medium",
-    language: "javascript",
+    language: "python",
     tags: ["math", "recursion", "loops"],
     category: "algorithms",
     metadata: {
@@ -266,13 +256,42 @@ async function main() {
     ],
   });
 
+  /** Demo: multiple tests, public + hidden, metadata; reference passes all cases in Judge0. */
+  const DEMO_FULL_TEST_DESCRIPTION =
+    "Same as Sum of Two Numbers: read one line with two space-separated integers and print their sum. " +
+    "This demo problem ships four test cases (two public, two hidden). Submit passes only when all four match the expected output.";
+
+  await upsertProblemWithTests({
+    title: "Demo: Public and Hidden Tests",
+    description: DEMO_FULL_TEST_DESCRIPTION,
+    starterCode: EMPTY_STARTER,
+    referenceSolution: SUM_REFERENCE,
+    difficulty: "easy",
+    language: "python",
+    tags: ["demo", "test-cases", "grading"],
+    category: "fundamentals",
+    metadata: {
+      demo: true,
+      publicTestCount: 2,
+      hiddenTestCount: 2,
+      note: "Teacher defines stdin/expectedOutput per case; backend runs all on Submit.",
+    },
+    createdById: teacher.id,
+    testCases: [
+      { input: "3 4", expectedOutput: "7", isHidden: false },
+      { input: "0 0", expectedOutput: "0", isHidden: false },
+      { input: "-2 10", expectedOutput: "8", isHidden: true },
+      { input: "99 1", expectedOutput: "100", isHidden: true },
+    ],
+  });
+
   // Submissions
   const sumAcceptedSubmission = await prisma.submission.create({
     data: {
       userId: student.id,
       problemId: problem1.id,
       code: SUM_REFERENCE.trim(),
-      language: "javascript",
+      language: "python",
       status: "accepted",
       stdout: "Test 1: PASS\n---\nTest 2: PASS\n---\nTest 3: PASS",
       stderr: null,
@@ -303,7 +322,7 @@ console.log(a - b);`,
       userId: student.id,
       problemId: problem2.id,
       code: PAL_REFERENCE.trim(),
-      language: "javascript",
+      language: "python",
       status: "accepted",
       stdout: "Test 1: PASS\n---\nTest 2: PASS\n---\nTest 3: PASS",
       stderr: null,
@@ -394,7 +413,7 @@ console.log(a + );`,
       problemId: problem1.id,
       submissionId: sumAcceptedSubmission.id,
       mode: "tests",
-      language: "javascript",
+      language: "python",
       sourceCode: SUM_REFERENCE.trim(),
       judge0Status: "Accepted",
       normalizedStatus: "accepted",
@@ -417,7 +436,7 @@ console.log(a + );`,
       problemId: problem2.id,
       submissionId: palAcceptedSubmission.id,
       mode: "tests",
-      language: "javascript",
+      language: "python",
       sourceCode: PAL_REFERENCE.trim(),
       judge0Status: "Accepted",
       normalizedStatus: "accepted",
@@ -457,167 +476,13 @@ console.log(a + );`,
     },
   });
 
-  // AiLogs
-  const aiLog1 = await prisma.aiLog.create({
-    data: {
-      userId: student.id,
-      problemId: problem1.id,
-      submissionId: sumFailedSubmission.id,
-      mode: "practice",
-      promptVersion: "mentor_v1",
-      modelName: "ai-mentor",
-      studentQuestion: "Nerede hata yapıyorum?",
-      responseText:
-        "Toplama yerine çıkarma yapıyor olabilirsin. İşlemi ve örnek girdiyi tekrar kontrol et.",
-      requestPayload: {
-        problemId: problem1.id,
-        studentQuestion: "Nerede hata yapıyorum?",
-      },
-      responsePayload: {
-        mentorReply:
-          "Toplama yerine çıkarma yapıyor olabilirsin. İşlemi ve örnek girdiyi tekrar kontrol et.",
-      },
-    },
-  });
-
-  const aiLog2 = await prisma.aiLog.create({
-    data: {
-      userId: student.id,
-      problemId: problem1.id,
-      submissionId: sumAcceptedSubmission.id,
-      mode: "practice",
-      promptVersion: "mentor_v1",
-      modelName: "ai-mentor",
-      studentQuestion: "Kodum şimdi doğru mu?",
-      responseText:
-        "Evet, mevcut yaklaşımın doğru görünüyor. Şimdi edge case'leri de düşün.",
-      requestPayload: {
-        problemId: problem1.id,
-        studentQuestion: "Kodum şimdi doğru mu?",
-      },
-      responsePayload: {
-        mentorReply:
-          "Evet, mevcut yaklaşımın doğru görünüyor. Şimdi edge case'leri de düşün.",
-      },
-    },
-  });
-
-  const aiLog3 = await prisma.aiLog.create({
-    data: {
-      userId: student.id,
-      problemId: problem2.id,
-      submissionId: palAcceptedSubmission.id,
-      mode: "practice",
-      promptVersion: "mentor_v1",
-      modelName: "ai-mentor",
-      studentQuestion: "Palindrome için daha kısa yol var mı?",
-      responseText:
-        "String'i ters çevirip karşılaştırmak kısa ve okunabilir bir yöntemdir.",
-      requestPayload: {
-        problemId: problem2.id,
-        studentQuestion: "Palindrome için daha kısa yol var mı?",
-      },
-      responsePayload: {
-        mentorReply:
-          "String'i ters çevirip karşılaştırmak kısa ve okunabilir bir yöntemdir.",
-      },
-    },
-  });
-
-  // HintEvents
-  await prisma.hintEvent.createMany({
-    data: [
-      {
-        userId: student.id,
-        problemId: problem1.id,
-        attemptId: sumWrongAttempt.id,
-        aiLogId: aiLog1.id,
-        sequence: 1,
-      },
-      {
-        userId: student.id,
-        problemId: problem1.id,
-        attemptId: sumAcceptedAttempt.id,
-        aiLogId: aiLog2.id,
-        sequence: 2,
-      },
-      {
-        userId: student.id,
-        problemId: problem2.id,
-        attemptId: palAcceptedAttempt.id,
-        aiLogId: aiLog3.id,
-        sequence: 1,
-      },
-    ],
-  });
-
-  // AIInteractionAudits
-  await prisma.aIInteractionAudit.createMany({
-    data: [
-      {
-        userId: student.id,
-        problemId: problem1.id,
-        attemptId: sumWrongAttempt.id,
-        mentorModel: "ai-mentor",
-        validatorModel: null,
-        mentorRaw:
-          "Toplama yerine çıkarma yapıyor olabilirsin. İşlemi ve örnek girdiyi tekrar kontrol et.",
-        validatorJson: {
-          decision: "allow",
-          reason: "safe mentor hint",
-        },
-        policyAction: "allow",
-        finalText:
-          "Toplama yerine çıkarma yapıyor olabilirsin. İşlemi ve örnek girdiyi tekrar kontrol et.",
-        rewriteCount: 0,
-        latencyMsMentor: 420,
-        latencyMsValidator: null,
-        errorCode: null,
-      },
-      {
-        userId: student.id,
-        problemId: problem1.id,
-        attemptId: sumAcceptedAttempt.id,
-        mentorModel: "ai-mentor",
-        validatorModel: null,
-        mentorRaw:
-          "Evet, mevcut yaklaşımın doğru görünüyor. Şimdi edge case'leri de düşün.",
-        validatorJson: {
-          decision: "allow",
-          reason: "safe mentor confirmation",
-        },
-        policyAction: "allow",
-        finalText:
-          "Evet, mevcut yaklaşımın doğru görünüyor. Şimdi edge case'leri de düşün.",
-        rewriteCount: 0,
-        latencyMsMentor: 390,
-        latencyMsValidator: null,
-        errorCode: null,
-      },
-      {
-        userId: student.id,
-        problemId: problem3.id,
-        attemptId: factorialRuntimeAttempt.id,
-        mentorModel: "ai-mentor",
-        validatorModel: null,
-        mentorRaw: "",
-        validatorJson: null,
-        policyAction: "block",
-        finalText: "",
-        rewriteCount: 0,
-        latencyMsMentor: 250,
-        latencyMsValidator: null,
-        errorCode: "mentor_error",
-      },
-    ],
-  });
-
   console.log("Seed completed successfully.");
   console.log({
     teacherEmail: teacher.email,
     studentEmail: student.email,
     adminEmail: admin.email,
     problemIds: [problem1.id, problem2.id, problem3.id],
+    demoFullTestsProblemTitle: "Demo: Public and Hidden Tests",
     sampleRawAttemptId: rawAttempt.id,
     sumAcceptedSubmissionId: sumAcceptedSubmission.id,
     adminId: admin.id,

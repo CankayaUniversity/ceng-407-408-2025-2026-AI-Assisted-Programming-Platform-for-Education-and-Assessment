@@ -26,7 +26,7 @@ const EMPTY_FORM = {
   title: "",
   description: "",
   difficulty: "Easy",
-  language: "javascript",
+  language: "python",
   category: "",
   starterCode: "",
   referenceSolution: "",

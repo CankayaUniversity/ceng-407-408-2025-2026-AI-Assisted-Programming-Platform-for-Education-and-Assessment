@@ -39,29 +39,42 @@ const LANGUAGE_OPTIONS = [
 
 function languageIdFromSelection(value) {
   const selected = LANGUAGE_OPTIONS.find((opt) => opt.value === value);
-  return selected?.id ?? 63;
+  return selected?.id ?? 71;
 }
 
 async function api(path, options = {}) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      ...(options.headers || {}),
-    },
-  });
-  const raw = await res.text();
-  let body = null;
+  const { timeoutMs = 60_000, ...fetchOptions } = options;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    body = raw ? JSON.parse(raw) : null;
-  } catch {
-    body = { raw };
+    const res = await fetch(`${API_BASE}${path}`, {
+      ...fetchOptions,
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        ...(fetchOptions.headers || {}),
+      },
+    });
+    const raw = await res.text();
+    let body = null;
+    try {
+      body = raw ? JSON.parse(raw) : null;
+    } catch {
+      body = { raw };
+    }
+    if (!res.ok) {
+      throw new Error(body?.error || body?.detail || `HTTP ${res.status}`);
+    }
+    return body;
+  } catch (e) {
+    if (e?.name === "AbortError") {
+      throw new Error(`Request timed out after ${timeoutMs / 1000}s`);
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
   }
-  if (!res.ok) {
-    throw new Error(body?.error || body?.detail || `HTTP ${res.status}`);
-  }
-  return body;
 }
 
 function StudentProblemRoute({
@@ -71,7 +84,9 @@ function StudentProblemRoute({
   const problemId = Number(id);
 
   const [code, setCode] = useState("");
-  const [selectedLanguage, setSelectedLanguage] = useState("javascript");
+  const [selectedLanguage, setSelectedLanguage] = useState("python");
+  /** Raw Run stdin; prefilled from first visible test case when a problem loads (editable). */
+  const [programStdin, setProgramStdin] = useState("");
   const [terminal, setTerminal] = useState("Terminal output will appear here.\n");
   const [running, setRunning] = useState(false);
   const [chatInput, setChatInput] = useState("");
@@ -101,7 +116,9 @@ function StudentProblemRoute({
         const problem = detail?.data;
         if (!problem) return;
         setCode(problem.starterCode || "");
-        setSelectedLanguage((problem.language || "javascript").toLowerCase());
+        setSelectedLanguage((problem.language || "python").toLowerCase());
+        const vis = Array.isArray(problem.testCases) ? problem.testCases : [];
+        setProgramStdin(vis.length > 0 ? (vis[0].input ?? "") : "");
         setTerminal(`Loaded problem: ${problem.title}\n`);
 
         setSubmissionsLoading(true);
@@ -115,13 +132,16 @@ function StudentProblemRoute({
           headers: { Authorization: `Bearer ${token}` },
         }).catch(() => ({ data: [] }));
         const logs = aiRes?.data ?? [];
+        const greeting = { role: "assistant", content: "Hi! Ask for hints about your code." };
         if (logs.length > 0) {
-          const restored = [{ role: "assistant", content: "Hi! Ask for hints about your code." }];
+          const restored = [greeting];
           for (const log of logs.slice().reverse()) {
             if (log.studentQuestion) restored.push({ role: "user", content: log.studentQuestion });
             if (log.responseText) restored.push({ role: "assistant", content: log.responseText });
           }
           setChat(restored);
+        } else {
+          setChat([greeting]);
         }
       } catch (err) {
         setTerminal(`[error] ${err.message}\n`);
@@ -141,6 +161,7 @@ function StudentProblemRoute({
       const result = await api("/api/execute", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
+        timeoutMs: 300_000,
         body: JSON.stringify({
           problemId: selectedProblem.id,
           sourceCode: code,
@@ -177,9 +198,11 @@ function StudentProblemRoute({
       const result = await api("/api/execute", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
+        timeoutMs: 300_000,
         body: JSON.stringify({
           sourceCode: code,
           languageId: languageIdFromSelection(selectedLanguage),
+          stdin: programStdin,
         }),
       });
       const lines = [
@@ -242,6 +265,8 @@ function StudentProblemRoute({
       runTests={runTests}
       code={code}
       setCode={setCode}
+      programStdin={programStdin}
+      setProgramStdin={setProgramStdin}
       terminal={terminal}
       chat={chat}
       chatInput={chatInput}

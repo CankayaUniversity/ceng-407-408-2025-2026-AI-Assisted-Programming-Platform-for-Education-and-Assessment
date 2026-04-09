@@ -3,6 +3,9 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      # Force same-origin /api (nginx proxy). Root .env must not override this for cloud builds.
+      args:
+        VITE_API_BASE_URL: ""
     container_name: app-frontend
     ports:
       - "5173:80"

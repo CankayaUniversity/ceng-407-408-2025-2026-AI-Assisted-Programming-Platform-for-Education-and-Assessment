@@ -11,7 +11,7 @@ export const registerSchema = z.object({
   name:     z.string().min(1, "Name is required"),
   email:    z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  role:     z.enum(["student", "teacher"], { errorMap: () => ({ message: "Role must be student or teacher" }) }),
+  role:     z.enum(["student", "teacher"]).default("student"),
 });
 
 export const refreshTokenSchema = z.object({
@@ -127,7 +127,8 @@ export const gradeUpdateSchema = z.object({
 // ── Variation ─────────────────────────────────────────────────────────────────
 
 export const variationGenerateSchema = z.object({
-  targetDifficulty: z.enum(["easier", "similar", "harder"]),
+  problemId: z.number().int().positive(),
+  type:      z.enum(["easier", "similar", "harder"]),
 });
 
 // ── Exam mode ─────────────────────────────────────────────────────────────────

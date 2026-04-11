@@ -1,234 +1,282 @@
+import { useState } from "react";
 import {
+  Alert,
   Box,
   Button,
   Chip,
+  CircularProgress,
   Dialog,
+  DialogActions,
   DialogContent,
   DialogTitle,
   Divider,
-  IconButton,
   Stack,
+  TextField,
   Typography,
 } from "@mui/material";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import CancelOutlinedIcon     from "@mui/icons-material/CancelOutlined";
+import AutoAwesomeIcon        from "@mui/icons-material/AutoAwesome";
+import { api } from "../../lib/api";
 
-function ExampleBlock({ lines = [] }) {
-  return (
-    <Box
-      sx={{
-        mt: 1.5,
-        p: 2,
-        borderRadius: 2,
-        bgcolor: "rgba(255, 255, 255, 0.04)",
-        border: 1,
-        borderColor: "rgba(148, 163, 184, 0.14)",
-      }}
-    >
-      {lines.map((line) => (
-        <Typography
-          key={line}
-          variant="body2"
-          sx={{ fontFamily: "monospace" }}
-        >
-          {line}
-        </Typography>
-      ))}
-    </Box>
-  );
+const TYPE_LABEL = { harder: "Harder", easier: "Easier", similar: "Similar" };
+const TYPE_COLOR = { harder: "error", easier: "success", similar: "info" };
+
+function difficultyColor(d = "") {
+  const l = d.toLowerCase();
+  if (l.includes("hard"))   return { bg: "#FEE2E2", fg: "#DC2626" };
+  if (l.includes("medium")) return { bg: "#FEF3C7", fg: "#D97706" };
+  return { bg: "#DCFCE7", fg: "#16A34A" };
 }
 
-function RubricList({ rubric = [] }) {
-  return (
-    <Stack spacing={1.25} sx={{ mt: 2 }}>
-      {rubric.map((item) => (
-        <Typography key={item.label} variant="body2">
-          <Box
-            component="span"
-            sx={{ color: "success.main", fontWeight: 700, mr: 1 }}
-          >
-            ✓
-          </Box>
-          <Box component="span" sx={{ fontWeight: 700 }}>
-            {item.label}
-          </Box>
-          : {item.text}
-        </Typography>
-      ))}
-    </Stack>
-  );
-}
-
+/**
+ * Variation Review Modal
+ *
+ * Flow:
+ *  1. Opens → shows spinner, calls POST /api/variations/generate
+ *  2. On success → teacher can read & edit the AI suggestion
+ *  3. Approve → PATCH /api/variations/:id/approve  (creates a real Problem)
+ *  4. Reject  → DELETE /api/variations/:id         (marks rejected, closes)
+ */
 export default function VariationReviewModal({
   open,
   onClose,
-  onSave,
-  selectedProblem,
-  variation,
-  onModeChange,
+  sourceProblem,   // { id, title, difficulty, language }
+  variationType,   // "harder" | "easier" | "similar"
+  token,
+  onApproved,      // callback after successful approve
 }) {
-  if (!selectedProblem || !variation) return null;
+  const [phase,       setPhase]       = useState("generating"); // generating | review | done | error
+  const [variation,   setVariation]   = useState(null);
+  const [editTitle,   setEditTitle]   = useState("");
+  const [editDesc,    setEditDesc]    = useState("");
+  const [editStarter, setEditStarter] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [actioning,   setActioning]   = useState(false);
+
+  // Called once the Dialog finishes its enter transition
+  function handleEntered() {
+    if (phase === "generating") generate();
+  }
+
+  async function generate() {
+    setPhase("generating");
+    setActionError("");
+    try {
+      const body = await api("/api/variations/generate", {
+        method:    "POST",
+        headers:   { Authorization: `Bearer ${token}` },
+        timeoutMs: 130_000,
+        body: JSON.stringify({ problemId: sourceProblem.id, type: variationType }),
+      });
+      const v = body.data;
+      setVariation(v);
+      setEditTitle(v.title);
+      setEditDesc(v.description);
+      setEditStarter(v.starterCode ?? "");
+      setPhase("review");
+    } catch (err) {
+      setActionError(err.message);
+      setPhase("error");
+    }
+  }
+
+  async function handleApprove() {
+    if (!variation) return;
+    setActioning(true);
+    setActionError("");
+    try {
+      await api(`/api/variations/${variation.id}/approve`, {
+        method:  "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setPhase("done");
+      onApproved?.();
+    } catch (err) {
+      setActionError(err.message);
+    } finally {
+      setActioning(false);
+    }
+  }
+
+  async function handleReject() {
+    if (!variation) return;
+    setActioning(true);
+    setActionError("");
+    try {
+      await api(`/api/variations/${variation.id}`, {
+        method:  "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      handleClose();
+    } catch (err) {
+      setActionError(err.message);
+    } finally {
+      setActioning(false);
+    }
+  }
+
+  function handleClose() {
+    onClose();
+    // reset after the close animation finishes
+    setTimeout(() => {
+      setPhase("generating");
+      setVariation(null);
+      setEditTitle("");
+      setEditDesc("");
+      setEditStarter("");
+      setActionError("");
+      setActioning(false);
+    }, 300);
+  }
+
+  const dc = difficultyColor(variation?.difficulty ?? "");
 
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={phase === "generating" ? undefined : handleClose}
+      TransitionProps={{ onEntered: handleEntered }}
+      maxWidth="md"
       fullWidth
-      maxWidth="lg"
-      PaperProps={{
-        sx: {
-          height: "min(860px, calc(100vh - 32px))",
-          maxHeight: "calc(100vh - 32px)",
-          bgcolor: "background.paper",
-          overflow: "hidden",
-          borderRadius: 3,
-        },
-      }}
+      PaperProps={{ sx: { borderRadius: 3 } }}
     >
-      <DialogTitle sx={{ py: 2.5, px: 3, fontSize: 18, fontWeight: 700 }}>
-        AI Generated Variation
-        <IconButton
-          onClick={onClose}
-          sx={{ position: "absolute", right: 18, top: 18 }}
-        >
-          ×
-        </IconButton>
+      {/* ── Title ──────────────────────────────────────────────────────── */}
+      <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+        <AutoAwesomeIcon fontSize="small" color="primary" />
+        AI Suggestion —{" "}
+        <Chip
+          label={TYPE_LABEL[variationType] ?? variationType}
+          color={TYPE_COLOR[variationType] ?? "default"}
+          size="small"
+        />
+        <Typography variant="body2" color="text.secondary" sx={{ ml: 0.5 }}>
+          based on <em>{sourceProblem?.title}</em>
+        </Typography>
       </DialogTitle>
 
-      <DialogContent
-        sx={{
-          px: 0,
-          py: 0,
-          display: "flex",
-          flexDirection: "column",
-          minHeight: 0,
-          height: "100%",
-          overflow: "hidden",
-        }}
-      >
-        <Box
-          sx={{
-            flex: 1,
-            minHeight: 0,
-            overflowY: "auto",
-            display: "grid",
-            gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-          }}
-        >
-          <Box sx={{ p: 3.5 }}>
-            <Typography variant="overline" sx={{ color: "text.secondary" }}>
-              ORIGINAL PROBLEM
-            </Typography>
-            <Typography variant="h5" sx={{ fontWeight: 700, mt: 0.5 }}>
-              {selectedProblem.title}
-            </Typography>
-            <Typography variant="body1" sx={{ mt: 2.5, lineHeight: 1.8 }}>
-              {selectedProblem.description}
-            </Typography>
+      <Divider />
 
-            <Typography variant="h6" sx={{ mt: 3, fontWeight: 700 }}>
-              Example:
-            </Typography>
-            <ExampleBlock lines={selectedProblem.example} />
-          </Box>
+      {/* ── Content ────────────────────────────────────────────────────── */}
+      <DialogContent sx={{ pt: 2.5 }}>
 
-          <Box
-            sx={{
-              p: 3.5,
-              bgcolor: "background.default",
-              borderLeft: { md: 1 },
-              borderColor: "rgba(148, 163, 184, 0.14)",
-            }}
-          >
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+        {/* Generating… */}
+        {phase === "generating" && (
+          <Stack alignItems="center" spacing={2} sx={{ py: 6 }}>
+            <CircularProgress size={48} />
+            <Typography color="text.secondary">
+              Generating {(TYPE_LABEL[variationType] ?? variationType).toLowerCase()} variation with AI…
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              This may take up to 30 seconds
+            </Typography>
+          </Stack>
+        )}
+
+        {/* Error */}
+        {phase === "error" && (
+          <Stack spacing={2} sx={{ py: 2 }}>
+            <Alert severity="error">{actionError || "Generation failed. Please try again."}</Alert>
+            <Button variant="outlined" onClick={generate} sx={{ alignSelf: "flex-start" }}>
+              Retry
+            </Button>
+          </Stack>
+        )}
+
+        {/* Success / done */}
+        {phase === "done" && (
+          <Stack alignItems="center" spacing={2} sx={{ py: 6 }}>
+            <CheckCircleOutlineIcon color="success" sx={{ fontSize: 56 }} />
+            <Typography variant="h6">Problem added to Question Bank!</Typography>
+            <Typography color="text.secondary" variant="body2" textAlign="center">
+              The new problem is now visible in the Question Bank and can be further edited there.
+            </Typography>
+          </Stack>
+        )}
+
+        {/* Review & edit */}
+        {phase === "review" && variation && (
+          <Stack spacing={2.5}>
+            {actionError && <Alert severity="error">{actionError}</Alert>}
+
+            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
               <Chip
-                label="AI GENERATED VARIATION"
+                label={variation.difficulty}
                 size="small"
-                sx={{
-                  bgcolor: "rgba(59, 130, 246, 0.16)",
-                  color: "#93C5FD",
-                  fontWeight: 700,
-                  border: "1px solid rgba(59, 130, 246, 0.22)",
-                }}
+                sx={{ bgcolor: dc.bg, color: dc.fg, fontWeight: 700 }}
               />
-              <Chip label={variation.label} size="small" variant="outlined" />
+              <Chip label={variation.language} size="small" variant="outlined" />
+              <Typography variant="caption" color="text.secondary">
+                You can edit the fields before approving
+              </Typography>
             </Stack>
 
-            <Typography variant="h5" sx={{ fontWeight: 700, mt: 0.5 }}>
-              {variation.title}
-            </Typography>
-            <Typography variant="body1" sx={{ mt: 2.5, lineHeight: 1.8 }}>
-              {variation.description}
-            </Typography>
+            <TextField
+              label="Title"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              fullWidth
+            />
 
-            <Typography variant="h6" sx={{ mt: 3, fontWeight: 700 }}>
-              Example:
-            </Typography>
-            <ExampleBlock lines={variation.example} />
+            <TextField
+              label="Description"
+              value={editDesc}
+              onChange={(e) => setEditDesc(e.target.value)}
+              multiline
+              minRows={6}
+              fullWidth
+            />
 
-            <Divider sx={{ my: 3 }} />
+            <TextField
+              label="Starter Code (optional)"
+              value={editStarter}
+              onChange={(e) => setEditStarter(e.target.value)}
+              multiline
+              minRows={3}
+              fullWidth
+              sx={{ "& textarea": { fontFamily: "monospace", fontSize: 13 } }}
+            />
+          </Stack>
+        )}
+      </DialogContent>
 
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              AI-Generated Rubric
-            </Typography>
-            <RubricList rubric={variation.rubric} />
-          </Box>
-        </Box>
+      <Divider />
 
-        <Box
-          sx={{
-            flexShrink: 0,
-            display: "flex",
-            flexDirection: { xs: "column", md: "row" },
-            justifyContent: "space-between",
-            alignItems: { xs: "stretch", md: "center" },
-            gap: 2,
-            px: 3,
-            py: 2.5,
-            borderTop: 1,
-            borderColor: "rgba(148, 163, 184, 0.14)",
-            bgcolor: "background.paper",
-          }}
-        >
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+      {/* ── Actions ────────────────────────────────────────────────────── */}
+      <DialogActions sx={{ px: 3, py: 2 }}>
+        {phase === "review" && (
+          <>
+            <Button
+              variant="outlined"
+              color="error"
+              startIcon={<CancelOutlinedIcon />}
+              onClick={handleReject}
+              disabled={actioning}
+            >
+              Reject
+            </Button>
+            <Box sx={{ flex: 1 }} />
+            <Button onClick={handleClose} disabled={actioning}>Cancel</Button>
             <Button
               variant="contained"
               color="success"
-              onClick={() => onModeChange("easier")}
+              startIcon={actioning ? undefined : <CheckCircleOutlineIcon />}
+              onClick={handleApprove}
+              disabled={actioning || !editTitle.trim() || !editDesc.trim()}
             >
-              Suggest Easier
+              {actioning ? "Approving…" : "Approve & Add to Bank"}
             </Button>
-            <Button
-              variant="contained"
-              sx={{
-                bgcolor: "#BFDBFE",
-                color: "#1D4ED8",
-                "&:hover": { bgcolor: "#93C5FD" },
-              }}
-              onClick={() => onModeChange("similar")}
-            >
-              Similar Difficulty
-            </Button>
-            <Button
-              variant="contained"
-              sx={{
-                bgcolor: "#F97316",
-                "&:hover": { bgcolor: "#EA580C" },
-              }}
-              onClick={() => onModeChange("harder")}
-            >
-              Suggest Harder
-            </Button>
-          </Stack>
+          </>
+        )}
 
-          <Stack direction="row" spacing={1.5} justifyContent="flex-end">
-            <Button variant="outlined" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button variant="contained" onClick={onSave}>
-              Save Variation to Question Bank
-            </Button>
-          </Stack>
-        </Box>
-      </DialogContent>
+        {phase === "done" && (
+          <Button variant="contained" onClick={handleClose}>Close</Button>
+        )}
+
+        {(phase === "error" || phase === "generating") && (
+          <Button onClick={handleClose} disabled={phase === "generating"}>Cancel</Button>
+        )}
+      </DialogActions>
     </Dialog>
   );
 }

@@ -62,10 +62,35 @@ services:
       timeout: 5s
       start_period: 30s
       retries: 5
+    # ── GPU support (optional) ──────────────────────────────────────────────
+    # Uncomment the deploy block below if the server has an NVIDIA GPU and the
+    # NVIDIA Container Runtime (nvidia-ctk) is installed.
+    # Without it, Ollama runs on CPU — slower but fully functional.
+    #
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  ollama-init:
+    image: ollama/ollama:latest
+    container_name: ollama-init
+    restart: "no"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    volumes:
+      - ollama_data:/root/.ollama
+    entrypoint: >
+      sh -c "
+        ollama pull ${OLLAMA_MODEL:-qwen2.5-coder:14b} &&
+        ollama pull ${OLLAMA_VALIDATOR_MODEL:-qwen2.5:3b-instruct}
+      "
     environment:
-      - NVIDIA_VISIBLE_DEVICES=all
-      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
-    gpus: all
+      - OLLAMA_HOST=http://ollama:11434
 
   openwebui:
     image: ghcr.io/open-webui/open-webui:main

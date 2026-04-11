@@ -9,6 +9,7 @@ import { executeRouter } from "./routes/execute";
 import { studentRouter } from "./routes/student";
 import { teacherRouter } from "./routes/teacher";
 import { adminRouter } from "./routes/admin";
+import { variationsRouter } from "./routes/variations";
 import { liveHandler, readyHandler } from "./routes/health";
 import { aiLimiter, executeLimiter } from "./middleware/rateLimiter";
 
@@ -44,6 +45,7 @@ app.use("/api/execute", executeRouter);
 app.use("/api/student", studentRouter);
 app.use("/api/teacher", teacherRouter);
 app.use("/api/admin", adminRouter);
+app.use("/api/variations", variationsRouter);
 
 app.get("/health", liveHandler);
 app.get("/api/health/live", liveHandler);

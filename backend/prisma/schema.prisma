@@ -37,21 +37,25 @@ model Role {
 }
 
 model User {
-  id                  Int                  @id @default(autoincrement())
+  id                  Int                    @id @default(autoincrement())
   name                String
-  email               String               @unique
+  email               String                 @unique
   passwordHash        String
   roleId              Int
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
 
-  role                Role                 @relation(fields: [roleId], references: [id])
+  role                Role                   @relation(fields: [roleId], references: [id])
   problems            Problem[]
   submissions         Submission[]
   aiLogs              AiLog[]
   submissionAttempts  SubmissionAttempt[]
   hintEvents          HintEvent[]
   aiInteractionAudits AIInteractionAudit[]
+  createdAssignments  Assignment[]           @relation("CreatedAssignments")
+  enrollments         AssignmentEnrollment[]
+  grades              Grade[]                @relation("GradedBy")
+  createdVariations   ProblemVariation[]     @relation("CreatedVariations")
 }
 
 model Problem {
@@ -69,13 +73,16 @@ model Problem {
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 
-  createdBy           User                 @relation(fields: [createdById], references: [id])
+  createdBy           User                   @relation(fields: [createdById], references: [id])
   testCases           TestCase[]
   submissions         Submission[]
   aiLogs              AiLog[]
   submissionAttempts  SubmissionAttempt[]
   hintEvents          HintEvent[]
   aiInteractionAudits AIInteractionAudit[]
+  assignments         Assignment[]
+  rubrics             Rubric[]
+  variations          ProblemVariation[]
 }
 
 model TestCase {
@@ -209,4 +216,121 @@ model SystemFlag {
   key       String   @unique
   value     Json
   updatedAt DateTime @updatedAt
+}
+
+// ── Assignment ────────────────────────────────────────────────────────────────
+// A teacher creates an assignment that links a problem to a deadline/instructions.
+
+model Assignment {
+  id           Int      @id @default(autoincrement())
+  title        String
+  description  String?
+  problemId    Int
+  createdById  Int
+  dueDate      DateTime?
+  isPublished  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  problem     Problem                @relation(fields: [problemId], references: [id])
+  createdBy   User                   @relation("CreatedAssignments", fields: [createdById], references: [id])
+  enrollments AssignmentEnrollment[]
+  grades      Grade[]
+
+  @@index([createdById])
+  @@index([problemId])
+}
+
+// ── AssignmentEnrollment ──────────────────────────────────────────────────────
+// Tracks which students are enrolled in which assignment.
+
+model AssignmentEnrollment {
+  id           Int      @id @default(autoincrement())
+  assignmentId Int
+  userId       Int
+  enrolledAt   DateTime @default(now())
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id])
+
+  @@unique([assignmentId, userId])
+  @@index([userId])
+}
+
+// ── Rubric ────────────────────────────────────────────────────────────────────
+// AI-suggested or teacher-written grading rubric for a problem.
+
+model Rubric {
+  id          Int      @id @default(autoincrement())
+  problemId   Int
+  title       String   @default("Default Rubric")
+  /// JSON array of { criterion: string, maxPoints: number, description: string }
+  criteria    Json
+  totalPoints Int      @default(100)
+  aiGenerated Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  grades  Grade[]
+
+  @@index([problemId])
+}
+
+// ── Grade ─────────────────────────────────────────────────────────────────────
+// Final grade given to a student for an assignment submission.
+
+model Grade {
+  id           Int      @id @default(autoincrement())
+  assignmentId Int
+  userId       Int
+  rubricId     Int?
+  score        Float
+  maxScore     Float    @default(100)
+  /// JSON array of { criterion: string, points: number, comment: string }
+  breakdown    Json?
+  feedback     String?
+  aiSuggested  Boolean  @default(false)
+  gradedById   Int
+  gradedAt     DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id])
+  user       User       @relation("GradedBy", fields: [gradedById], references: [id])
+  rubric     Rubric?    @relation(fields: [rubricId], references: [id])
+
+  @@unique([assignmentId, userId])
+  @@index([assignmentId])
+  @@index([userId])
+}
+
+// ── ProblemVariation ──────────────────────────────────────────────────────────
+// AI-generated similar/variant problem; teacher reviews before publishing.
+
+enum VariationStatus {
+  pending
+  approved
+  rejected
+}
+
+model ProblemVariation {
+  id              Int             @id @default(autoincrement())
+  sourceProblemId Int
+  createdById     Int
+  title           String
+  description     String
+  starterCode     String?
+  difficulty      String?
+  language        String
+  status          VariationStatus @default(pending)
+  aiModel         String?
+  promptVersion   String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  sourceProblem Problem @relation(fields: [sourceProblemId], references: [id])
+  createdBy     User    @relation("CreatedVariations", fields: [createdById], references: [id])
+
+  @@index([sourceProblemId])
+  @@index([createdById])
 }

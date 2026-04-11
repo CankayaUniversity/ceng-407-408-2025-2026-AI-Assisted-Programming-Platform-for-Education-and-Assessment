@@ -4,6 +4,7 @@ import { resolveLanguageId } from "../lib/judge0Languages";
 import { requireAuth } from "../middleware/requireAuth";
 import { AttemptMode } from "@prisma/client";
 import { runInJudge0, type Judge0RunResult } from "../services/judge0";
+import { executeSchema } from "../lib/schemas";
 
 const router = Router();
 
@@ -209,6 +210,12 @@ function normalizeInteractiveStdin(s: string): string {
 
 /** Run all test cases for a problem, or a single raw run (playground / terminal). */
 router.post("/", async (req, res) => {
+  const schemaResult = executeSchema.safeParse(req.body);
+  if (!schemaResult.success) {
+    res.status(400).json({ error: "Validation failed", details: schemaResult.error.flatten() });
+    return;
+  }
+
   const body = req.body as Record<string, unknown>;
   const sourceCode = typeof body.sourceCode === "string" ? body.sourceCode : "";
   if (!sourceCode.trim()) {

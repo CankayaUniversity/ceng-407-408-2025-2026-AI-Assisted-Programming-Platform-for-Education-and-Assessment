@@ -1,4 +1,6 @@
 import Editor from "@monaco-editor/react";
+import DOMPurify from "dompurify";
+import { marked } from "marked";
 import {
   Alert,
   Box,
@@ -234,8 +236,17 @@ export default function StudentWorkspace({
                             : "rgba(14, 165, 233, 0.14)",
                       }}
                     >
-                      <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-                        <strong>{m.role === "assistant" ? "Mentor" : "You"}:</strong> {m.content}
+                      <Typography variant="body2" component="div" sx={{ "& p": { mt: 0, mb: 0.5 }, "& pre": { overflowX: "auto" }, "& code": { fontSize: 12 } }}>
+                        <strong>{m.role === "assistant" ? "Mentor" : "You"}:</strong>{" "}
+                        {m.role === "assistant" ? (
+                          <span
+                            dangerouslySetInnerHTML={{
+                              __html: DOMPurify.sanitize(marked.parse(m.content || "")),
+                            }}
+                          />
+                        ) : (
+                          <span style={{ whiteSpace: "pre-wrap" }}>{m.content}</span>
+                        )}
                       </Typography>
                     </Box>
                   ))}

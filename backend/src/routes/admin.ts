@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireRole } from "../middleware/requireRole";
+import { examModeSchema } from "../lib/schemas";
 
 const router = Router();
 
@@ -21,7 +22,12 @@ router.get("/exam-mode", async (_req, res) => {
 });
 
 router.patch("/exam-mode", requireRole("admin", "teacher"), async (req, res) => {
-  const enabled = Boolean((req.body as { enabled?: unknown }).enabled);
+  const parsed = examModeSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() });
+    return;
+  }
+  const { enabled } = parsed.data;
 
   const flag = await prisma.systemFlag.upsert({
     where: { key: "exam_mode_enabled" },

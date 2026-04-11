@@ -1,34 +1,19 @@
 import { Router } from "express";
 import bcrypt from "bcrypt";
 import { prisma } from "../lib/prisma";
-import { signAccessToken } from "../lib/authTokens";
+import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../lib/authTokens";
 import { requireAuth } from "../middleware/requireAuth";
+import { loginSchema, registerSchema, refreshTokenSchema } from "../lib/schemas";
 
 const router = Router();
 
-const ALLOWED_REGISTER_ROLES = new Set(["student", "teacher"]);
-
 router.post("/register", async (req, res) => {
-  const body = req.body as {
-    email?: string;
-    password?: string;
-    name?: string;
-    role?: string;
-  };
-
-  const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-  const password = typeof body.password === "string" ? body.password : "";
-  const name = typeof body.name === "string" ? body.name.trim() : "";
-  const roleName = typeof body.role === "string" ? body.role.trim().toLowerCase() : "student";
-
-  if (!email || !password || !name) {
-    res.status(400).json({ error: "email, password, and name are required" });
+  const parsed = registerSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() });
     return;
   }
-  if (!ALLOWED_REGISTER_ROLES.has(roleName)) {
-    res.status(400).json({ error: "role must be student or teacher" });
-    return;
-  }
+  const { email, password, name, role: roleName } = parsed.data;
 
   const role = await prisma.role.findUnique({ where: { name: roleName } });
   if (!role) {
@@ -56,33 +41,30 @@ router.post("/register", async (req, res) => {
     include: { role: true },
   });
 
-  const accessToken = signAccessToken({
-    userId: user.id,
-    email: user.email,
-    role: user.role.name,
-  });
+  const payload = { userId: user.id, email: user.email, role: user.role.name };
+  const accessToken  = signAccessToken(payload);
+  const refreshToken = signRefreshToken(payload);
 
   res.status(201).json({
     accessToken,
+    refreshToken,
     tokenType: "Bearer",
     user: {
-      id: user.id,
+      id:    user.id,
       email: user.email,
-      name: user.name,
-      role: user.role.name,
+      name:  user.name,
+      role:  user.role.name,
     },
   });
 });
 
 router.post("/login", async (req, res) => {
-  const body = req.body as { email?: string; password?: string };
-  const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-  const password = typeof body.password === "string" ? body.password : "";
-
-  if (!email || !password) {
-    res.status(400).json({ error: "email and password are required" });
+  const parsed = loginSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() });
     return;
   }
+  const { email, password } = parsed.data;
 
   const user = await prisma.user.findUnique({
     where: { email },
@@ -99,22 +81,42 @@ router.post("/login", async (req, res) => {
     return;
   }
 
-  const accessToken = signAccessToken({
-    userId: user.id,
-    email: user.email,
-    role: user.role.name,
-  });
+  const payload = { userId: user.id, email: user.email, role: user.role.name };
+  const accessToken  = signAccessToken(payload);
+  const refreshToken = signRefreshToken(payload);
 
   res.json({
     accessToken,
+    refreshToken,
     tokenType: "Bearer",
     user: {
-      id: user.id,
+      id:    user.id,
       email: user.email,
-      name: user.name,
-      role: user.role.name,
+      name:  user.name,
+      role:  user.role.name,
     },
   });
+});
+
+router.post("/refresh", (req, res) => {
+  const parsed = refreshTokenSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Validation failed", details: parsed.error.flatten() });
+    return;
+  }
+  const { refreshToken } = parsed.data;
+
+  try {
+    const payload     = verifyRefreshToken(refreshToken);
+    const accessToken = signAccessToken({
+      userId: payload.userId,
+      email:  payload.email,
+      role:   payload.role,
+    });
+    res.json({ accessToken, tokenType: "Bearer" });
+  } catch {
+    res.status(401).json({ error: "Invalid or expired refresh token" });
+  }
 });
 
 router.get("/me", requireAuth, async (req, res) => {
@@ -128,10 +130,10 @@ router.get("/me", requireAuth, async (req, res) => {
     return;
   }
   res.json({
-    id: user.id,
-    email: user.email,
-    name: user.name,
-    role: user.role.name,
+    id:        user.id,
+    email:     user.email,
+    name:      user.name,
+    role:      user.role.name,
     createdAt: user.createdAt,
   });
 });

@@ -46,6 +46,7 @@ You are an AI coding mentor.
 The user is making casual conversation.
 
 Rules:
+- You MUST respond in English only.
 - Reply naturally and briefly.
 - Keep it short (1–2 sentences).
 - Do not analyze code unless asked.
@@ -70,6 +71,8 @@ function buildMentorPrompt(
   const normalizedMode = (input.mode ?? "mentor").trim().toLowerCase();
 
   let prompt = `
+You MUST respond in English only. Do not use any other language regardless of the student's language.
+
 Answer using only the context below.
 
 [LANGUAGE]
@@ -100,6 +103,7 @@ ${normalizedMode}
 ${input.studentQuestion ?? "No message provided."}
 
 Rules:
+- You MUST respond in English only.
 - Help the student, do not solve the assignment.
 - Prefer explanation and hints over solutions.
 - Do not give full code.

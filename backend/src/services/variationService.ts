@@ -57,25 +57,36 @@ function buildVariationPrompt(input: VariationInput, type: VariationType): strin
   const targetDifficulty = difficultyTarget(type, input.difficulty);
 
   const typeInstructions: Record<VariationType, string> = {
-    harder: `Create a HARDER version of this problem.
-- Add new constraints or edge-cases that require more careful handling.
-- Increase the scale of input (e.g. larger numbers, longer strings, more elements).
-- You may require an extra algorithmic step or optimisation.
-- Keep the same topic/domain but raise the difficulty to "${targetDifficulty}".`,
+    harder: `Create a HARDER version of this problem at difficulty "${targetDifficulty}".
 
-    easier: `Create an EASIER version of this problem.
-- Remove the most complex constraint or reduce the input scale significantly.
-- Add clarifying examples or relaxed conditions to lower the difficulty to "${targetDifficulty}".
-- Keep the same core concept but make it more approachable for beginners.`,
+STRICT RULES:
+- DO NOT simply use bigger numbers or longer strings — that is NOT harder.
+- The harder version MUST require a different or more complex algorithm.
+- Good strategies: require an additional data structure (stack, map, set), add a constraint that breaks the naive solution (e.g. must run in O(n)), combine two concepts (e.g. sorting + searching, string parsing + arithmetic), introduce meaningful edge cases (negative numbers, empty input, duplicates).
+- The student must think differently to solve it, not just write the same code with minor changes.
+- Keep language: ${input.language}`,
 
-    similar: `Create a SIMILAR problem on the same topic.
-- Use the same algorithmic idea or data-structure concept.
-- Change the context/theme (e.g. different real-world scenario, different variable names).
-- Keep the same difficulty level "${targetDifficulty}" and language.
-- The problem must be clearly distinct from the original.`,
+    easier: `Create an EASIER version of this problem at difficulty "${targetDifficulty}".
+
+STRICT RULES:
+- Remove the most complex requirement, replacing it with a simpler one.
+- The solution should require only a basic loop or conditional — no advanced data structures.
+- Include at least one clear worked example: Input → Output.
+- Be precise and unambiguous in the problem statement.
+- Keep language: ${input.language}`,
+
+    similar: `Create a SIMILAR problem on the same topic at difficulty "${targetDifficulty}".
+
+STRICT RULES:
+- Use the exact same core algorithmic concept as the original.
+- Change the real-world context entirely (different domain, scenario, variable names).
+- A student who solved the original should still find this a fresh, distinct challenge.
+- Include at least one clear worked example: Input → Output.
+- Keep language: ${input.language}`,
   };
 
-  return `You are an expert computer-science educator. Your task is to generate a new programming problem.
+  return `You are an expert computer-science educator creating university-level programming exercises.
+You MUST respond in English only.
 
 ORIGINAL PROBLEM
 ================
@@ -86,8 +97,8 @@ Description:
 ${input.description}
 ${input.starterCode ? `\nStarter Code:\n${input.starterCode}` : ""}
 
-TASK
-====
+YOUR TASK
+=========
 ${typeInstructions[type]}
 
 RESPONSE FORMAT
@@ -96,7 +107,7 @@ Respond with ONLY a valid JSON object — no markdown, no explanation, no code f
 The JSON must have exactly these fields:
 {
   "title": "<string — new problem title>",
-  "description": "<string — full problem statement with examples>",
+  "description": "<string — full problem statement with at least one Input/Output example>",
   "difficulty": "${targetDifficulty}",
   "language": "${input.language}",
   "starterCode": "<string — starter code skeleton for the student, may be empty>"

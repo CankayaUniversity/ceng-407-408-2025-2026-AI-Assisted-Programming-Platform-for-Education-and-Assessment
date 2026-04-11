@@ -96,15 +96,15 @@ function buildMentorFallback(input: MentorRequestInput): string {
 
   if (runStatus === "idle") {
     return question
-      ? `Soruna odaklanalim: "${question}". Once kisa bir test girdisiyle kodu calistir ve aldigin cikti/hatayi paylas; sonra adim adim duzeltelim.`
-      : "Kodu once kisa bir test girdisiyle calistir. Cikti veya hata mesajini paylasirsan bir sonraki adimi birlikte netlestirebiliriz.";
+      ? `Let's focus on your question: "${question}". Try running your code with a short test input first and share the output or error — then we can work through it step by step.`
+      : "Try running your code with a short test input. Share the output or any error message and we can figure out the next step together.";
   }
 
   if (question) {
-    return `Soruna odaklanalim: "${question}". Tek bir adima odaklan: girdi, beklenen cikti ve mevcut ciktiyi karsilastir; fark olan ilk noktayi izole et.`;
+    return `Let's focus on: "${question}". Compare your input, expected output, and actual output — isolate the first point where they differ.`;
   }
 
-  return "Tek bir adima odaklanalim: girdi, beklenen cikti ve mevcut ciktiyi karsilastir; fark olan ilk noktayi izole et ve o parcayi duzelt.";
+  return "Let's take it one step at a time: compare your input, expected output, and actual output — isolate the first difference and fix that part first.";
 }
 
 function toPolicyAction(action: string): PolicyAction {

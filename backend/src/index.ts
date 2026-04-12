@@ -2,6 +2,8 @@ import "dotenv/config";
 import http from "http";
 import cors from "cors";
 import express from "express";
+import { WebSocketServer } from "ws";
+import { handleTerminalConnection } from "./ws/terminalHandler";
 import { authRouter } from "./routes/auth";
 import { problemsRouter } from "./routes/problems";
 import { aiRouter } from "./routes/ai";
@@ -58,8 +60,29 @@ app.get("/api/health/live", liveHandler);
 app.get("/api/health/ready", readyHandler);
 app.get("/api/health", readyHandler);
 
-// ── HTTP server (required for WebSocket upgrade later in Phase 6) ─────────────
+// ── HTTP server ───────────────────────────────────────────────────────────────
 const httpServer = http.createServer(app);
+
+// ── WebSocket server — /ws/terminal ──────────────────────────────────────────
+const wss = new WebSocketServer({ noServer: true });
+
+wss.on("connection", (ws) => {
+  handleTerminalConnection(ws).catch((err) => {
+    console.error("[ws] unhandled error:", err);
+    ws.close();
+  });
+});
+
+httpServer.on("upgrade", (req, socket, head) => {
+  const { pathname } = new URL(req.url ?? "/", `http://localhost`);
+  if (pathname === "/ws/terminal") {
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      wss.emit("connection", ws, req);
+    });
+  } else {
+    socket.destroy();
+  }
+});
 
 httpServer.listen(port, "0.0.0.0", () => {
   console.log(`API listening on http://0.0.0.0:${port}`);

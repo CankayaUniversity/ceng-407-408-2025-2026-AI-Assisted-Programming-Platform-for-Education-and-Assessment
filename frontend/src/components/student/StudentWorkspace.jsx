@@ -19,9 +19,12 @@ import {
   Typography,
 } from "@mui/material";
 
-import SectionCard from "../common/SectionCard";
-import AppLayout from "../layout/AppLayout";
-import SubmissionHistory from "./SubmissionHistory";
+import SectionCard         from "../common/SectionCard";
+import AppLayout           from "../layout/AppLayout";
+import SubmissionHistory   from "./SubmissionHistory";
+import EditorTabBar        from "./EditorTabBar";
+import InteractiveTerminal from "./InteractiveTerminal";
+import { wsUrl }           from "../../wsBase";
 
 function monacoLanguage(value) {
   if (value === "csharp") return "csharp";
@@ -43,11 +46,19 @@ export default function StudentWorkspace({
   runRaw,
   running,
   runTests,
+  // Phase 7 — multi-file
+  files,
+  activeFileId,
+  onFileSelect,
+  onFileAdd,
+  onFileClose,
+  onFileRename,
   code,
   setCode,
   programStdin,
   setProgramStdin,
-  terminal,
+  // Phase 6 — xterm writer ref (owned by ProblemPage)
+  termWriterRef,
   chat,
   chatInput,
   setChatInput,
@@ -136,66 +147,70 @@ export default function StudentWorkspace({
             </Stack>
           }
         >
-          <Box sx={{ mb: 2, display: "flex", gap: 1, flexWrap: "wrap" }}>
-            {selectedProblem?.difficulty ? <Chip label={selectedProblem.difficulty} size="small" /> : null}
-            {selectedProblem?.language ? (
-              <Chip label={selectedProblem.language} size="small" variant="outlined" />
-            ) : null}
+          {/* Difficulty / language chips */}
+          <Box sx={{ mb: 1, display: "flex", gap: 1, flexWrap: "wrap" }}>
+            {selectedProblem?.difficulty && <Chip label={selectedProblem.difficulty} size="small" />}
+            {selectedProblem?.language   && <Chip label={selectedProblem.language}   size="small" variant="outlined" />}
           </Box>
 
-          <Box sx={{ height: 420, overflow: "hidden", border: 1, borderColor: "divider", borderRadius: 3 }}>
+          {/* Phase 7 — multi-file tab bar */}
+          <EditorTabBar
+            files={files}
+            activeId={activeFileId}
+            onSelect={onFileSelect}
+            onAdd={onFileAdd}
+            onClose={onFileClose}
+            onRename={onFileRename}
+          />
+
+          {/* Monaco editor — rounded bottom corners only */}
+          <Box sx={{ height: 380, overflow: "hidden", border: 1, borderTop: 0, borderColor: "divider", borderRadius: "0 0 12px 12px" }}>
             <Editor
-              key={monacoLanguage(selectedLanguage)}
+              key={`${monacoLanguage(selectedLanguage)}-${activeFileId}`}
               height="100%"
-              defaultLanguage={monacoLanguage(selectedLanguage)}
               language={monacoLanguage(selectedLanguage)}
               value={code}
-              onChange={(value) => setCode(value ?? "")}
+              onChange={(v) => setCode(v ?? "")}
               theme="vs-dark"
               options={{
-                minimap: { enabled: false },
-                fontSize: 13,
-                automaticLayout: true,
+                minimap:              { enabled: false },
+                fontSize:             13,
+                automaticLayout:      true,
                 scrollBeyondLastLine: false,
               }}
             />
           </Box>
 
+          {/* stdin */}
           <TextField
             label="Program input (stdin)"
             value={programStdin}
             onChange={(e) => setProgramStdin(e.target.value)}
-            placeholder="Standard input for Run (all languages)"
+            placeholder="Standard input for Run"
             multiline
-            minRows={3}
-            maxRows={8}
+            minRows={2}
+            maxRows={6}
             fullWidth
-            sx={{
-              mt: 2,
-              "& .MuiInputBase-input": { fontFamily: "monospace", fontSize: 13 },
-            }}
-            helperText="A trailing newline is added if missing (avoids blocking on input/scanf). For multiple reads, put one line per input() call."
+            sx={{ mt: 2, "& .MuiInputBase-input": { fontFamily: "monospace", fontSize: 13 } }}
+            helperText="One value per line. A trailing newline is added automatically."
           />
 
+          {/* Phase 6 — xterm.js terminal (replaces static pre box) */}
           <Box
-            component="pre"
             sx={{
               mt: 2,
-              mb: 0,
-              maxHeight: 240,
-              overflow: "auto",
-              whiteSpace: "pre-wrap",
+              height: 200,
               border: 1,
               borderColor: "divider",
               borderRadius: 2,
-              bgcolor: "background.default",
-              p: 2,
-              fontFamily: "monospace",
-              fontSize: 12,
-              lineHeight: 1.6,
+              overflow: "hidden",
+              bgcolor: "#0f172a",
             }}
           >
-            {terminal}
+            <InteractiveTerminal
+              wsUrl={wsUrl("/ws/terminal")}
+              onReady={(writer) => { termWriterRef.current = writer; }}
+            />
           </Box>
 
           <Box sx={{ mt: 2 }}>

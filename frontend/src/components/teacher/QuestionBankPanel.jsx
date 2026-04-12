@@ -21,8 +21,11 @@ import DeleteIcon      from "@mui/icons-material/Delete";
 import EditIcon        from "@mui/icons-material/Edit";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 
+import GradingIcon from "@mui/icons-material/Grading";
+
 import SectionCard from "../common/SectionCard";
 import VariationReviewModal from "./VariationReviewModal";
+import RubricModal from "./RubricModal";
 import { API_BASE } from "../../apiBase";
 
 const EMPTY_FORM = {
@@ -201,6 +204,10 @@ export default function QuestionBankPanel({ items = [], token, onProblemsChanged
     setVariationType(type);
     setVariationModalOpen(true);
   }
+
+  // ── Rubric state ──────────────────────────────────────────────────────────
+  const [rubricProblem,    setRubricProblem]    = useState(null);
+  const [rubricModalOpen,  setRubricModalOpen]  = useState(false);
 
   const authHeaders = {
     Authorization: `Bearer ${token}`,
@@ -431,6 +438,18 @@ export default function QuestionBankPanel({ items = [], token, onProblemsChanged
                     </Button>
                   </Tooltip>
 
+                  <Tooltip title="View / generate grading rubric">
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      color="secondary"
+                      startIcon={<GradingIcon />}
+                      onClick={() => { setRubricProblem(item); setRubricModalOpen(true); }}
+                    >
+                      Rubric
+                    </Button>
+                  </Tooltip>
+
                   <Divider orientation="vertical" flexItem sx={{ display: { xs: "none", sm: "block" } }} />
 
                   <Button variant="outlined" size="small" startIcon={<EditIcon />} onClick={() => handleEdit(item)}>
@@ -460,6 +479,16 @@ export default function QuestionBankPanel({ items = [], token, onProblemsChanged
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* ── Rubric Modal ──────────────────────────────────────────────── */}
+      {rubricProblem && (
+        <RubricModal
+          open={rubricModalOpen}
+          onClose={() => setRubricModalOpen(false)}
+          problem={rubricProblem}
+          token={token}
+        />
+      )}
 
       {/* ── Variation Review Modal ─────────────────────────────────────── */}
       {variationSource && variationType && (

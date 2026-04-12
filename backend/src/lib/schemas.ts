@@ -131,6 +131,11 @@ export const variationGenerateSchema = z.object({
   type:      z.enum(["easier", "similar", "harder"]),
 });
 
+export const rubricSaveSchema = z.object({
+  title:    z.string().optional(),
+  criteria: z.array(rubricCriterionSchema).min(1),
+});
+
 // ── Exam mode ─────────────────────────────────────────────────────────────────
 
 export const examModeSchema = z.object({

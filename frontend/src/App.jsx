@@ -12,8 +12,9 @@ import ProblemPage from "./pages/student/ProblemPage";
 import AssignmentsPage from "./pages/student/AssignmentsPage";
 import AnalyticsPage from "./pages/student/AnalyticsPage";
 import TeacherDashboardPage from "./pages/teacher/TeacherDashboardPage";
-import StudentsPage from "./pages/teacher/StudentsPage";
-import QuestionsPage from "./pages/teacher/QuestionsPage";
+import StudentsPage          from "./pages/teacher/StudentsPage";
+import QuestionsPage         from "./pages/teacher/QuestionsPage";
+import GradingPage           from "./pages/teacher/GradingPage";
 
 import { useState } from "react";
 
@@ -30,6 +31,7 @@ const TEACHER_NAV = [
   { label: "Dashboard",     path: "/" },
   { label: "Students",      path: "/students" },
   { label: "Question Bank", path: "/questions" },
+  { label: "Grading",       path: "/grading" },
 ];
 
 export default function App() {
@@ -126,6 +128,7 @@ export default function App() {
             />
           }
         />
+        <Route path="/grading" element={<GradingPage {...commonProps} navItems={TEACHER_NAV} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );

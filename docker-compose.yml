@@ -8,7 +8,7 @@ services:
         VITE_API_BASE_URL: ""
     container_name: app-frontend
     ports:
-      - "5173:80"
+      - "80:80"
     depends_on:
       backend:
         condition: service_healthy
@@ -25,6 +25,12 @@ services:
       - .env
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:5000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
     depends_on:
       postgres:
         condition: service_healthy
@@ -62,18 +68,14 @@ services:
       timeout: 5s
       start_period: 30s
       retries: 5
-    # ── GPU support (optional) ──────────────────────────────────────────────
-    # Uncomment the deploy block below if the server has an NVIDIA GPU and the
-    # NVIDIA Container Runtime (nvidia-ctk) is installed.
-    # Without it, Ollama runs on CPU — slower but fully functional.
-    #
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: all
-    #           capabilities: [gpu]
+    
+    deploy:
+     resources:
+       reservations:
+         devices:
+           - driver: nvidia
+             count: all
+             capabilities: [gpu]
 
   ollama-init:
     image: ollama/ollama:latest

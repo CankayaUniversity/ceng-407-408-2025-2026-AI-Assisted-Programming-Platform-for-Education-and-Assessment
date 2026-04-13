@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../lib/api";
+import { API_BASE } from "../../apiBase";
 import StudentWorkspace from "../../components/student/StudentWorkspace";
 
 const STUDENT_NAV = [
@@ -27,6 +28,14 @@ function extForLanguage(lang) {
   return map[lang] ?? "txt";
 }
 
+const STARTER_CODE = {
+  python:     "# Write your solution here\n",
+  javascript: "// Write your solution here\n",
+  c: `#include <stdio.h>\n\nint main() {\n    \n    return 0;\n}\n`,
+  cpp: `#include <iostream>\nusing namespace std;\n\nint main() {\n    \n    return 0;\n}\n`,
+  csharp: `using System;\n\nclass Program {\n    static void Main(string[] args) {\n        \n    }\n}\n`,
+};
+
 let _nextFileId = 2; // file id counter (1 is reserved for the initial file)
 
 export default function ProblemPage() {
@@ -35,13 +44,15 @@ export default function ProblemPage() {
   const problemId = Number(id);
   const navigate  = useNavigate();
 
+  // ── Code cache: persists per-problem files across navigation ─────────────
+  const codeCache = useRef({}); // { [problemId]: { files, activeFileId, language } }
+
   // ── Phase 7: Multi-file state ────────────────────────────────────────────
   const [files,          setFiles]          = useState([{ id: 1, name: "main.py", content: "" }]);
   const [activeFileId,   setActiveFileId]   = useState(1);
 
   // ── Other editor state ───────────────────────────────────────────────────
   const [selectedLanguage, setSelectedLanguage] = useState("python");
-  const [programStdin,     setProgramStdin]     = useState("");
   const [running,          setRunning]          = useState(false);
   const [chatInput,        setChatInput]        = useState("");
   const [chat,             setChat]             = useState([
@@ -105,13 +116,20 @@ export default function ProblemPage() {
         if (!problem) return;
 
         const lang = (problem.language || "python").toLowerCase();
-        setSelectedLanguage(lang);
-        const ext  = extForLanguage(lang);
-        setFiles([{ id: 1, name: `main.${ext}`, content: problem.starterCode || "" }]);
-        setActiveFileId(1);
 
-        const vis = Array.isArray(problem.testCases) ? problem.testCases : [];
-        setProgramStdin(vis.length > 0 ? (vis[0].input ?? "") : "");
+        // Restore from cache if student has already written code for this problem
+        const cached = codeCache.current[problemId];
+        if (cached) {
+          setSelectedLanguage(cached.language);
+          setFiles(cached.files);
+          setActiveFileId(cached.activeFileId);
+        } else {
+          setSelectedLanguage(lang);
+          const ext  = extForLanguage(lang);
+          setFiles([{ id: 1, name: `main.${ext}`, content: problem.starterCode || STARTER_CODE[lang] || "" }]);
+          setActiveFileId(1);
+        }
+
         termWriterRef.current?.clear();
         termWriterRef.current?.write(`\x1b[36mLoaded: ${problem.title}\x1b[0m\r\n`);
 
@@ -142,6 +160,29 @@ export default function ProblemPage() {
       }
     })();
   }, [token, problemId]);
+
+  // ── Language change: update extension + inject starter if file is empty ──
+  function handleLanguageChange(newLang) {
+    setSelectedLanguage(newLang);
+    const newExt = extForLanguage(newLang);
+    setFiles((prev) =>
+      prev.map((f) => {
+        // Update extension of files that still have a default extension
+        const dotIdx = f.name.lastIndexOf(".");
+        const baseName = dotIdx >= 0 ? f.name.slice(0, dotIdx) : f.name;
+        const newName = `${baseName}.${newExt}`;
+        // Inject starter code only if the file is empty
+        const newContent = f.content.trim() === "" ? (STARTER_CODE[newLang] ?? "") : f.content;
+        return { ...f, name: newName, content: newContent };
+      }),
+    );
+  }
+
+  // ── Persist current editor state to cache whenever it changes ───────────
+  useEffect(() => {
+    if (!selectedId) return;
+    codeCache.current[selectedId] = { files, activeFileId, language: selectedLanguage };
+  }, [files, activeFileId, selectedLanguage, selectedId]);
 
   // ── Navigation ───────────────────────────────────────────────────────────
   function selectProblem(pid) { navigate(`/problem/${pid}`); }
@@ -186,46 +227,31 @@ export default function ProblemPage() {
     }
   }
 
-  async function runRaw() {
+  function runRaw() {
+    const writer = termWriterRef.current;
+    if (!writer) return;
     setRunning(true);
-    termClear();
-    termWrite("\x1b[33mRunning…\x1b[0m\r\n");
-    try {
-      const result = await api("/api/execute", {
-        method:    "POST",
-        headers:   { Authorization: `Bearer ${token}` },
-        timeoutMs: 300_000,
-        body:      JSON.stringify({
-          sourceCode: allCode,
-          languageId: languageIdFromSelection(selectedLanguage),
-          stdin:      programStdin,
-        }),
-      });
-      const st = result.status;
-      const statusColor = st === "Accepted" ? "\x1b[32m" : "\x1b[31m";
-      termWrite(`${statusColor}${st}\x1b[0m\r\n`);
-      if (result.stdout)        termWrite(`\r\n${result.stdout.replace(/\n/g, "\r\n")}`);
-      if (result.stderr)        termWrite(`\r\n\x1b[31m${result.stderr.replace(/\n/g, "\r\n")}\x1b[0m`);
-      if (result.compileOutput) termWrite(`\r\n\x1b[33m${result.compileOutput.replace(/\n/g, "\r\n")}\x1b[0m`);
-    } catch (err) {
-      termWrite(`\x1b[31m[error] ${err.message}\x1b[0m\r\n`);
-    } finally {
-      setRunning(false);
-    }
+    writer.run(selectedLanguage, allCode, token, () => setRunning(false));
   }
 
-  // ── AI chat ───────────────────────────────────────────────────────────────
+  // ── AI chat (SSE streaming) ───────────────────────────────────────────────
   async function sendChat() {
     const message = chatInput.trim();
     if (!message || !selectedProblem) return;
-    setChat((prev) => [...prev, { role: "user", content: message }]);
+
+    setChat((prev) => [
+      ...prev,
+      { role: "user",      content: message },
+      { role: "assistant", content: "", streaming: true },
+    ]);
     setChatInput("");
     setChatLoading(true);
+
     try {
-      const result = await api("/api/ai/chat", {
+      const res = await fetch(`${API_BASE}/api/ai/chat/stream`, {
         method:  "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body:    JSON.stringify({
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
           problemId:       selectedProblem.id,
           assignmentText:  selectedProblem.description,
           studentCode:     allCode,
@@ -234,10 +260,58 @@ export default function ProblemPage() {
           language:        selectedLanguage,
         }),
       });
-      setChat((prev) => [...prev, { role: "assistant", content: result.mentorReply }]);
+
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer    = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.token) {
+              setChat((prev) => {
+                const next = [...prev];
+                const last = next[next.length - 1];
+                if (last?.role === "assistant") {
+                  next[next.length - 1] = { ...last, content: last.content + data.token };
+                }
+                return next;
+              });
+            }
+          } catch { /* ignore malformed SSE lines */ }
+        }
+      }
     } catch (err) {
-      setChat((prev) => [...prev, { role: "assistant", content: `[error] ${err.message}` }]);
+      setChat((prev) => {
+        const next = [...prev];
+        const last = next[next.length - 1];
+        // Replace the empty streaming bubble with the error
+        if (last?.role === "assistant" && last.streaming) {
+          next[next.length - 1] = { role: "assistant", content: `[error] ${err.message}` };
+        } else {
+          next.push({ role: "assistant", content: `[error] ${err.message}` });
+        }
+        return next;
+      });
     } finally {
+      // Remove streaming flag from last message
+      setChat((prev) => {
+        const next = [...prev];
+        const last = next[next.length - 1];
+        if (last?.role === "assistant" && last.streaming) {
+          next[next.length - 1] = { ...last, streaming: false };
+        }
+        return next;
+      });
       setChatLoading(false);
     }
   }
@@ -252,7 +326,7 @@ export default function ProblemPage() {
       selectedId={selectedId}
       selectProblem={selectProblem}
       selectedLanguage={selectedLanguage}
-      setSelectedLanguage={setSelectedLanguage}
+      setSelectedLanguage={handleLanguageChange}
       languageOptions={LANGUAGE_OPTIONS}
       runRaw={runRaw}
       running={running}
@@ -266,9 +340,6 @@ export default function ProblemPage() {
       onFileRename={renameFile}
       code={code}
       setCode={setCode}
-      // Other
-      programStdin={programStdin}
-      setProgramStdin={setProgramStdin}
       // Phase 6 — terminal ref
       termWriterRef={termWriterRef}
       chat={chat}

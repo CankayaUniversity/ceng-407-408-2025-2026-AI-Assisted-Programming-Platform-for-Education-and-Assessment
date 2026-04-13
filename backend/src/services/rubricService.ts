@@ -139,6 +139,7 @@ export async function generateRubric(
         model,
         prompt,
         stream: false,
+        keep_alive: -1,
         options: { temperature: 0.3, top_p: 0.9 },
       }),
       signal: controller.signal,

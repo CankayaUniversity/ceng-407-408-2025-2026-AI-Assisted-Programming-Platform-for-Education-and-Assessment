@@ -127,9 +127,9 @@ router.post("/:assignmentId/:userId/suggest", async (req: Request, res: Response
   });
   if (!assignment) { res.status(404).json({ error: "Assignment not found" }); return; }
 
-  // Load rubric
+  // Load rubric (required for AI scoring)
   const rubric = await prisma.rubric.findFirst({ where: { problemId: assignment.problemId } });
-  if (!rubric) { res.status(400).json({ error: "No rubric found for this problem. Please generate one first." }); return; }
+  if (!rubric) { res.status(400).json({ error: "No rubric found for this problem. Create one in the Question Bank (Rubric button) before requesting AI suggestions." }); return; }
 
   // Load latest student submission
   const submission = await prisma.submission.findFirst({
@@ -182,7 +182,7 @@ router.post("/:assignmentId/:userId/suggest", async (req: Request, res: Response
   );
 
   if (!result.success) {
-    res.status(502).json({ success: false, error: result.error });
+    res.status(500).json({ success: false, error: result.error });
     return;
   }
 

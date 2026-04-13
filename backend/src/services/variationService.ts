@@ -168,6 +168,7 @@ export async function generateVariation(
         model,
         prompt,
         stream: false,
+        keep_alive: -1,
         options: {
           temperature: 0.75, // more creative than the mentor
           top_p: 0.95,

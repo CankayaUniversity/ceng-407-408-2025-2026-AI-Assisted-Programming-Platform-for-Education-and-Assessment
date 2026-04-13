@@ -55,8 +55,6 @@ export default function StudentWorkspace({
   onFileRename,
   code,
   setCode,
-  programStdin,
-  setProgramStdin,
   // Phase 6 — xterm writer ref (owned by ProblemPage)
   termWriterRef,
   chat,
@@ -181,21 +179,7 @@ export default function StudentWorkspace({
             />
           </Box>
 
-          {/* stdin */}
-          <TextField
-            label="Program input (stdin)"
-            value={programStdin}
-            onChange={(e) => setProgramStdin(e.target.value)}
-            placeholder="Standard input for Run"
-            multiline
-            minRows={2}
-            maxRows={6}
-            fullWidth
-            sx={{ mt: 2, "& .MuiInputBase-input": { fontFamily: "monospace", fontSize: 13 } }}
-            helperText="One value per line. A trailing newline is added automatically."
-          />
-
-          {/* Phase 6 — xterm.js terminal (replaces static pre box) */}
+          {/* Phase 6 — xterm.js interactive terminal */}
           <Box
             sx={{
               mt: 2,
@@ -254,11 +238,24 @@ export default function StudentWorkspace({
                       <Typography variant="body2" component="div" sx={{ "& p": { mt: 0, mb: 0.5 }, "& pre": { overflowX: "auto" }, "& code": { fontSize: 12 } }}>
                         <strong>{m.role === "assistant" ? "Mentor" : "You"}:</strong>{" "}
                         {m.role === "assistant" ? (
-                          <span
-                            dangerouslySetInnerHTML={{
-                              __html: DOMPurify.sanitize(marked.parse(m.content || "")),
-                            }}
-                          />
+                          m.streaming && !m.content ? (
+                            // Empty bubble while waiting for first token
+                            <span style={{ opacity: 0.5 }}>
+                              Thinking
+                              <span style={{ display: "inline-block", animation: "blink 1s step-start infinite" }}>▋</span>
+                            </span>
+                          ) : (
+                            <span>
+                              <span
+                                dangerouslySetInnerHTML={{
+                                  __html: DOMPurify.sanitize(marked.parse(m.content || "")),
+                                }}
+                              />
+                              {m.streaming && (
+                                <span style={{ display: "inline-block", animation: "blink 1s step-start infinite", marginLeft: 1 }}>▋</span>
+                              )}
+                            </span>
+                          )
                         ) : (
                           <span style={{ whiteSpace: "pre-wrap" }}>{m.content}</span>
                         )}
@@ -274,7 +271,13 @@ export default function StudentWorkspace({
                 <TextField
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
-                  placeholder="Ask for a hint..."
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      if (!chatLoading && selectedProblem) sendChat();
+                    }
+                  }}
+                  placeholder="Ask for a hint… (Enter to send, Shift+Enter for newline)"
                   multiline
                   minRows={3}
                   fullWidth

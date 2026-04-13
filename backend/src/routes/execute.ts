@@ -15,20 +15,19 @@ const SUBMISSION_STDOUT_MAX = 50_000;
 const SUPPORTED_LANGUAGES = new Set(["c", "python", "javascript", "js", "java", "cpp", "c++", "csharp", "c#"]);
 
 function normalizeLanguage(value: unknown): string | undefined {
-  if (typeof value !== "string") {
-    return undefined;
-  }
+  if (typeof value !== "string") return undefined;
   const key = value.trim().toLowerCase();
-  if (!key) {
-    return undefined;
-  }
-  if (key === "py" || key === "python3") {
-    return "python";
-  }
-  if (key === "python" || key === "c") {
-    return key;
-  }
-  return undefined;
+  if (!key) return undefined;
+
+  const aliases: Record<string, string> = {
+    py: "python", python3: "python", python: "python",
+    c: "c",
+    "c++": "cpp", cpp: "cpp",
+    js: "javascript", node: "javascript", javascript: "javascript",
+    java: "java",
+    cs: "csharp", "c#": "csharp", csharp: "csharp",
+  };
+  return aliases[key];
 }
 
 function parseOptionalInt(value: unknown): number | undefined {
@@ -229,7 +228,7 @@ router.post("/", async (req, res) => {
   const languageBody = normalizeLanguage(languageBodyRaw);
   if (languageBodyRaw && !languageBody) {
     res.status(400).json({
-      error: "Unsupported language. First MVP supports only C and Python.",
+      error: `Unsupported language "${languageBodyRaw}". Supported: python, c, cpp, javascript, java, csharp.`,
     });
     return;
   }
@@ -263,8 +262,7 @@ router.post("/", async (req, res) => {
       const effectiveLanguage = languageBody ?? problemLanguage;
       if (!effectiveLanguage || !SUPPORTED_LANGUAGES.has(effectiveLanguage)) {
         res.status(400).json({
-          error:
-            "Problem language is not supported for MVP. Use request body language as c or python.",
+          error: `Problem language "${problem.language}" is not supported. Supported: python, c, cpp, javascript, java, csharp.`,
         });
         return;
       }

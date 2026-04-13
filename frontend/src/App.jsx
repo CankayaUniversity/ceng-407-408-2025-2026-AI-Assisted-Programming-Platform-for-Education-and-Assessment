@@ -14,7 +14,8 @@ import AnalyticsPage from "./pages/student/AnalyticsPage";
 import TeacherDashboardPage from "./pages/teacher/TeacherDashboardPage";
 import StudentsPage          from "./pages/teacher/StudentsPage";
 import QuestionsPage         from "./pages/teacher/QuestionsPage";
-import GradingPage           from "./pages/teacher/GradingPage";
+import GradingPage              from "./pages/teacher/GradingPage";
+import TeacherAssignmentsPage  from "./pages/teacher/AssignmentsPage";
 
 import { useState } from "react";
 
@@ -29,6 +30,7 @@ const STUDENT_NAV = [
 
 const TEACHER_NAV = [
   { label: "Dashboard",     path: "/" },
+  { label: "Assignments",   path: "/assignments" },
   { label: "Students",      path: "/students" },
   { label: "Question Bank", path: "/questions" },
   { label: "Grading",       path: "/grading" },
@@ -127,6 +129,9 @@ export default function App() {
               onProblemsChanged={refreshProblems}
             />
           }
+        />
+        <Route path="/assignments"
+          element={<TeacherAssignmentsPage {...commonProps} navItems={TEACHER_NAV} />}
         />
         <Route path="/grading" element={<GradingPage {...commonProps} navItems={TEACHER_NAV} />} />
         <Route path="*" element={<Navigate to="/" replace />} />

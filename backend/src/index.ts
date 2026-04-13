@@ -86,6 +86,19 @@ httpServer.on("upgrade", (req, socket, head) => {
 
 httpServer.listen(port, "0.0.0.0", () => {
   console.log(`API listening on http://0.0.0.0:${port}`);
+  warmupOllama();
 });
+
+function warmupOllama(): void {
+  const ollamaBase = (process.env.OLLAMA_BASE_URL ?? "http://localhost:11434").replace(/\/$/, "");
+  const model = process.env.OLLAMA_MODEL ?? "ai-mentor";
+  fetch(`${ollamaBase}/api/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model, prompt: "hi", stream: false, keep_alive: -1 }),
+  })
+    .then(() => console.log(`[warmup] Ollama model "${model}" loaded into memory`))
+    .catch((err) => console.warn(`[warmup] Ollama warmup failed (will load on first request): ${err.message}`));
+}
 
 export { httpServer };

@@ -293,6 +293,7 @@ export async function suggestScore(
         model,
         prompt,
         stream:  false,
+        keep_alive: -1,
         options: { temperature: 0.2, top_p: 0.9 },
       }),
       signal: controller.signal,

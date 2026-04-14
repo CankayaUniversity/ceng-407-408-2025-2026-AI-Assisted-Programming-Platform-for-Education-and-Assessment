@@ -1,11 +1,18 @@
 import "dotenv/config";
 import type { Prisma } from "@prisma/client";
 import bcrypt from "bcrypt";
-import { prisma, pgPool } from "../src/lib/prisma";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "@prisma/client";
+import { Pool } from "pg";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is not defined in .env");
 }
+
+// Inline client so the seed works in both dev (src/) and production (dist/) containers
+const pgPool = new Pool({ connectionString: process.env.DATABASE_URL });
+const adapter = new PrismaPg(pgPool as unknown as ConstructorParameters<typeof PrismaPg>[0]);
+const prisma  = new PrismaClient({ adapter }) as unknown as PrismaClient;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Reference solutions & starter code
@@ -148,18 +155,18 @@ async function upsertProblemWithTests(params: {
 }
 
 async function resetDemoData() {
-  await prisma.hintEvent.deleteMany();
-  await prisma.aIInteractionAudit.deleteMany();
-  await prisma.aiLog.deleteMany();
-  await prisma.submissionAttempt.deleteMany();
-  await prisma.submission.deleteMany();
-  // Clean assignment data (grades first, then enrollments, then assignments)
-  try { await (prisma as any).assignmentGrade.deleteMany(); } catch { /* model name may differ */ }
-  try { await (prisma as any).grade.deleteMany(); }          catch { /* model name may differ */ }
-  await prisma.assignmentEnrollment.deleteMany();
-  await prisma.assignment.deleteMany();
-  await prisma.testCase.deleteMany();
-  await prisma.problem.deleteMany();
+  // Delete in FK-dependency order (dependents first, parents last).
+  // Verified against schema.prisma — no guessing, no try-catch needed.
+  await prisma.hintEvent.deleteMany();          // → SubmissionAttempt, AiLog, Problem
+  await prisma.aIInteractionAudit.deleteMany(); // → SubmissionAttempt, Problem
+  await prisma.aiLog.deleteMany();              // → Submission, Problem
+  await prisma.submissionAttempt.deleteMany();  // → Submission, Problem
+  await prisma.submission.deleteMany();         // → Problem
+  await prisma.grade.deleteMany();              // → Assignment, Rubric
+  await prisma.assignmentEnrollment.deleteMany();// → Assignment
+  await prisma.assignment.deleteMany();         // → Problem
+  await prisma.problemVariation.deleteMany();   // → Problem
+  await prisma.problem.deleteMany();            // cascades: TestCase, Rubric (onDelete: Cascade)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

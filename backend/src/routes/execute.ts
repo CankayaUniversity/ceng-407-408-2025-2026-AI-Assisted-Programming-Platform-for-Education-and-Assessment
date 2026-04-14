@@ -11,6 +11,11 @@ const router = Router();
 router.use(requireAuth);
 
 const ACCEPTED_STATUS_ID = 3;
+
+/** Normalise output for comparison: unify line-endings, strip surrounding whitespace. */
+function normalizeOutput(s: string): string {
+  return (s ?? "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
+}
 const SUBMISSION_STDOUT_MAX = 50_000;
 const SUPPORTED_LANGUAGES = new Set(["c", "python", "javascript", "js", "java", "cpp", "c++", "csharp", "c#"]);
 
@@ -312,10 +317,12 @@ router.post("/", async (req, res) => {
           // on trailing-newline mismatches. We compare manually after trimming both sides.
         });
 
-        // Accept if the program ran cleanly AND output matches (trimmed)
+        // Accept if the program ran cleanly AND output matches.
+        // normalizeOutput handles trailing newlines AND Windows CRLF line endings
+        // so "Hello\r\n" and "Hello\n" are treated as equal.
         const passed =
           jr.statusId === ACCEPTED_STATUS_ID &&
-          jr.stdout.trim() === tc.expectedOutput.trim();
+          normalizeOutput(jr.stdout) === normalizeOutput(tc.expectedOutput);
         if (!passed) {
           allPassed = false;
         }

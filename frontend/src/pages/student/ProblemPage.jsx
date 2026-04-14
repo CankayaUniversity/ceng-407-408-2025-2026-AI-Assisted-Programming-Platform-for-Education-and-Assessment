@@ -105,6 +105,11 @@ export default function ProblemPage() {
   // ── Load problem on mount / URL change ───────────────────────────────────
   useEffect(() => {
     if (!token || !problemId) return;
+
+    // Reset files to empty BEFORE updating selectedId.
+    // This ensures the cache-save effect (which watches files + selectedId) writes
+    // an empty entry — not the previous problem's content — into the new problem's slot.
+    setFiles([{ id: 1, name: "main.py", content: "" }]);
     setSelectedId(problemId);
 
     (async () => {
@@ -117,7 +122,7 @@ export default function ProblemPage() {
 
         const lang = (problem.language || "python").toLowerCase();
 
-        // Restore from cache only if the student has actually typed something
+        // Restore from cache only if the student has actually written something
         const cached = codeCache.current[problemId];
         const cacheHasContent = cached?.files?.some((f) => f.content.trim() !== "");
         if (cached && cacheHasContent) {
@@ -125,6 +130,7 @@ export default function ProblemPage() {
           setFiles(cached.files);
           setActiveFileId(cached.activeFileId);
         } else {
+          // Use teacher's starter code if provided, otherwise fall back to language default
           setSelectedLanguage(lang);
           const ext  = extForLanguage(lang);
           setFiles([{ id: 1, name: `main.${ext}`, content: problem.starterCode || STARTER_CODE[lang] || "" }]);

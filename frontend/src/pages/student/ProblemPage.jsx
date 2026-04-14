@@ -117,9 +117,10 @@ export default function ProblemPage() {
 
         const lang = (problem.language || "python").toLowerCase();
 
-        // Restore from cache if student has already written code for this problem
+        // Restore from cache only if the student has actually typed something
         const cached = codeCache.current[problemId];
-        if (cached) {
+        const cacheHasContent = cached?.files?.some((f) => f.content.trim() !== "");
+        if (cached && cacheHasContent) {
           setSelectedLanguage(cached.language);
           setFiles(cached.files);
           setActiveFileId(cached.activeFileId);
@@ -172,7 +173,9 @@ export default function ProblemPage() {
         const baseName = dotIdx >= 0 ? f.name.slice(0, dotIdx) : f.name;
         const newName = `${baseName}.${newExt}`;
         // Inject starter code only if the file is empty
-        const newContent = f.content.trim() === "" ? (STARTER_CODE[newLang] ?? "") : f.content;
+        // Replace content if empty OR if it still contains a known starter snippet
+        const isStarter = Object.values(STARTER_CODE).some((s) => s.trim() === f.content.trim());
+        const newContent = f.content.trim() === "" || isStarter ? (STARTER_CODE[newLang] ?? "") : f.content;
         return { ...f, name: newName, content: newContent };
       }),
     );

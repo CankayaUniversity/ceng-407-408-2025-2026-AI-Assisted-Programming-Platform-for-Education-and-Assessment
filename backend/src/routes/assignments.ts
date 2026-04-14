@@ -44,7 +44,7 @@ router.get("/", async (req: Request, res: Response) => {
       include: {
         assignment: {
           include: {
-            problem: { select: { id: true, title: true, language: true } },
+            problem: { select: { id: true, title: true, language: true, difficulty: true, description: true } },
           },
         },
       },

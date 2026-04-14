@@ -18,10 +18,29 @@ export function AuthProvider({ children }) {
   // ── helpers ───────────────────────────────────────────────────────────────
 
   const loadSession = useCallback(async (currentToken, user) => {
-    const list = await api("/api/problems", {
-      headers: { Authorization: `Bearer ${currentToken}` },
-    });
-    setProblems(list?.data ?? []);
+    if (user?.role === "teacher") {
+      // Teachers see all problems in the question bank
+      const list = await api("/api/problems", {
+        headers: { Authorization: `Bearer ${currentToken}` },
+      });
+      setProblems(list?.data ?? []);
+    } else {
+      // Students only see problems from assignments they're enrolled in
+      const assignmentsRes = await api("/api/assignments", {
+        headers: { Authorization: `Bearer ${currentToken}` },
+      }).catch(() => ({ data: [] }));
+      const assignments = assignmentsRes?.data ?? [];
+      // Each assignment has a `problem` field; de-duplicate by problem id
+      const seen = new Set();
+      const assignedProblems = [];
+      for (const a of assignments) {
+        if (a.problem && !seen.has(a.problem.id)) {
+          seen.add(a.problem.id);
+          assignedProblems.push(a.problem);
+        }
+      }
+      setProblems(assignedProblems);
+    }
 
     if (user?.role !== "teacher") {
       const examRes = await api("/api/admin/exam-mode", {
@@ -32,14 +51,30 @@ export function AuthProvider({ children }) {
   }, []);
 
   const refreshProblems = useCallback(async () => {
-    if (!token) return;
+    if (!token || !currentUser) return;
     try {
-      const list = await api("/api/problems", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setProblems(list?.data ?? []);
+      if (currentUser.role === "teacher") {
+        const list = await api("/api/problems", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setProblems(list?.data ?? []);
+      } else {
+        const assignmentsRes = await api("/api/assignments", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const assignments = assignmentsRes?.data ?? [];
+        const seen = new Set();
+        const assignedProblems = [];
+        for (const a of assignments) {
+          if (a.problem && !seen.has(a.problem.id)) {
+            seen.add(a.problem.id);
+            assignedProblems.push(a.problem);
+          }
+        }
+        setProblems(assignedProblems);
+      }
     } catch { /* ignore */ }
-  }, [token]);
+  }, [token, currentUser]);
 
   // ── bootstrap ────────────────────────────────────────────────────────────
 

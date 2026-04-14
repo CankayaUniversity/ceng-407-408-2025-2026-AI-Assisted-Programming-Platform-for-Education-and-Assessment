@@ -174,6 +174,7 @@ export default function EnrollModal({ open, onClose, onSaved, assignment, token 
                       edge="end"
                       checked={selected.has(s.id)}
                       onChange={() => toggleStudent(s.id)}
+                      onClick={(e) => e.stopPropagation()}
                     />
                   }
                   sx={{ cursor: "pointer" }}

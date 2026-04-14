@@ -308,10 +308,14 @@ router.post("/", async (req, res) => {
           sourceCode,
           languageId: langId,
           stdin: tc.input,
-          expectedOutput: tc.expectedOutput,
+          // Don't pass expectedOutput to Judge0 — it does exact byte comparison which fails
+          // on trailing-newline mismatches. We compare manually after trimming both sides.
         });
 
-        const passed = jr.statusId === ACCEPTED_STATUS_ID;
+        // Accept if the program ran cleanly AND output matches (trimmed)
+        const passed =
+          jr.statusId === ACCEPTED_STATUS_ID &&
+          jr.stdout.trim() === tc.expectedOutput.trim();
         if (!passed) {
           allPassed = false;
         }

@@ -151,6 +151,26 @@ export default function StudentWorkspace({
             {selectedProblem?.language   && <Chip label={selectedProblem.language}   size="small" variant="outlined" />}
           </Box>
 
+          {/* Problem description */}
+          {selectedProblem?.description && (
+            <Box
+              sx={{
+                mb: 2,
+                p: 2,
+                bgcolor: "rgba(148,163,184,0.06)",
+                border: 1,
+                borderColor: "divider",
+                borderRadius: 2,
+                whiteSpace: "pre-wrap",
+              }}
+            >
+              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600, mb: 0.5 }}>
+                Problem Description
+              </Typography>
+              <Typography variant="body2">{selectedProblem.description}</Typography>
+            </Box>
+          )}
+
           {/* Phase 7 — multi-file tab bar */}
           <EditorTabBar
             files={files}

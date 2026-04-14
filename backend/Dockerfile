@@ -39,7 +39,8 @@ RUN ln -sf /usr/share/dotnet/dotnet /usr/local/bin/dotnet
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1 \
     DOTNET_NOLOGO=1 \
-    DOTNET_EnableDiagnostics=0
+    DOTNET_EnableDiagnostics=0 \
+    DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
 
 # Pre-warm MSBuild/NuGet cache — avoids slow first compile when a student runs C#
 RUN mkdir -p /tmp/cs-warmup && \

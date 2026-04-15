@@ -38,14 +38,16 @@ const STARTER_CODE = {
 
 let _nextFileId = 2; // file id counter (1 is reserved for the initial file)
 
+// ── Code cache: module-level so it survives component unmount/remount ────────
+// When a student navigates away (e.g. /assignments) and back, the component
+// unmounts and remounts. A useRef() would be destroyed; a module-level Map is not.
+const _codeCache = new Map(); // Map<problemId, { files, activeFileId, language }>
+
 export default function ProblemPage() {
   const { token, currentUser, problems, examMode, handleLogout } = useAuth();
   const { id } = useParams();
   const problemId = Number(id);
   const navigate  = useNavigate();
-
-  // ── Code cache: persists per-problem files across navigation ─────────────
-  const codeCache = useRef({}); // { [problemId]: { files, activeFileId, language } }
 
   // ── Phase 7: Multi-file state ────────────────────────────────────────────
   const [files,          setFiles]          = useState([{ id: 1, name: "main.py", content: "" }]);
@@ -123,7 +125,7 @@ export default function ProblemPage() {
         const lang = (problem.language || "python").toLowerCase();
 
         // Restore from cache only if the student has actually written something
-        const cached = codeCache.current[problemId];
+        const cached = _codeCache.get(problemId);
         const cacheHasContent = cached?.files?.some((f) => f.content.trim() !== "");
         if (cached && cacheHasContent) {
           setSelectedLanguage(cached.language);
@@ -190,7 +192,7 @@ export default function ProblemPage() {
   // ── Persist current editor state to cache whenever it changes ───────────
   useEffect(() => {
     if (!selectedId) return;
-    codeCache.current[selectedId] = { files, activeFileId, language: selectedLanguage };
+    _codeCache.set(selectedId, { files, activeFileId, language: selectedLanguage });
   }, [files, activeFileId, selectedLanguage, selectedId]);
 
   // ── Navigation ───────────────────────────────────────────────────────────

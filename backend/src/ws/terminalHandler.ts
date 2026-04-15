@@ -214,6 +214,10 @@ export async function handleTerminalConnection(ws: WebSocket): Promise<void> {
     } else if (msg.type === "input" && child?.stdin) {
       child.stdin.write(msg.data as string);
 
+    // ── EOF (Ctrl+D) — close stdin so programs reading until EOF can finish
+    } else if (msg.type === "eof" && child?.stdin) {
+      child.stdin.end();
+
     // ── Kill ──────────────────────────────────────────────────────────────
     } else if (msg.type === "kill") {
       if (child) {

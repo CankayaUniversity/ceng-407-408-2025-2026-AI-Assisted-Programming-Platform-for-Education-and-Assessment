@@ -97,12 +97,17 @@ export default function InteractiveTerminal({ wsUrl, onReady }) {
           term.write("\b \b");
         }
       } else if (data === "\x03") {
-        // Ctrl+C
+        // Ctrl+C — kill process
         term.write("^C\r\n");
         ws.send(JSON.stringify({ type: "kill" }));
         isRunning.current = false;
         onDoneRef.current?.();
         onDoneRef.current = null;
+      } else if (data === "\x04") {
+        // Ctrl+D — send EOF (closes stdin pipe); lets programs that read
+        // until EOF (sys.stdin.read(), while input():, etc.) finish normally.
+        term.write("^D\r\n");
+        ws.send(JSON.stringify({ type: "eof" }));
       } else if (data.charCodeAt(0) >= 32) {
         // Printable character — echo and buffer
         inputBuf.current += data;
@@ -120,7 +125,6 @@ export default function InteractiveTerminal({ wsUrl, onReady }) {
         const ws = wsRef.current;
         if (!ws || ws.readyState !== WebSocket.OPEN) {
           term.write("\x1b[31m[Terminal not connected — retrying]\x1b[0m\r\n");
-          // Try once more after reconnect
           setTimeout(() => onDone?.(), 500);
           return;
         }
@@ -129,7 +133,12 @@ export default function InteractiveTerminal({ wsUrl, onReady }) {
         onDoneRef.current = onDone ?? null;
         term.reset();
         term.write(`\x1b[33m▶ Running (${language})…\x1b[0m\r\n`);
+        term.write(`\x1b[90m[Type input + Enter  •  Ctrl+C to stop  •  Ctrl+D for EOF]\x1b[0m\r\n\r\n`);
         ws.send(JSON.stringify({ type: "run", token, language, code }));
+        // ── Auto-focus so keystrokes go to the terminal immediately ──────
+        // Without this the code editor keeps focus and user input is lost.
+        term.focus();
+        containerRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
       },
 
       kill: () => {

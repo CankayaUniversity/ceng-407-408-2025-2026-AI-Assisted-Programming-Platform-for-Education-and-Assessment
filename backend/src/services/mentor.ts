@@ -68,11 +68,6 @@ You are an AI coding mentor.
 
 The user is making casual conversation or asking about your previous reply.
 
-Language rule:
-- Respond ONLY in the same language as the user's latest message.
-- If the user writes in Turkish, respond fully in Turkish.
-- If the user writes in English, respond fully in English.
-
 Rules:
 - Reply naturally and briefly.
 - Keep it short (1 or 2 sentences).
@@ -122,12 +117,6 @@ ${normalizedMode}
 
 [STUDENT_MESSAGE]
 ${input.studentQuestion ?? "No message provided."}
-
-Language rule:
-- Respond ONLY in the same language as the student's latest message.
-- If the student's latest message is Turkish, your entire response must be in Turkish.
-- If the student's latest message is English, your entire response must be in English.
-- Do not mix languages unless the student does.
 
 Rules:
 - Help the student, do not solve the assignment.
@@ -320,7 +309,6 @@ export async function getMentorReply(input: MentorRequestInput): Promise<MentorR
 
     let responseText = await callModel(prompt);
 
-
     if (messageMode !== "casual") {
       const recentHistory = Array.isArray(input.history) ? input.history.slice(-3) : [];
       if (recentHistory.length > 0 && isTooSimilar(responseText, recentHistory)) {
@@ -335,8 +323,7 @@ Be natural and brief.
 
         responseText = await callModel(retryPrompt);
       }
-    }    
-
+    }
 
     if (messageMode !== "casual") {
       if (violatesIdleRule(responseText, input.runStatus)) {

@@ -14,7 +14,7 @@ services:
         limits:
           memory: 512m
           cpus: "1.0"
-          pids: 128
+          pids: 512
     depends_on:
       judge0-db:
         condition: service_healthy
@@ -39,9 +39,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512m
-          cpus: "1.0"
-          pids: 128
+          memory: 1536m
+          cpus: "2.0"
+          pids: 2048
     depends_on:
       judge0-db:
         condition: service_healthy

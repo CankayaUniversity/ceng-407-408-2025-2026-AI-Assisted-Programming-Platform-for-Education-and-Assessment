@@ -7,6 +7,7 @@ import ExamModeCard from "./ExamModeCard";
 import QuestionBankPanel from "./QuestionBankPanel";
 import StudentDetailModal from "./StudentDetailModal";
 import StudentProgressTable from "./StudentProgressTable";
+import { API_BASE } from "../../apiBase";
 
 function buildQuestionBankItems(problems = [], analyticsMap = {}) {
   return problems.map((problem, index) => {
@@ -24,8 +25,6 @@ function buildQuestionBankItems(problems = [], analyticsMap = {}) {
 }
 
 const TEACHER_NAV = [];
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000";
 
 export default function TeacherDashboard({ currentUser, problems, handleLogout, token }) {
   const [examMode, setExamMode] = useState(false);

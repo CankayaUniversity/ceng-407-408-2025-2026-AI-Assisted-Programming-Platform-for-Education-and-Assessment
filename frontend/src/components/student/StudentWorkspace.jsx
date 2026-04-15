@@ -1,4 +1,6 @@
 import Editor from "@monaco-editor/react";
+import DOMPurify from "dompurify";
+import { marked } from "marked";
 import {
   Alert,
   Box,
@@ -17,9 +19,18 @@ import {
   Typography,
 } from "@mui/material";
 
-import SectionCard from "../common/SectionCard";
-import AppLayout from "../layout/AppLayout";
-import SubmissionHistory from "./SubmissionHistory";
+import SectionCard         from "../common/SectionCard";
+import AppLayout           from "../layout/AppLayout";
+import SubmissionHistory   from "./SubmissionHistory";
+import EditorTabBar        from "./EditorTabBar";
+import InteractiveTerminal from "./InteractiveTerminal";
+import { wsUrl }           from "../../wsBase";
+
+function monacoLanguage(value) {
+  if (value === "csharp") return "csharp";
+  if (value === "cpp") return "cpp";
+  return value || "python";
+}
 
 export default function StudentWorkspace({
   currentUser,
@@ -35,9 +46,17 @@ export default function StudentWorkspace({
   runRaw,
   running,
   runTests,
+  // Phase 7 — multi-file
+  files,
+  activeFileId,
+  onFileSelect,
+  onFileAdd,
+  onFileClose,
+  onFileRename,
   code,
   setCode,
-  terminal,
+  // Phase 6 — xterm writer ref (owned by ProblemPage)
+  termWriterRef,
   chat,
   chatInput,
   setChatInput,
@@ -126,49 +145,76 @@ export default function StudentWorkspace({
             </Stack>
           }
         >
-          <Box sx={{ mb: 2, display: "flex", gap: 1, flexWrap: "wrap" }}>
-            {selectedProblem?.difficulty ? <Chip label={selectedProblem.difficulty} size="small" /> : null}
-            {selectedProblem?.language ? (
-              <Chip label={selectedProblem.language} size="small" variant="outlined" />
-            ) : null}
+          {/* Difficulty / language chips */}
+          <Box sx={{ mb: 1, display: "flex", gap: 1, flexWrap: "wrap" }}>
+            {selectedProblem?.difficulty && <Chip label={selectedProblem.difficulty} size="small" />}
+            {selectedProblem?.language   && <Chip label={selectedProblem.language}   size="small" variant="outlined" />}
           </Box>
 
-          <Box sx={{ height: 420, overflow: "hidden", border: 1, borderColor: "divider", borderRadius: 3 }}>
+          {/* Problem description */}
+          {selectedProblem?.description && (
+            <Box
+              sx={{
+                mb: 2,
+                p: 2,
+                bgcolor: "rgba(148,163,184,0.06)",
+                border: 1,
+                borderColor: "divider",
+                borderRadius: 2,
+                whiteSpace: "pre-wrap",
+              }}
+            >
+              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600, mb: 0.5 }}>
+                Problem Description
+              </Typography>
+              <Typography variant="body2">{selectedProblem.description}</Typography>
+            </Box>
+          )}
+
+          {/* Phase 7 — multi-file tab bar */}
+          <EditorTabBar
+            files={files}
+            activeId={activeFileId}
+            onSelect={onFileSelect}
+            onAdd={onFileAdd}
+            onClose={onFileClose}
+            onRename={onFileRename}
+          />
+
+          {/* Monaco editor — rounded bottom corners only */}
+          <Box sx={{ height: 380, overflow: "hidden", border: 1, borderTop: 0, borderColor: "divider", borderRadius: "0 0 12px 12px" }}>
             <Editor
+              key={`${monacoLanguage(selectedLanguage)}-${activeFileId}`}
               height="100%"
-              defaultLanguage="javascript"
-              language={selectedLanguage === "csharp" ? "csharp" : selectedLanguage}
+              language={monacoLanguage(selectedLanguage)}
               value={code}
-              onChange={(value) => setCode(value ?? "")}
+              onChange={(v) => setCode(v ?? "")}
               theme="vs-dark"
               options={{
-                minimap: { enabled: false },
-                fontSize: 13,
-                automaticLayout: true,
+                minimap:              { enabled: false },
+                fontSize:             13,
+                automaticLayout:      true,
                 scrollBeyondLastLine: false,
               }}
             />
           </Box>
 
+          {/* Phase 6 — xterm.js interactive terminal */}
           <Box
-            component="pre"
             sx={{
               mt: 2,
-              mb: 0,
-              maxHeight: 240,
-              overflow: "auto",
-              whiteSpace: "pre-wrap",
+              height: 200,
               border: 1,
               borderColor: "divider",
               borderRadius: 2,
-              bgcolor: "background.default",
-              p: 2,
-              fontFamily: "monospace",
-              fontSize: 12,
-              lineHeight: 1.6,
+              overflow: "hidden",
+              bgcolor: "#0f172a",
             }}
           >
-            {terminal}
+            <InteractiveTerminal
+              wsUrl={wsUrl("/ws/terminal")}
+              onReady={(writer) => { termWriterRef.current = writer; }}
+            />
           </Box>
 
           <Box sx={{ mt: 2 }}>
@@ -209,8 +255,30 @@ export default function StudentWorkspace({
                             : "rgba(14, 165, 233, 0.14)",
                       }}
                     >
-                      <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-                        <strong>{m.role === "assistant" ? "Mentor" : "You"}:</strong> {m.content}
+                      <Typography variant="body2" component="div" sx={{ "& p": { mt: 0, mb: 0.5 }, "& pre": { overflowX: "auto" }, "& code": { fontSize: 12 } }}>
+                        <strong>{m.role === "assistant" ? "Mentor" : "You"}:</strong>{" "}
+                        {m.role === "assistant" ? (
+                          m.streaming && !m.content ? (
+                            // Empty bubble while waiting for first token
+                            <span style={{ opacity: 0.5 }}>
+                              Thinking
+                              <span style={{ display: "inline-block", animation: "blink 1s step-start infinite" }}>▋</span>
+                            </span>
+                          ) : (
+                            <span>
+                              <span
+                                dangerouslySetInnerHTML={{
+                                  __html: DOMPurify.sanitize(marked.parse(m.content || "")),
+                                }}
+                              />
+                              {m.streaming && (
+                                <span style={{ display: "inline-block", animation: "blink 1s step-start infinite", marginLeft: 1 }}>▋</span>
+                              )}
+                            </span>
+                          )
+                        ) : (
+                          <span style={{ whiteSpace: "pre-wrap" }}>{m.content}</span>
+                        )}
                       </Typography>
                     </Box>
                   ))}
@@ -223,7 +291,13 @@ export default function StudentWorkspace({
                 <TextField
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
-                  placeholder="Ask for a hint..."
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      if (!chatLoading && selectedProblem) sendChat();
+                    }
+                  }}
+                  placeholder="Ask for a hint… (Enter to send, Shift+Enter for newline)"
                   multiline
                   minRows={3}
                   fullWidth

@@ -69,6 +69,7 @@ You are an AI coding mentor.
 The user is making casual conversation or asking about your previous reply.
 
 Rules:
+- You MUST respond in English only.
 - Reply naturally and briefly.
 - Keep it short (1 or 2 sentences).
 - Do not analyze code unless the user explicitly asks.
@@ -89,6 +90,8 @@ function buildMentorPrompt(
   const normalizedMode = (input.mode ?? "mentor").trim().toLowerCase();
 
   let prompt = `
+You MUST respond in English only. Do not use any other language regardless of the student's language.
+
 Answer using only the context below.
 
 [LANGUAGE]
@@ -119,6 +122,7 @@ ${normalizedMode}
 ${input.studentQuestion ?? "No message provided."}
 
 Rules:
+- You MUST respond in English only.
 - Help the student, do not solve the assignment.
 - Prefer explanation and hints over solutions.
 - Do not give full code.
@@ -194,6 +198,7 @@ async function callModel(prompt: string): Promise<string> {
         model,
         prompt,
         stream: false,
+        keep_alive: -1,   // keep model loaded indefinitely
         options: {
           temperature: 0.2,
           top_p: 0.9,
@@ -292,6 +297,70 @@ function fallbackCasualReply(message: string | null | undefined): string {
     return "I'm doing well. Ready to help.";
   }
   return "Alright. What would you like to work on?";
+}
+
+/**
+ * Streams tokens from Ollama directly to the caller.
+ * Yields each text token as it arrives.
+ * Does NOT run validator/policy — caller handles that after collecting full text.
+ */
+export async function* getMentorReplyStream(
+  input: MentorRequestInput,
+): AsyncGenerator<string, void, unknown> {
+  const messageMode = detectMessageMode(input.studentQuestion ?? undefined);
+  const prompt =
+    messageMode === "casual"
+      ? buildCasualPrompt(input.studentQuestion)
+      : buildMentorPrompt(input, false);
+
+  const url = getOllamaGenerateUrl();
+  const model = getModelName();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 120_000);
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model,
+        prompt,
+        stream: true,
+        keep_alive: -1,
+        options: { temperature: 0.2, top_p: 0.9 },
+      }),
+      signal: controller.signal,
+    });
+
+    if (!res.ok || !res.body) {
+      throw new Error(`Ollama HTTP ${res.status}`);
+    }
+
+    const reader = (res.body as unknown as NodeJS.ReadableStream)[Symbol.asyncIterator]
+      ? (res.body as unknown as AsyncIterable<Uint8Array>)
+      : (() => { throw new Error("No readable body"); })();
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    for await (const chunk of reader) {
+      buffer += decoder.decode(chunk, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const parsed = JSON.parse(line) as { response?: string; done?: boolean };
+          if (parsed.response) yield parsed.response;
+          if (parsed.done) return;
+        } catch {
+          // skip malformed lines
+        }
+      }
+    }
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export async function getMentorReply(input: MentorRequestInput): Promise<MentorResult> {

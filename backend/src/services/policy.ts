@@ -8,7 +8,7 @@ export type PolicyResult = {
 };
 
 const SAFE_HINT =
-  "Bu noktada dogrudan cozum vermek yerine seni daha guvenli bir sekilde yonlendirebilirim. Hangi adimda takildigini soyle, birlikte o parcayi inceleyelim.";
+  "I can guide you more safely at this point instead of giving a direct solution. Tell me which step you are stuck on and we can look at that part together.";
 
 export function applyPolicy(params: {
   mentorReply: string;
@@ -24,12 +24,12 @@ export function applyPolicy(params: {
   if (validator.decision === "rewrite") {
     const focus =
       studentQuestion && studentQuestion.trim()
-        ? `Senin soruna odaklanalim: ${studentQuestion.trim()}`
-        : "Sorununun ana nedenine odaklanalim.";
+        ? `Let's focus on your question: ${studentQuestion.trim()}`
+        : "Let's focus on the root cause of the issue.";
 
     return {
       action: "rewrite",
-      finalText: `${focus} Cozumu dogrudan vermeden ilerleyelim. Once girdiyi, beklenen ciktiyi ve hata aldigin tek noktayi adim adim kontrol et.`,
+      finalText: `${focus} Let's move forward without giving the solution directly. First check the input, expected output, and the exact point where it goes wrong step by step.`,
       rewriteCount: 0,
     };
   }
@@ -75,12 +75,12 @@ ${studentQuestion ?? "No question provided."}
 
     const focus =
       studentQuestion && studentQuestion.trim()
-        ? `Senin soruna odaklanalim: ${studentQuestion.trim()}`
-        : "Sorununun ana nedenine odaklanalim.";
+        ? `Let's focus on your question: ${studentQuestion.trim()}`
+        : "Let's focus on the root cause of the issue.";
 
     return {
       action: "rewrite",
-      finalText: `${focus} Cozumu dogrudan vermeden ilerleyelim. Once girdiyi, beklenen ciktiyi ve hata aldigin tek noktayi adim adim kontrol et.`,
+      finalText: `${focus} Let's move forward without giving the solution directly. First check the input, expected output, and the exact point where it goes wrong step by step.`,
       rewriteCount: 1,
     };
   }

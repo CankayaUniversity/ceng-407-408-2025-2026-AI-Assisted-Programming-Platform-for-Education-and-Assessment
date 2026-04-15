@@ -23,6 +23,16 @@ function getJudge0BaseUrl(): string {
   return (process.env.JUDGE0_URL ?? "http://localhost:2358").replace(/\/$/, "");
 }
 
+/** Per-submission HTTP wait timeout (Judge0 wait=true). Prevents backend hanging forever if isolate stalls. */
+function getJudge0RequestTimeoutMs(): number {
+  const raw = process.env.JUDGE0_REQUEST_TIMEOUT_MS;
+  if (raw == null || raw === "") {
+    return 90_000;
+  }
+  const n = Number.parseInt(raw, 10);
+  return Number.isFinite(n) && n > 0 ? n : 90_000;
+}
+
 function getJudge0CandidateBaseUrls(): string[] {
   const primary = getJudge0BaseUrl();
   const out = [primary];
@@ -54,6 +64,8 @@ export async function runInJudge0(params: {
   let data: Record<string, unknown> | null = null;
   let lastErr = "";
 
+  const timeoutMs = getJudge0RequestTimeoutMs();
+
   for (const base of getJudge0CandidateBaseUrls()) {
     const url = `${base}/submissions?base64_encoded=true&wait=true`;
     try {
@@ -64,6 +76,7 @@ export async function runInJudge0(params: {
           Accept: "application/json",
         },
         body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(timeoutMs),
       });
       if (!res.ok) {
         const text = await res.text();
@@ -73,7 +86,12 @@ export async function runInJudge0(params: {
       data = (await res.json()) as Record<string, unknown>;
       break;
     } catch (e) {
-      lastErr = e instanceof Error ? `${e.message} @ ${base}` : String(e);
+      const name = e instanceof Error ? e.name : "";
+      if (name === "TimeoutError" || name === "AbortError") {
+        lastErr = `Judge0 request timed out after ${timeoutMs}ms @ ${base}`;
+      } else {
+        lastErr = e instanceof Error ? `${e.message} @ ${base}` : String(e);
+      }
     }
   }
 

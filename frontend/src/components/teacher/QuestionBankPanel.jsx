@@ -14,20 +14,25 @@ import {
   MenuItem,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
-import DeleteIcon from "@mui/icons-material/Delete";
-import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon      from "@mui/icons-material/Delete";
+import EditIcon        from "@mui/icons-material/Edit";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+
+import GradingIcon from "@mui/icons-material/Grading";
 
 import SectionCard from "../common/SectionCard";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000";
+import VariationReviewModal from "./VariationReviewModal";
+import RubricModal from "./RubricModal";
+import { API_BASE } from "../../apiBase";
 
 const EMPTY_FORM = {
   title: "",
   description: "",
   difficulty: "Easy",
-  language: "javascript",
+  language: "python",
   category: "",
   starterCode: "",
   referenceSolution: "",
@@ -188,6 +193,21 @@ export default function QuestionBankPanel({ items = [], token, onProblemsChanged
   const [error, setError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+
+  // ── Variation state ──────────────────────────────────────────────────────
+  const [variationSource,  setVariationSource]  = useState(null);   // the source problem object
+  const [variationType,    setVariationType]    = useState(null);   // "harder" | "easier" | "similar"
+  const [variationModalOpen, setVariationModalOpen] = useState(false);
+
+  function openVariation(item, type) {
+    setVariationSource(item);
+    setVariationType(type);
+    setVariationModalOpen(true);
+  }
+
+  // ── Rubric state ──────────────────────────────────────────────────────────
+  const [rubricProblem,    setRubricProblem]    = useState(null);
+  const [rubricModalOpen,  setRubricModalOpen]  = useState(false);
 
   const authHeaders = {
     Authorization: `Bearer ${token}`,
@@ -355,7 +375,18 @@ export default function QuestionBankPanel({ items = [], token, onProblemsChanged
           {items.map((item) => {
             const difficulty = normalizeDifficulty(item.difficulty);
             return (
-              <Box key={item.id} sx={{ py: 3, display: "flex", justifyContent: "space-between", gap: 2, alignItems: { xs: "flex-start", md: "center" }, flexDirection: { xs: "column", md: "row" } }}>
+              <Box
+                key={item.id}
+                sx={{
+                  py: 3,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 2,
+                  alignItems: { xs: "flex-start", lg: "center" },
+                  flexDirection: { xs: "column", lg: "row" },
+                }}
+              >
+                {/* ── Problem info ──────────────────────────────────── */}
                 <Box>
                   <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
                     <Typography variant="h6" sx={{ fontWeight: 700 }}>{item.title}</Typography>
@@ -367,7 +398,60 @@ export default function QuestionBankPanel({ items = [], token, onProblemsChanged
                   </Typography>
                 </Box>
 
-                <Stack direction="row" spacing={1}>
+                {/* ── Action buttons ────────────────────────────────── */}
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1} flexWrap="wrap" useFlexGap>
+
+                  {/* AI Variation buttons */}
+                  <Tooltip title="Generate an easier version with AI">
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      color="success"
+                      startIcon={<AutoAwesomeIcon />}
+                      onClick={() => openVariation(item, "easier")}
+                    >
+                      Easier
+                    </Button>
+                  </Tooltip>
+
+                  <Tooltip title="Generate a similar problem with AI">
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      color="info"
+                      startIcon={<AutoAwesomeIcon />}
+                      onClick={() => openVariation(item, "similar")}
+                    >
+                      Similar
+                    </Button>
+                  </Tooltip>
+
+                  <Tooltip title="Generate a harder version with AI">
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      color="error"
+                      startIcon={<AutoAwesomeIcon />}
+                      onClick={() => openVariation(item, "harder")}
+                    >
+                      Harder
+                    </Button>
+                  </Tooltip>
+
+                  <Tooltip title="View / generate grading rubric">
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      color="secondary"
+                      startIcon={<GradingIcon />}
+                      onClick={() => { setRubricProblem(item); setRubricModalOpen(true); }}
+                    >
+                      Rubric
+                    </Button>
+                  </Tooltip>
+
+                  <Divider orientation="vertical" flexItem sx={{ display: { xs: "none", sm: "block" } }} />
+
                   <Button variant="outlined" size="small" startIcon={<EditIcon />} onClick={() => handleEdit(item)}>
                     Edit
                   </Button>
@@ -395,6 +479,31 @@ export default function QuestionBankPanel({ items = [], token, onProblemsChanged
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* ── Rubric Modal ──────────────────────────────────────────────── */}
+      {rubricProblem && (
+        <RubricModal
+          open={rubricModalOpen}
+          onClose={() => setRubricModalOpen(false)}
+          problem={rubricProblem}
+          token={token}
+        />
+      )}
+
+      {/* ── Variation Review Modal ─────────────────────────────────────── */}
+      {variationSource && variationType && (
+        <VariationReviewModal
+          open={variationModalOpen}
+          onClose={() => setVariationModalOpen(false)}
+          sourceProblem={variationSource}
+          variationType={variationType}
+          token={token}
+          onApproved={() => {
+            setVariationModalOpen(false);
+            onProblemsChanged?.();
+          }}
+        />
+      )}
     </>
   );
 }

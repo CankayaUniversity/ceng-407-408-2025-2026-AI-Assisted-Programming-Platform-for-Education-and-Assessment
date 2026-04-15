@@ -1,0 +1,135 @@
+
+--- page 1 ---
+CENG SP -FORM -01 
+Version:  September 2017   ÇANKAYA UNIVERSITY  
+Computer Engineering Department  
+ 
+CENG 407 – 408 Project Proposal Form  
+This form should be used for CENG 407 – 408 Project Proposal.   
+Part I.  Project Proposer  
+Name Lastname  Faris Serdar Taşel  Mobile   
+Signature   E-Mail fst@cankaya.edu.tr  
+ 
+Part II.  Project Information. To be completed by the Proposer. (Supervisor, Student or Company)  
+Starting Term  2 0 2 5 / 2 0 2 6 
+  Fall  Spring  
+Title of the Project  AI-Assisted Programming Platform for Education and Assessment  
+Project Description  
+The project aims to design and implement a web -based application to support programming classes, laboratory works, and exams. Teachers can 
+create and assign programming problems with specific deadlines. Students will be able to attempt these problems in a simple, browser -based IDE 
+within the platform.  
+ 
+The system’s core innovation is its AI integration:  
+ 
+• Students cannot directly ask the AI to solve problems. Instead, they can request guidance and feedback on their code.  
+• The AI will provide hints, reminders, and improvement suggestions, ensuring students learn problem -solving skills rather than copying 
+solutions.  
+• For teachers, AI can generate similar question variations, help design rubrics, and provide score recommendation s by analyzing 
+students’ submissions.  
+ 
+The platform will be designed with scalability in mind, allowing integration with cloud -based or local AI servers (e.g., using Ollama and different 
+LLMs). The project will combine frontend design, backend development,  AI prompt engineering, and educational assessment methods.  
+Project Justification  
+UN Sustainable Development Goals  (SDGs)  
+Relevant SDGs  
+(Select all that apply)   Goal 1 – No Poverty   Goal 2 – Zero hunger   Goal 3 – Good health and 
+well-being  
+ Goal 4 – Quality education   Goal 5 – Gender equality   Goal 6 – Clean water and 
+sanitation  
+ Goal 7 – Affordable and 
+clean energy    Goal 8 – Decent work and 
+economic growth   Goal 9 – Industry, 
+Innovation, Technology 
+and Infrastructure  
+ Goal 10 – Reduced 
+inequality   Goal 11 – Sustainable cities 
+and communities   Goal 12 – Responsible 
+consumption and 
+production  
+ Goal 13 – Climate action   Goal 14 – Life below water   Goal 15 – Life on land  
+ Goal 16 – Peace, justice 
+and strong institut ions  Goal 17 – Partnerships for the 
+goals    
+ 
+Explain  how the project 
+aligns with the selected 
+SDG(s)  • Goal 4 (Quality Education):  The platform improves programming education by providing accessible, AI -
+assisted learning, fostering problem -solving skills and personalized feedback.  
+• Goal 9 (Innovation & Infrastructure): The project contributes to innovative educational technologies, 
+bridging gaps between traditional teaching and modern AI -based approaches.  
+• Goal 10 (Reduced Inequality):  The system ensures students from diverse backgrounds have equal 
+access to structured guidance, regardless of external tutoring opportunities.  
+• Goal 17 (Pa rtnerships):  The solution can be deployed in collaboration with universities, schools, or NGOs, 
+supporting partnerships to scale quality education.  
+ 
+ 
+
+--- page 2 ---
+CENG SP -FORM -01 
+Version:  September 2017  Novelty  
+Previous work  Existing learning platforms (Moodle, Codeforces, HackerRank, LeetCode) provide assignments and automated 
+grading but lack interactive, real -time AI -guided feedback for students. Some coding platforms integrate AI chatbots, 
+but they often risk providing direct answers, reducing educational value.  
+New aspects  AI is not a solve r, but a mentor — guiding without giving complete solutions.  
+Prompt engineering specifically designed to encourage critical thinking.  
+Dual support: students (learning assistance) and teachers (question generation & grading aid).  
+Flexibility: system can wor k with cloud or local AI models.  
+Complexity  
+Challenging problem and 
+issues  • Designing effective AI prompts that provide guidance but not direct answers.  
+• Balancing usability with academic integrity.  
+• Ensuring fair scoring and minimizing AI bias in evaluation.  
+• Scalability of the system to support multiple simultaneous users in classroom/exam settings.  
+• Security and integrity in exam mode (e.g., preventing cheating).  
+Related computer 
+science fields and 
+subfields  • Artificial Intelligence (AI in educatio n, NLP, LLMs)  
+• Software Engineering (web application design, testing, deployment)  
+• Human -Computer Interaction (usability design, educational UX)  
+• Databases (assignment storage, submission tracking)  
+• Security (exam integrity, access control)  
+• Cloud & Distributed Systems (scalable deployment, AI integration)  
+References to existing 
+solutions (methods, 
+algorithms)  • Online Judge systems (HackerRank, LeetCode, Codeforces).  
+• Learning Management Systems (Moodle, Blackboard).  
+• AI Tutoring Systems (Khanmigo by Kh an Academy).  
+• Code Analysis Tools (static analyzers like pylint, flake8, ESLint).  
+Tools  Potential tools: (may change)  
+• Frontend: React.js / Vue.js  
+• Backend: Node.js / Django / Flask  
+• Database: PostgreSQL / MongoDB  
+• AI Integration: Ollama, OpenAI API, HuggingFace Transformers  
+• Containerization: Docker  
+• Deployment: Cloud (AWS / GCP / Azure) or local server  
+Libraries  Potential libs: (may change)  
+• Code Execution Sandbox: Judge0, Docker -based execution environments  
+• AI Models: LLaMA , Mistral, GPT variants (via Ollama or APIs)  
+• Frontend Libraries: Material UI / TailwindCSS  
+• Backend Libraries: Express.js / Django REST Framework  
+• Auth & Security: OAuth2, JWT, SSL  
+Risk involved  
+Potential problems and 
+alternative solutions  Risk 1: AI may accidentally provide complete answers.  
+Solution: Careful prompt design, post -processing filters.  
+Risk 2: High cost of cloud AI services.  
+Solution: Option for local deployment with open -source models.  
+Risk 3: Students misuse AI during exams.  
+Solution: R estrict AI assistance in exam mode, allow only in practice mode.  
+Risk 4: Scalability issues.  
+Solution: Containerized deployment with load balancing.  
+Minimum work required  1. Basic web interface for teachers and students.  
+2. Functionality for creating/assigning questions and student submissions.  
+3. Code execution sandbox for running student programs safely.  
+4. AI integration (minimum viable prompt set) for feedback.  
+5. Teacher -side AI for question variation generation.  
+ 
+Evaluation  
+Evaluation method  
+(dataset, usability tests, 
+metrics, etc.)  Usability tests with a pilot group of students and teachers.  
+Metrics: Student learning outcomes (pre -test vs post -test scores), Time taken to solve problems with vs without AI 
+hints, Teacher workload reducti on in grading and question preparation, User satisfaction surveys.  
+Datasets: Standard programming problems (from ACM -ICPC, LeetCode, Hackerrank archives), Student -written code 
+submissions.  
+ 

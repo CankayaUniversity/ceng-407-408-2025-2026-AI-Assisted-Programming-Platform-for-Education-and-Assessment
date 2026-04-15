@@ -17,8 +17,7 @@ import { useNavigate } from "react-router-dom";
 
 import AppLayout from "../../components/layout/AppLayout";
 import SectionCard from "../../components/common/SectionCard";
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000";
+import { API_BASE } from "../../apiBase";
 
 function difficultyColor(d) {
   const v = (d ?? "").toLowerCase();
@@ -44,6 +43,7 @@ export default function AssignmentsPage({ currentUser, token, handleLogout, navI
     ])
       .then(([probRes, subRes]) => {
         setProblems(probRes?.data ?? []);
+        // history returns SubmissionAttempt rows; use normalizedStatus for solved detection
         setSubmissions(subRes?.data ?? []);
       })
       .catch((err) => console.error("AssignmentsPage fetch failed:", err))
@@ -51,7 +51,9 @@ export default function AssignmentsPage({ currentUser, token, handleLogout, navI
   }, [token]);
 
   const solvedSet = new Set(
-    submissions.filter((s) => s.status === "accepted" || s.status === "Accepted").map((s) => s.problemId),
+    submissions
+      .filter((s) => s.normalizedStatus === "accepted" || s.allPassed === true)
+      .map((s) => s.problemId),
   );
 
   return (

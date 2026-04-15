@@ -136,6 +136,7 @@ ${text}
       model,
       prompt,
       stream: false,
+      keep_alive: -1,
       options: { temperature: 0, top_p: 0.1 },
     }),
   });

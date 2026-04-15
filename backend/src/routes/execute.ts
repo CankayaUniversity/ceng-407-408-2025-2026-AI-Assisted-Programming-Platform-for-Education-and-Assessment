@@ -4,30 +4,35 @@ import { resolveLanguageId } from "../lib/judge0Languages";
 import { requireAuth } from "../middleware/requireAuth";
 import { AttemptMode } from "@prisma/client";
 import { runInJudge0, type Judge0RunResult } from "../services/judge0";
+import { executeSchema } from "../lib/schemas";
 
 const router = Router();
 
 router.use(requireAuth);
 
 const ACCEPTED_STATUS_ID = 3;
+
+/** Normalise output for comparison: unify line-endings, strip surrounding whitespace. */
+function normalizeOutput(s: string): string {
+  return (s ?? "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
+}
 const SUBMISSION_STDOUT_MAX = 50_000;
 const SUPPORTED_LANGUAGES = new Set(["c", "python", "javascript", "js", "java", "cpp", "c++", "csharp", "c#"]);
 
 function normalizeLanguage(value: unknown): string | undefined {
-  if (typeof value !== "string") {
-    return undefined;
-  }
+  if (typeof value !== "string") return undefined;
   const key = value.trim().toLowerCase();
-  if (!key) {
-    return undefined;
-  }
-  if (key === "py" || key === "python3") {
-    return "python";
-  }
-  if (key === "python" || key === "c") {
-    return key;
-  }
-  return undefined;
+  if (!key) return undefined;
+
+  const aliases: Record<string, string> = {
+    py: "python", python3: "python", python: "python",
+    c: "c",
+    "c++": "cpp", cpp: "cpp",
+    js: "javascript", node: "javascript", javascript: "javascript",
+    java: "java",
+    cs: "csharp", "c#": "csharp", csharp: "csharp",
+  };
+  return aliases[key];
 }
 
 function parseOptionalInt(value: unknown): number | undefined {
@@ -198,8 +203,23 @@ function aggregateNormalizedStatus(
   return "internal_error";
 }
 
+/**
+ * Raw-run stdin from the browser often has no trailing `\n`.
+ * Some runtimes block in `input()` until a newline/EOF; Judge0 then feels stuck on "Running".
+ */
+function normalizeInteractiveStdin(s: string): string {
+  if (s.length === 0) return "";
+  return s.endsWith("\n") ? s : `${s}\n`;
+}
+
 /** Run all test cases for a problem, or a single raw run (playground / terminal). */
 router.post("/", async (req, res) => {
+  const schemaResult = executeSchema.safeParse(req.body);
+  if (!schemaResult.success) {
+    res.status(400).json({ error: "Validation failed", details: schemaResult.error.flatten() });
+    return;
+  }
+
   const body = req.body as Record<string, unknown>;
   const sourceCode = typeof body.sourceCode === "string" ? body.sourceCode : "";
   if (!sourceCode.trim()) {
@@ -213,7 +233,7 @@ router.post("/", async (req, res) => {
   const languageBody = normalizeLanguage(languageBodyRaw);
   if (languageBodyRaw && !languageBody) {
     res.status(400).json({
-      error: "Unsupported language. First MVP supports only C and Python.",
+      error: `Unsupported language "${languageBodyRaw}". Supported: python, c, cpp, javascript, java, csharp.`,
     });
     return;
   }
@@ -221,6 +241,10 @@ router.post("/", async (req, res) => {
 
   const role = req.auth!.role;
   const userId = req.auth!.userId;
+
+  console.log(
+    `[execute] user=${userId} role=${role} mode=${problemId !== undefined ? "tests" : "raw"} problemId=${problemId ?? "-"} languageId=${languageIdBody ?? "-"} stdinChars=${stdinRaw.length} codeChars=${sourceCode.length}`,
+  );
 
   try {
     if (problemId !== undefined) {
@@ -243,8 +267,7 @@ router.post("/", async (req, res) => {
       const effectiveLanguage = languageBody ?? problemLanguage;
       if (!effectiveLanguage || !SUPPORTED_LANGUAGES.has(effectiveLanguage)) {
         res.status(400).json({
-          error:
-            "Problem language is not supported for MVP. Use request body language as c or python.",
+          error: `Problem language "${problem.language}" is not supported. Supported: python, c, cpp, javascript, java, csharp.`,
         });
         return;
       }
@@ -290,10 +313,16 @@ router.post("/", async (req, res) => {
           sourceCode,
           languageId: langId,
           stdin: tc.input,
-          expectedOutput: tc.expectedOutput,
+          // Don't pass expectedOutput to Judge0 — it does exact byte comparison which fails
+          // on trailing-newline mismatches. We compare manually after trimming both sides.
         });
 
-        const passed = jr.statusId === ACCEPTED_STATUS_ID;
+        // Accept if the program ran cleanly AND output matches.
+        // normalizeOutput handles trailing newlines AND Windows CRLF line endings
+        // so "Hello\r\n" and "Hello\n" are treated as equal.
+        const passed =
+          jr.statusId === ACCEPTED_STATUS_ID &&
+          normalizeOutput(jr.stdout) === normalizeOutput(tc.expectedOutput);
         if (!passed) {
           allPassed = false;
         }
@@ -412,7 +441,7 @@ router.post("/", async (req, res) => {
     const jr = await runInJudge0({
       sourceCode,
       languageId: rawLanguageId,
-      stdin: stdinRaw,
+      stdin: normalizeInteractiveStdin(stdinRaw),
     });
 
     const normalizedStatus = normalizeJudge0Status(jr);

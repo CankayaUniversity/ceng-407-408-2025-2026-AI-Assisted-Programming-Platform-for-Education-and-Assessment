@@ -27,3 +27,5 @@ docker-compose.override.yml
 
 # Judge0 config (contains passwords)
 infra/judge0/judge0.conf
+
+.claude/

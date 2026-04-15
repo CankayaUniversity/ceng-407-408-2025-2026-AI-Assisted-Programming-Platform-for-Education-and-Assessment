@@ -17,8 +17,9 @@ npm run smoke
 Main URLs:
 
 - Frontend: `http://localhost:5173`
-- Backend API: `http://localhost:5000`
-- Backend readiness: `http://localhost:5000/api/health/ready`
+- Backend API (direct): `http://localhost:5000`
+- In Docker, the browser talks to the **same host/port** as the UI: nginx proxies `/api/*` to the backend, so you only need to expose **5173** publicly (no separate `VITE_API_BASE_URL` for the built image).
+- Backend readiness: `http://localhost:5000/api/health/ready` (or `http://localhost:5173/api/health/ready` through nginx)
 
 Stop:
 

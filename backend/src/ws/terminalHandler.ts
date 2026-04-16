@@ -194,7 +194,22 @@ export async function handleTerminalConnection(ws: WebSocket): Promise<void> {
       });
 
       child.stderr?.on("data", (d: Buffer) => {
-        send(ws, { type: "output", data: `\x1b[31m${d.toString()}\x1b[0m` });
+        const text = d.toString();
+        send(ws, { type: "output", data: `\x1b[31m${text}\x1b[0m` });
+
+        // Browser-API hint — students often write DOM code expecting a browser.
+        if (
+          (language === "javascript" || language === "js") &&
+          /\b(document|window|alert|localStorage|sessionStorage)\s+is not defined/.test(text)
+        ) {
+          send(ws, {
+            type: "output",
+            data:
+              "\x1b[33m[Hint] This platform runs JavaScript with Node.js, not in a browser.\r\n" +
+              "       DOM APIs (document, window, alert, localStorage, etc.) are not available.\r\n" +
+              "       Use console.log() for output and process.stdin / readline for input.\x1b[0m\r\n",
+          });
+        }
       });
 
       child.on("close", (code) => {

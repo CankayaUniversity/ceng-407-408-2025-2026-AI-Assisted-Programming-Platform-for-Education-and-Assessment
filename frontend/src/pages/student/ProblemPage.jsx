@@ -68,6 +68,13 @@ export default function ProblemPage() {
   // ── Phase 6: xterm.js terminal writer ref ───────────────────────────────
   const termWriterRef = useRef(null); // { write(text), clear() }
 
+  // When navigating to a new problem we momentarily call setFiles([empty]) +
+  // setSelectedId(newId) to avoid poisoning the new problem's cache slot with
+  // the previous problem's content.  Without this guard the cache-save effect
+  // would fire during that reset and overwrite the student's real saved code
+  // for the problem they are returning to with an empty placeholder.
+  const skipCacheSave = useRef(false);
+
   const selectedProblem = useMemo(
     () => problems.find((p) => p.id === selectedId) ?? null,
     [problems, selectedId],
@@ -107,10 +114,11 @@ export default function ProblemPage() {
   // ── Load problem on mount / URL change ───────────────────────────────────
   useEffect(() => {
     if (!token || !problemId) return;
+    let cancelled = false;
 
-    // Reset files to empty BEFORE updating selectedId.
-    // This ensures the cache-save effect (which watches files + selectedId) writes
-    // an empty entry — not the previous problem's content — into the new problem's slot.
+    // Block the cache-save effect so the temporary empty-files reset below
+    // does NOT overwrite the student's real saved code for this problem.
+    skipCacheSave.current = true;
     setFiles([{ id: 1, name: "main.py", content: "" }]);
     setSelectedId(problemId);
 
@@ -119,6 +127,8 @@ export default function ProblemPage() {
         const detail = await api(`/api/problems/${problemId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
+        if (cancelled) return;
+
         const problem = detail?.data;
         if (!problem) return;
 
@@ -127,15 +137,21 @@ export default function ProblemPage() {
         // Restore from cache only if the student has actually written something
         const cached = _codeCache.get(problemId);
         const cacheHasContent = cached?.files?.some((f) => f.content.trim() !== "");
+
+        // Re-enable cache saving BEFORE the setState calls so the upcoming
+        // render immediately starts persisting the correct content.
+        skipCacheSave.current = false;
+
         if (cached && cacheHasContent) {
           setSelectedLanguage(cached.language);
           setFiles(cached.files);
           setActiveFileId(cached.activeFileId);
         } else {
-          // Use teacher's starter code if provided, otherwise fall back to language default
+          // Use teacher's starter code if provided, otherwise fall back to
+          // the language default, or the generic placeholder as last resort.
           setSelectedLanguage(lang);
-          const ext  = extForLanguage(lang);
-          setFiles([{ id: 1, name: `main.${ext}`, content: problem.starterCode || STARTER_CODE[lang] || "" }]);
+          const ext = extForLanguage(lang);
+          setFiles([{ id: 1, name: `main.${ext}`, content: problem.starterCode || STARTER_CODE[lang] || "# Write your solution here\n" }]);
           setActiveFileId(1);
         }
 
@@ -146,12 +162,16 @@ export default function ProblemPage() {
         const subRes = await api(`/api/student/history?problemId=${problemId}`, {
           headers: { Authorization: `Bearer ${token}` },
         }).catch(() => ({ data: [] }));
-        setSubmissions(subRes?.data ?? []);
-        setSubmissionsLoading(false);
+        if (!cancelled) {
+          setSubmissions(subRes?.data ?? []);
+          setSubmissionsLoading(false);
+        }
 
         const aiRes = await api(`/api/student/history/ai?problemId=${problemId}`, {
           headers: { Authorization: `Bearer ${token}` },
         }).catch(() => ({ data: [] }));
+        if (cancelled) return;
+
         const logs    = aiRes?.data ?? [];
         const greeting = { role: "assistant", content: "Hi! Ask for hints about your code." };
         if (logs.length > 0) {
@@ -165,9 +185,16 @@ export default function ProblemPage() {
           setChat([greeting]);
         }
       } catch (err) {
-        termWriterRef.current?.write(`\x1b[31m[error] ${err.message}\x1b[0m\r\n`);
+        if (!cancelled) {
+          skipCacheSave.current = false; // re-enable even on error
+          termWriterRef.current?.write(`\x1b[31m[error] ${err.message}\x1b[0m\r\n`);
+        }
       }
     })();
+
+    // If the user navigates away before this load finishes, cancel the
+    // in-flight requests so stale state is never written into the editor.
+    return () => { cancelled = true; };
   }, [token, problemId]);
 
   // ── Language change: update extension + inject starter if file is empty ──
@@ -191,7 +218,7 @@ export default function ProblemPage() {
 
   // ── Persist current editor state to cache whenever it changes ───────────
   useEffect(() => {
-    if (!selectedId) return;
+    if (!selectedId || skipCacheSave.current) return;
     _codeCache.set(selectedId, { files, activeFileId, language: selectedLanguage });
   }, [files, activeFileId, selectedLanguage, selectedId]);
 

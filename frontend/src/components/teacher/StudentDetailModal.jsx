@@ -188,7 +188,7 @@ export default function StudentDetailModal({ open, onClose, student, metrics, lo
                     </TableHead>
                     <TableBody>
                       {Object.entries(metrics.errorProfile)
-                        .sort((a, b) => (b[1] as number) - (a[1] as number))
+                        .sort((a, b) => Number(b[1]) - Number(a[1]))
                         .map(([status, count]) => (
                           <TableRow key={status} hover>
                             <TableCell>{labelStatus(status)}</TableCell>

@@ -55,9 +55,7 @@ export default function ProblemPage() {
   const [selectedLanguage, setSelectedLanguage] = useState("python");
   const [running,          setRunning]          = useState(false);
   const [chatInput,        setChatInput]        = useState("");
-  const [chat,             setChat]             = useState([
-    { role: "assistant", content: "Hi! Ask for hints about your code." },
-  ]);
+  const [chat,             setChat]             = useState([]);
   const [chatLoading,      setChatLoading]      = useState(false);
   const [submissions,      setSubmissions]      = useState([]);
   const [submissionsLoading, setSubmissionsLoading] = useState(false);
@@ -106,9 +104,6 @@ export default function ProblemPage() {
   useEffect(() => {
     if (!token || !problemId) return;
 
-    // Reset files to empty BEFORE updating selectedId.
-    // This ensures the cache-save effect (which watches files + selectedId) writes
-    // an empty entry — not the previous problem's content — into the new problem's slot.
     setFiles([{ id: 1, name: "main.py", content: "" }]);
     setSelectedId(problemId);
 
@@ -122,7 +117,6 @@ export default function ProblemPage() {
 
         const lang = (problem.language || "python").toLowerCase();
 
-        // Restore from cache only if the student has actually written something
         const cached = codeCache.current[problemId];
         const cacheHasContent = cached?.files?.some((f) => f.content.trim() !== "");
         if (cached && cacheHasContent) {
@@ -130,7 +124,6 @@ export default function ProblemPage() {
           setFiles(cached.files);
           setActiveFileId(cached.activeFileId);
         } else {
-          // Use teacher's starter code if provided, otherwise fall back to language default
           setSelectedLanguage(lang);
           const ext  = extForLanguage(lang);
           setFiles([{ id: 1, name: `main.${ext}`, content: problem.starterCode || STARTER_CODE[lang] || "" }]);
@@ -150,17 +143,17 @@ export default function ProblemPage() {
         const aiRes = await api(`/api/student/history/ai?problemId=${problemId}`, {
           headers: { Authorization: `Bearer ${token}` },
         }).catch(() => ({ data: [] }));
-        const logs    = aiRes?.data ?? [];
-        const greeting = { role: "assistant", content: "Hi! Ask for hints about your code." };
+        const logs = aiRes?.data ?? [];
+
         if (logs.length > 0) {
-          const restored = [greeting];
+          const restored = [];
           for (const log of logs.slice().reverse()) {
-            if (log.studentQuestion) restored.push({ role: "user",      content: log.studentQuestion });
-            if (log.responseText)    restored.push({ role: "assistant", content: log.responseText });
+            if (log.studentQuestion) restored.push({ role: "user", content: log.studentQuestion });
+            if (log.responseText) restored.push({ role: "assistant", content: log.responseText });
           }
           setChat(restored);
         } else {
-          setChat([greeting]);
+          setChat([]);
         }
       } catch (err) {
         termWriterRef.current?.write(`\x1b[31m[error] ${err.message}\x1b[0m\r\n`);
@@ -174,12 +167,9 @@ export default function ProblemPage() {
     const newExt = extForLanguage(newLang);
     setFiles((prev) =>
       prev.map((f) => {
-        // Update extension of files that still have a default extension
         const dotIdx = f.name.lastIndexOf(".");
         const baseName = dotIdx >= 0 ? f.name.slice(0, dotIdx) : f.name;
         const newName = `${baseName}.${newExt}`;
-        // Inject starter code only if the file is empty
-        // Replace content if empty OR if it still contains a known starter snippet
         const isStarter = Object.values(STARTER_CODE).some((s) => s.trim() === f.content.trim());
         const newContent = f.content.trim() === "" || isStarter ? (STARTER_CODE[newLang] ?? "") : f.content;
         return { ...f, name: newName, content: newContent };
@@ -221,8 +211,8 @@ export default function ProblemPage() {
       for (const r of result.results ?? []) {
         const icon = r.passed ? "\x1b[32m✓\x1b[0m" : "\x1b[31m✗\x1b[0m";
         termWrite(`\r\n${icon} Test ${r.index} — ${r.status}\r\n`);
-        if (r.stdout)        termWrite(`stdout:\r\n${r.stdout.replace(/\n/g, "\r\n")}\r\n`);
-        if (r.stderr)        termWrite(`\x1b[31mstderr:\r\n${r.stderr.replace(/\n/g, "\r\n")}\x1b[0m\r\n`);
+        if (r.stdout) termWrite(`stdout:\r\n${r.stdout.replace(/\n/g, "\r\n")}\r\n`);
+        if (r.stderr) termWrite(`\x1b[31mstderr:\r\n${r.stderr.replace(/\n/g, "\r\n")}\x1b[0m\r\n`);
         if (r.compileOutput) termWrite(`\x1b[33mcompile:\r\n${r.compileOutput.replace(/\n/g, "\r\n")}\x1b[0m\r\n`);
       }
       const subRes = await api(`/api/student/history?problemId=${selectedProblem.id}`, {
@@ -250,7 +240,7 @@ export default function ProblemPage() {
 
     setChat((prev) => [
       ...prev,
-      { role: "user",      content: message },
+      { role: "user", content: message },
       { role: "assistant", content: "", streaming: true },
     ]);
     setChatInput("");
@@ -258,23 +248,23 @@ export default function ProblemPage() {
 
     try {
       const res = await fetch(`${API_BASE}/api/ai/chat/stream`, {
-        method:  "POST",
+        method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          problemId:       selectedProblem.id,
-          assignmentText:  selectedProblem.description,
-          studentCode:     allCode,
+          problemId: selectedProblem.id,
+          assignmentText: selectedProblem.description,
+          studentCode: allCode,
           studentQuestion: message,
-          runStatus:       "idle",
-          language:        selectedLanguage,
+          runStatus: "idle",
+          language: selectedLanguage,
         }),
       });
 
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
 
-      const reader  = res.body.getReader();
+      const reader = res.body.getReader();
       const decoder = new TextDecoder();
-      let buffer    = "";
+      let buffer = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -296,14 +286,13 @@ export default function ProblemPage() {
                 return next;
               });
             }
-          } catch { /* ignore malformed SSE lines */ }
+          } catch {}
         }
       }
     } catch (err) {
       setChat((prev) => {
         const next = [...prev];
         const last = next[next.length - 1];
-        // Replace the empty streaming bubble with the error
         if (last?.role === "assistant" && last.streaming) {
           next[next.length - 1] = { role: "assistant", content: `[error] ${err.message}` };
         } else {
@@ -312,7 +301,6 @@ export default function ProblemPage() {
         return next;
       });
     } finally {
-      // Remove streaming flag from last message
       setChat((prev) => {
         const next = [...prev];
         const last = next[next.length - 1];
@@ -340,7 +328,6 @@ export default function ProblemPage() {
       runRaw={runRaw}
       running={running}
       runTests={runTests}
-      // Phase 7 — multi-file
       files={files}
       activeFileId={activeFileId}
       onFileSelect={setActiveFileId}
@@ -349,7 +336,6 @@ export default function ProblemPage() {
       onFileRename={renameFile}
       code={code}
       setCode={setCode}
-      // Phase 6 — terminal ref
       termWriterRef={termWriterRef}
       chat={chat}
       chatInput={chatInput}

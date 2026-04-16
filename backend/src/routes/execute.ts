@@ -16,6 +16,15 @@ const ACCEPTED_STATUS_ID = 3;
 function normalizeOutput(s: string): string {
   return (s ?? "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
 }
+
+/**
+ * Normalise stdin before feeding to Judge0 / child process.
+ * Only fixes CRLF → LF; does NOT trim surrounding whitespace because
+ * a test-case input could intentionally start/end with blank lines.
+ */
+function normalizeStdin(s: string): string {
+  return (s ?? "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+}
 const SUBMISSION_STDOUT_MAX = 50_000;
 const SUPPORTED_LANGUAGES = new Set(["c", "python", "javascript", "js", "java", "cpp", "c++", "csharp", "c#"]);
 
@@ -312,7 +321,10 @@ router.post("/", async (req, res) => {
         const jr = await runInJudge0({
           sourceCode,
           languageId: langId,
-          stdin: tc.input,
+          // Normalize CRLF in test-case input (browser textareas on Windows store \r\n).
+          // Without this, input() in Python receives "Alice\r" instead of "Alice".
+          // int() silently strips \r, but string comparisons and strip() calls would fail.
+          stdin: normalizeStdin(tc.input),
           // Don't pass expectedOutput to Judge0 — it does exact byte comparison which fails
           // on trailing-newline mismatches. We compare manually after trimming both sides.
         });

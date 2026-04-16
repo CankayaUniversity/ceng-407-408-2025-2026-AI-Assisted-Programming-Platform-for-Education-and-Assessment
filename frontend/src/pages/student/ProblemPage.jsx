@@ -38,14 +38,16 @@ const STARTER_CODE = {
 
 let _nextFileId = 2; // file id counter (1 is reserved for the initial file)
 
+// ── Code cache: module-level so it survives component unmount/remount ────────
+// When a student navigates away (e.g. /assignments) and back, the component
+// unmounts and remounts. A useRef() would be destroyed; a module-level Map is not.
+const _codeCache = new Map(); // Map<problemId, { files, activeFileId, language }>
+
 export default function ProblemPage() {
   const { token, currentUser, problems, examMode, handleLogout } = useAuth();
   const { id } = useParams();
   const problemId = Number(id);
   const navigate  = useNavigate();
-
-  // ── Code cache: persists per-problem files across navigation ─────────────
-  const codeCache = useRef({}); // { [problemId]: { files, activeFileId, language } }
 
   // ── Phase 7: Multi-file state ────────────────────────────────────────────
   const [files,          setFiles]          = useState([{ id: 1, name: "main.py", content: "" }]);
@@ -55,7 +57,9 @@ export default function ProblemPage() {
   const [selectedLanguage, setSelectedLanguage] = useState("python");
   const [running,          setRunning]          = useState(false);
   const [chatInput,        setChatInput]        = useState("");
-  const [chat,             setChat]             = useState([]);
+  const [chat,             setChat]             = useState([
+    { role: "assistant", content: "Hi! Ask for hints about your code." },
+  ]);
   const [chatLoading,      setChatLoading]      = useState(false);
   const [submissions,      setSubmissions]      = useState([]);
   const [submissionsLoading, setSubmissionsLoading] = useState(false);
@@ -63,6 +67,13 @@ export default function ProblemPage() {
 
   // ── Phase 6: xterm.js terminal writer ref ───────────────────────────────
   const termWriterRef = useRef(null); // { write(text), clear() }
+
+  // When navigating to a new problem we momentarily call setFiles([empty]) +
+  // setSelectedId(newId) to avoid poisoning the new problem's cache slot with
+  // the previous problem's content.  Without this guard the cache-save effect
+  // would fire during that reset and overwrite the student's real saved code
+  // for the problem they are returning to with an empty placeholder.
+  const skipCacheSave = useRef(false);
 
   const selectedProblem = useMemo(
     () => problems.find((p) => p.id === selectedId) ?? null,
@@ -103,7 +114,11 @@ export default function ProblemPage() {
   // ── Load problem on mount / URL change ───────────────────────────────────
   useEffect(() => {
     if (!token || !problemId) return;
+    let cancelled = false;
 
+    // Block the cache-save effect so the temporary empty-files reset below
+    // does NOT overwrite the student's real saved code for this problem.
+    skipCacheSave.current = true;
     setFiles([{ id: 1, name: "main.py", content: "" }]);
     setSelectedId(problemId);
 
@@ -112,21 +127,31 @@ export default function ProblemPage() {
         const detail = await api(`/api/problems/${problemId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
+        if (cancelled) return;
+
         const problem = detail?.data;
         if (!problem) return;
 
         const lang = (problem.language || "python").toLowerCase();
 
-        const cached = codeCache.current[problemId];
+        // Restore from cache only if the student has actually written something
+        const cached = _codeCache.get(problemId);
         const cacheHasContent = cached?.files?.some((f) => f.content.trim() !== "");
+
+        // Re-enable cache saving BEFORE the setState calls so the upcoming
+        // render immediately starts persisting the correct content.
+        skipCacheSave.current = false;
+
         if (cached && cacheHasContent) {
           setSelectedLanguage(cached.language);
           setFiles(cached.files);
           setActiveFileId(cached.activeFileId);
         } else {
+          // Use teacher's starter code if provided, otherwise fall back to
+          // the language default, or the generic placeholder as last resort.
           setSelectedLanguage(lang);
-          const ext  = extForLanguage(lang);
-          setFiles([{ id: 1, name: `main.${ext}`, content: problem.starterCode || STARTER_CODE[lang] || "" }]);
+          const ext = extForLanguage(lang);
+          setFiles([{ id: 1, name: `main.${ext}`, content: problem.starterCode || STARTER_CODE[lang] || "# Write your solution here\n" }]);
           setActiveFileId(1);
         }
 
@@ -137,28 +162,39 @@ export default function ProblemPage() {
         const subRes = await api(`/api/student/history?problemId=${problemId}`, {
           headers: { Authorization: `Bearer ${token}` },
         }).catch(() => ({ data: [] }));
-        setSubmissions(subRes?.data ?? []);
-        setSubmissionsLoading(false);
+        if (!cancelled) {
+          setSubmissions(subRes?.data ?? []);
+          setSubmissionsLoading(false);
+        }
 
         const aiRes = await api(`/api/student/history/ai?problemId=${problemId}`, {
           headers: { Authorization: `Bearer ${token}` },
         }).catch(() => ({ data: [] }));
-        const logs = aiRes?.data ?? [];
+        if (cancelled) return;
 
+        const logs    = aiRes?.data ?? [];
+        const greeting = { role: "assistant", content: "Hi! Ask for hints about your code." };
         if (logs.length > 0) {
-          const restored = [];
+          const restored = [greeting];
           for (const log of logs.slice().reverse()) {
-            if (log.studentQuestion) restored.push({ role: "user", content: log.studentQuestion });
-            if (log.responseText) restored.push({ role: "assistant", content: log.responseText });
+            if (log.studentQuestion) restored.push({ role: "user",      content: log.studentQuestion });
+            if (log.responseText)    restored.push({ role: "assistant", content: log.responseText });
           }
           setChat(restored);
         } else {
-          setChat([]);
+          setChat([greeting]);
         }
       } catch (err) {
-        termWriterRef.current?.write(`\x1b[31m[error] ${err.message}\x1b[0m\r\n`);
+        if (!cancelled) {
+          skipCacheSave.current = false; // re-enable even on error
+          termWriterRef.current?.write(`\x1b[31m[error] ${err.message}\x1b[0m\r\n`);
+        }
       }
     })();
+
+    // If the user navigates away before this load finishes, cancel the
+    // in-flight requests so stale state is never written into the editor.
+    return () => { cancelled = true; };
   }, [token, problemId]);
 
   // ── Language change: update extension + inject starter if file is empty ──
@@ -167,9 +203,12 @@ export default function ProblemPage() {
     const newExt = extForLanguage(newLang);
     setFiles((prev) =>
       prev.map((f) => {
+        // Update extension of files that still have a default extension
         const dotIdx = f.name.lastIndexOf(".");
         const baseName = dotIdx >= 0 ? f.name.slice(0, dotIdx) : f.name;
         const newName = `${baseName}.${newExt}`;
+        // Inject starter code only if the file is empty
+        // Replace content if empty OR if it still contains a known starter snippet
         const isStarter = Object.values(STARTER_CODE).some((s) => s.trim() === f.content.trim());
         const newContent = f.content.trim() === "" || isStarter ? (STARTER_CODE[newLang] ?? "") : f.content;
         return { ...f, name: newName, content: newContent };
@@ -179,8 +218,8 @@ export default function ProblemPage() {
 
   // ── Persist current editor state to cache whenever it changes ───────────
   useEffect(() => {
-    if (!selectedId) return;
-    codeCache.current[selectedId] = { files, activeFileId, language: selectedLanguage };
+    if (!selectedId || skipCacheSave.current) return;
+    _codeCache.set(selectedId, { files, activeFileId, language: selectedLanguage });
   }, [files, activeFileId, selectedLanguage, selectedId]);
 
   // ── Navigation ───────────────────────────────────────────────────────────
@@ -211,8 +250,8 @@ export default function ProblemPage() {
       for (const r of result.results ?? []) {
         const icon = r.passed ? "\x1b[32m✓\x1b[0m" : "\x1b[31m✗\x1b[0m";
         termWrite(`\r\n${icon} Test ${r.index} — ${r.status}\r\n`);
-        if (r.stdout) termWrite(`stdout:\r\n${r.stdout.replace(/\n/g, "\r\n")}\r\n`);
-        if (r.stderr) termWrite(`\x1b[31mstderr:\r\n${r.stderr.replace(/\n/g, "\r\n")}\x1b[0m\r\n`);
+        if (r.stdout)        termWrite(`stdout:\r\n${r.stdout.replace(/\n/g, "\r\n")}\r\n`);
+        if (r.stderr)        termWrite(`\x1b[31mstderr:\r\n${r.stderr.replace(/\n/g, "\r\n")}\x1b[0m\r\n`);
         if (r.compileOutput) termWrite(`\x1b[33mcompile:\r\n${r.compileOutput.replace(/\n/g, "\r\n")}\x1b[0m\r\n`);
       }
       const subRes = await api(`/api/student/history?problemId=${selectedProblem.id}`, {
@@ -240,7 +279,7 @@ export default function ProblemPage() {
 
     setChat((prev) => [
       ...prev,
-      { role: "user", content: message },
+      { role: "user",      content: message },
       { role: "assistant", content: "", streaming: true },
     ]);
     setChatInput("");
@@ -248,23 +287,23 @@ export default function ProblemPage() {
 
     try {
       const res = await fetch(`${API_BASE}/api/ai/chat/stream`, {
-        method: "POST",
+        method:  "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          problemId: selectedProblem.id,
-          assignmentText: selectedProblem.description,
-          studentCode: allCode,
+          problemId:       selectedProblem.id,
+          assignmentText:  selectedProblem.description,
+          studentCode:     allCode,
           studentQuestion: message,
-          runStatus: "idle",
-          language: selectedLanguage,
+          runStatus:       "idle",
+          language:        selectedLanguage,
         }),
       });
 
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
 
-      const reader = res.body.getReader();
+      const reader  = res.body.getReader();
       const decoder = new TextDecoder();
-      let buffer = "";
+      let buffer    = "";
 
       while (true) {
         const { done, value } = await reader.read();
@@ -286,13 +325,14 @@ export default function ProblemPage() {
                 return next;
               });
             }
-          } catch {}
+          } catch { /* ignore malformed SSE lines */ }
         }
       }
     } catch (err) {
       setChat((prev) => {
         const next = [...prev];
         const last = next[next.length - 1];
+        // Replace the empty streaming bubble with the error
         if (last?.role === "assistant" && last.streaming) {
           next[next.length - 1] = { role: "assistant", content: `[error] ${err.message}` };
         } else {
@@ -301,6 +341,7 @@ export default function ProblemPage() {
         return next;
       });
     } finally {
+      // Remove streaming flag from last message
       setChat((prev) => {
         const next = [...prev];
         const last = next[next.length - 1];
@@ -328,6 +369,7 @@ export default function ProblemPage() {
       runRaw={runRaw}
       running={running}
       runTests={runTests}
+      // Phase 7 — multi-file
       files={files}
       activeFileId={activeFileId}
       onFileSelect={setActiveFileId}
@@ -336,6 +378,7 @@ export default function ProblemPage() {
       onFileRename={renameFile}
       code={code}
       setCode={setCode}
+      // Phase 6 — terminal ref
       termWriterRef={termWriterRef}
       chat={chat}
       chatInput={chatInput}

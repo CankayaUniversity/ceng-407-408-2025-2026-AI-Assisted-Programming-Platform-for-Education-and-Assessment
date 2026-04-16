@@ -24,6 +24,7 @@ router.get("/history", async (req, res) => {
       userId: req.auth!.userId,
       ...(problemId !== undefined ? { problemId } : {}),
     },
+    include: { problem: { select: { id: true, title: true } } },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
   });
 

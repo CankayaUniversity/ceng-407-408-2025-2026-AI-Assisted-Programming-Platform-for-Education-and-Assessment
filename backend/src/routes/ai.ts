@@ -9,7 +9,7 @@ import { aiChatSchema } from "../lib/schemas";
 
 const router = Router();
 
-const PROMPT_VERSION = "mentor_v1";
+const PROMPT_VERSION = "mentor_v2";
 const VALIDATOR_MODEL = process.env.OLLAMA_VALIDATOR_MODEL ?? "validator-heuristic";
 
 router.use(requireAuth);
@@ -78,15 +78,18 @@ function parseProblemId(body: Record<string, unknown>): number | undefined {
 
 function parseSubmissionId(body: Record<string, unknown>): number | undefined {
   const raw = body.submissionId;
+
   if (typeof raw === "number" && Number.isInteger(raw)) {
     return raw;
   }
+
   if (typeof raw === "string" && raw.trim() !== "") {
     const n = Number.parseInt(raw, 10);
     if (!Number.isNaN(n)) {
       return n;
     }
   }
+
   return undefined;
 }
 
@@ -94,17 +97,15 @@ function buildMentorFallback(input: MentorRequestInput): string {
   const question = (input.studentQuestion ?? "").trim();
   const runStatus = (input.runStatus ?? "").trim().toLowerCase();
 
-  if (runStatus === "idle") {
-    return question
-      ? `Let's focus on your question: "${question}". Try running your code with a short test input first and share the output or error — then we can work through it step by step.`
-      : "Try running your code with a short test input. Share the output or any error message and we can figure out the next step together.";
-  }
-
   if (question) {
-    return `Let's focus on: "${question}". Compare your input, expected output, and actual output — isolate the first point where they differ.`;
+    return `Let's focus on your question: "${question}". I won't give the full final solution, but I can help with the concept, the syntax, or the next step.`;
   }
 
-  return "Let's take it one step at a time: compare your input, expected output, and actual output — isolate the first difference and fix that part first.";
+  if (runStatus === "idle") {
+    return "Show me the exact part you are stuck on. I can help with the concept or the next step without giving the full solution.";
+  }
+
+  return "Show me the exact part you are stuck on, and I can help with the concept or the next step.";
 }
 
 function toPolicyAction(action: string): PolicyAction {
@@ -121,12 +122,13 @@ function toPolicyAction(action: string): PolicyAction {
 }
 
 // ── Exam-mode guard (group-aware) ─────────────────────────────────────────────
+// Supports both legacy boolean values and the new { enabled, groupIds } format.
 async function isUserInExamMode(userId: number): Promise<boolean> {
   const flag = await prisma.systemFlag.findUnique({ where: { key: "exam_mode_enabled" } });
   if (!flag?.value) return false;
 
   const raw = flag.value as Record<string, unknown>;
-  const enabled  = Boolean(raw.enabled ?? raw); // supports legacy boolean value
+  const enabled = Boolean(raw.enabled ?? raw); // supports legacy boolean value
   if (!enabled) return false;
 
   const groupIds = Array.isArray(raw.groupIds) ? (raw.groupIds as number[]) : [];
@@ -136,6 +138,14 @@ async function isUserInExamMode(userId: number): Promise<boolean> {
     where: { userId, groupId: { in: groupIds } },
   });
   return membership !== null;
+}
+
+async function runValidator(input: MentorRequestInput, mentorReply: string) {
+  return validateMentorReply({
+    studentQuestion: input.studentQuestion ?? "",
+    mentorReply,
+    runStatus: input.runStatus ?? "",
+  });
 }
 
 async function handleAiRequest(req: Request, res: Response) {
@@ -158,16 +168,17 @@ async function handleAiRequest(req: Request, res: Response) {
   const problemId = parseProblemId(body);
   const submissionId = parseSubmissionId(body);
   const mode = typeof body.mode === "string" ? body.mode.trim().toLowerCase() : "practice";
-  const mentorStartedAt = Date.now();
 
+  const mentorStartedAt = Date.now();
   const result = await getMentorReply(input);
   const latencyMsMentor = Date.now() - mentorStartedAt;
+
   const fallbackUsed = !result.success;
   const mentorRaw = result.success ? result.mentorReply : buildMentorFallback(input);
   const mentorModel = result.success ? process.env.OLLAMA_MODEL ?? "ai-mentor" : "fallback-local";
 
   const validatorStartedAt = Date.now();
-  const validator = await validateMentorReply(mentorRaw);
+  const validator = await runValidator(input, mentorRaw);
   const latencyMsValidator = Date.now() - validatorStartedAt;
 
   const policy = await applyPolicyWithRetry({
@@ -199,10 +210,9 @@ async function handleAiRequest(req: Request, res: Response) {
           })
         : null;
 
-  let aiLogId: number | null = null;
-
   if (problem) {
     const pid = problem.id;
+
     const aiLog = await prisma.aiLog.create({
       data: {
         userId: req.auth!.userId,
@@ -223,8 +233,6 @@ async function handleAiRequest(req: Request, res: Response) {
         },
       },
     });
-
-    aiLogId = aiLog.id;
 
     if (mode === "hint" || mode === "tip") {
       const lastHint = await prisma.hintEvent.findFirst({
@@ -289,7 +297,6 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
     return;
   }
 
-  // SSE headers — disable nginx/proxy buffering so tokens arrive immediately
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
@@ -312,6 +319,7 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
     streamError = true;
     const fallback = buildMentorFallback(input);
     fullText = fallback;
+
     if (!res.writableEnded) {
       res.write(`data: ${JSON.stringify({ token: fallback })}\n\n`);
     }
@@ -322,14 +330,14 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
     res.end();
   }
 
-  // Fire-and-forget: validate + log to DB (does not block the stream)
   if (!streamError && fullText.trim()) {
     const problemId = parseProblemId(body);
     const mode = typeof body.mode === "string" ? body.mode.trim().toLowerCase() : "practice";
 
     Promise.resolve().then(async () => {
       try {
-        const validator = await validateMentorReply(fullText);
+        const validator = await runValidator(input, fullText);
+
         const policy = await applyPolicyWithRetry({
           mentorReply: fullText,
           validator,
@@ -344,7 +352,10 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
 
         if (problem) {
           const linkedAttempt = await prisma.submissionAttempt.findFirst({
-            where: { userId: req.auth!.userId, problemId: problem.id },
+            where: {
+              userId: req.auth!.userId,
+              problemId: problem.id,
+            },
             orderBy: { createdAt: "desc" },
           });
 
@@ -358,7 +369,12 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
               studentQuestion: input.studentQuestion ?? null,
               responseText: policy.finalText,
               requestPayload: body as object,
-              responsePayload: { mentorRaw: fullText, validator, policyAction: policy.action, streamed: true },
+              responsePayload: {
+                mentorRaw: fullText,
+                validator,
+                policyAction: policy.action,
+                streamed: true,
+              },
             },
           });
 
@@ -375,16 +391,20 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
               finalText: policy.finalText,
               rewriteCount: policy.rewriteCount,
               latencyMsMentor: 0,
-              latencyMsValidator: null,
+              latencyMsValidator: validator.source === "ai" ? 0 : null,
               errorCode: null,
             },
           });
 
           if (mode === "hint" || mode === "tip") {
             const lastHint = await prisma.hintEvent.findFirst({
-              where: { userId: req.auth!.userId, problemId: problem.id },
+              where: {
+                userId: req.auth!.userId,
+                problemId: problem.id,
+              },
               orderBy: [{ sequence: "desc" }, { createdAt: "desc" }],
             });
+
             await prisma.hintEvent.create({
               data: {
                 userId: req.auth!.userId,

@@ -17,6 +17,7 @@ router.get("/", async (_req, res) => {
       description: true,
       difficulty: true,
       language: true,
+      languages: true,
       tags: true,
       createdAt: true,
     },
@@ -51,6 +52,7 @@ router.get("/:id", async (req, res) => {
     starterCode: problem.starterCode,
     difficulty: problem.difficulty,
     language: problem.language,
+    languages: problem.languages,
     tags: problem.tags,
     createdAt: problem.createdAt,
   };
@@ -108,6 +110,9 @@ router.post("/", requireRole("teacher"), async (req, res) => {
   const difficulty = typeof body.difficulty === "string" ? body.difficulty : null;
   const language = typeof body.language === "string" ? body.language : "javascript";
   const tags = Array.isArray(body.tags) ? body.tags.filter((t): t is string => typeof t === "string") : [];
+  const languages = Array.isArray(body.languages)
+    ? (body.languages as unknown[]).filter((l): l is string => typeof l === "string")
+    : [];
   const category = typeof body.category === "string" ? body.category : null;
   const testCases = Array.isArray(body.testCases) ? (body.testCases as TestCaseInput[]) : [];
 
@@ -119,6 +124,7 @@ router.post("/", requireRole("teacher"), async (req, res) => {
       referenceSolution,
       difficulty,
       language,
+      languages,
       tags,
       category,
       createdBy: { connect: { id: req.auth!.userId } },
@@ -161,6 +167,7 @@ router.put("/:id", requireRole("teacher"), async (req, res) => {
       ...(typeof body.difficulty === "string" ? { difficulty: body.difficulty } : {}),
       ...(typeof body.language === "string" ? { language: body.language } : {}),
       ...(Array.isArray(body.tags) ? { tags: body.tags.filter((t): t is string => typeof t === "string") } : {}),
+      ...(Array.isArray(body.languages) ? { languages: (body.languages as unknown[]).filter((l): l is string => typeof l === "string") } : {}),
       ...(typeof body.category === "string" ? { category: body.category } : {}),
     },
   });

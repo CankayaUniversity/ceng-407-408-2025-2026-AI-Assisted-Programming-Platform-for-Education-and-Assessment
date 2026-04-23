@@ -30,12 +30,20 @@ import VariationReviewModal from "./VariationReviewModal";
 import RubricModal from "./RubricModal";
 import { API_BASE } from "../../apiBase";
 
+const ALL_LANGUAGES = [
+  { value: "python",     label: "Python" },
+  { value: "javascript", label: "JavaScript" },
+  { value: "c",          label: "C" },
+  { value: "cpp",        label: "C++" },
+  { value: "csharp",     label: "C#" },
+];
+
 const EMPTY_FORM = {
   title: "",
   description: "",
   difficulty: "Easy",
-  language: "python",
-  category: "",
+  languages: [],   // empty = all languages allowed
+  tags: [],        // multi-topic chips
   starterCode: "",
   referenceSolution: "",
   testCases: [{ input: "", expectedOutput: "", isHidden: false }],
@@ -49,6 +57,8 @@ function normalizeDifficulty(value = "Easy") {
 }
 
 function ProblemForm({ form, setForm, onSave, onCancel, saving, error, submitLabel }) {
+  const [tagInput, setTagInput] = useState("");
+
   function updateTestCase(idx, field, value) {
     setForm((prev) => {
       const updated = [...prev.testCases];
@@ -71,6 +81,30 @@ function ProblemForm({ form, setForm, onSave, onCancel, saving, error, submitLab
     }));
   }
 
+  function toggleLanguage(lang) {
+    setForm((prev) => {
+      const has  = prev.languages.includes(lang);
+      const next = has ? prev.languages.filter((l) => l !== lang) : [...prev.languages, lang];
+      return { ...prev, languages: next };
+    });
+  }
+
+  function addTag(raw) {
+    const val = raw.trim();
+    if (!val) return;
+    setForm((prev) => ({
+      ...prev,
+      tags: prev.tags.includes(val) ? prev.tags : [...prev.tags, val],
+    }));
+    setTagInput("");
+  }
+
+  function removeTag(tag) {
+    setForm((prev) => ({ ...prev, tags: prev.tags.filter((t) => t !== tag) }));
+  }
+
+  const allLangsSelected = form.languages.length === 0;
+
   return (
     <Box sx={{ p: { xs: 2, md: 3 }, borderRadius: 3, border: 1, borderColor: "rgba(148,163,184,0.20)", mb: 3 }}>
       <Stack spacing={2}>
@@ -83,36 +117,82 @@ function ProblemForm({ form, setForm, onSave, onCancel, saving, error, submitLab
           fullWidth
         />
 
-        <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-          <TextField
-            select label="Difficulty" value={form.difficulty}
-            onChange={(e) => setForm((prev) => ({ ...prev, difficulty: e.target.value }))}
-            sx={{ minWidth: 160 }}
-          >
-            <MenuItem value="Easy">Easy</MenuItem>
-            <MenuItem value="Medium">Medium</MenuItem>
-            <MenuItem value="Hard">Hard</MenuItem>
-          </TextField>
+        {/* ── Difficulty ───────────────────────────────────────────────── */}
+        <TextField
+          select label="Difficulty" value={form.difficulty}
+          onChange={(e) => setForm((prev) => ({ ...prev, difficulty: e.target.value }))}
+          sx={{ maxWidth: 200 }}
+        >
+          <MenuItem value="Easy">Easy</MenuItem>
+          <MenuItem value="Medium">Medium</MenuItem>
+          <MenuItem value="Hard">Hard</MenuItem>
+        </TextField>
 
-          <TextField
-            select label="Language" value={form.language}
-            onChange={(e) => setForm((prev) => ({ ...prev, language: e.target.value }))}
-            sx={{ minWidth: 160 }}
-          >
-            <MenuItem value="javascript">JavaScript</MenuItem>
-            <MenuItem value="python">Python</MenuItem>
-            <MenuItem value="c">C</MenuItem>
-            <MenuItem value="cpp">C++</MenuItem>
-            <MenuItem value="csharp">C#</MenuItem>
-          </TextField>
+        {/* ── Languages (chip multi-select) ─────────────────────────────── */}
+        <Box>
+          <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
+            Languages
+          </Typography>
+          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+            <Chip
+              label="All Languages"
+              size="small"
+              variant={allLangsSelected ? "filled" : "outlined"}
+              color={allLangsSelected ? "primary" : "default"}
+              onClick={() => setForm((prev) => ({ ...prev, languages: [] }))}
+              sx={{ cursor: "pointer" }}
+            />
+            {ALL_LANGUAGES.map((lang) => {
+              const checked = form.languages.includes(lang.value);
+              return (
+                <Chip
+                  key={lang.value}
+                  label={lang.label}
+                  size="small"
+                  variant={checked ? "filled" : "outlined"}
+                  color={checked ? "primary" : "default"}
+                  onClick={() => toggleLanguage(lang.value)}
+                  sx={{ cursor: "pointer" }}
+                />
+              );
+            })}
+          </Stack>
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: "block" }}>
+            {allLangsSelected
+              ? "Students may solve in any language."
+              : `Restricted to: ${form.languages.join(", ")}`}
+          </Typography>
+        </Box>
 
+        {/* ── Topics / Tags (chip input) ────────────────────────────────── */}
+        <Box>
+          <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
+            Topics / Tags
+          </Typography>
+          {form.tags.length > 0 && (
+            <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
+              {form.tags.map((tag) => (
+                <Chip
+                  key={tag}
+                  label={tag}
+                  size="small"
+                  onDelete={() => removeTag(tag)}
+                />
+              ))}
+            </Stack>
+          )}
           <TextField
-            label="Category / Topic"
-            value={form.category}
-            onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}
+            size="small"
+            placeholder="Type a topic and press Enter…"
+            value={tagInput}
+            onChange={(e) => setTagInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); addTag(tagInput); }
+            }}
+            onBlur={() => addTag(tagInput)}
             fullWidth
           />
-        </Stack>
+        </Box>
 
         <TextField
           label="Description *"
@@ -197,9 +277,19 @@ export default function QuestionBankPanel({ items = [], token, onProblemsChanged
   const [deleting, setDeleting] = useState(false);
 
   // ── Filter / search / sort state ─────────────────────────────────────────
-  const [search,     setSearch]     = useState("");
-  const [filterDiff, setFilterDiff] = useState("all");
-  const [sortBy,     setSortBy]     = useState("title_asc");
+  const [search,      setSearch]      = useState("");
+  const [filterDiff,  setFilterDiff]  = useState("all");
+  const [filterTopic, setFilterTopic] = useState("all");
+  const [sortBy,      setSortBy]      = useState("title_asc");
+
+  // Derive unique topics from all items for the dropdown
+  const allTopics = useMemo(() => {
+    const set = new Set();
+    for (const it of items) {
+      if (Array.isArray(it.tags)) it.tags.forEach((t) => set.add(t));
+    }
+    return Array.from(set).sort();
+  }, [items]);
 
   const visibleItems = useMemo(() => {
     let result = [...items];
@@ -208,12 +298,17 @@ export default function QuestionBankPanel({ items = [], token, onProblemsChanged
       result = result.filter(
         (it) =>
           it.title?.toLowerCase().includes(q) ||
-          it.topic?.toLowerCase().includes(q),
+          it.tags?.some((t) => t.toLowerCase().includes(q)),
       );
     }
     if (filterDiff !== "all") {
       result = result.filter(
         (it) => (it.difficulty ?? "Easy").toLowerCase() === filterDiff,
+      );
+    }
+    if (filterTopic !== "all") {
+      result = result.filter(
+        (it) => Array.isArray(it.tags) && it.tags.includes(filterTopic),
       );
     }
     result.sort((a, b) => {
@@ -224,7 +319,7 @@ export default function QuestionBankPanel({ items = [], token, onProblemsChanged
       return 0;
     });
     return result;
-  }, [items, search, filterDiff, sortBy]);
+  }, [items, search, filterDiff, filterTopic, sortBy]);
 
   // ── Variation state ──────────────────────────────────────────────────────
   const [variationSource,  setVariationSource]  = useState(null);   // the source problem object
@@ -267,11 +362,14 @@ export default function QuestionBankPanel({ items = [], token, onProblemsChanged
           title: form.title,
           description: form.description,
           difficulty: form.difficulty,
-          language: form.language,
-          category: form.category || null,
+          // Send both: new multi-lang array + legacy single language (first, or "python" fallback)
+          languages: form.languages,
+          language: form.languages[0] ?? "python",
+          // Send both: new tags array + legacy category (first tag)
+          tags: form.tags,
+          category: form.tags[0] ?? null,
           starterCode: form.starterCode || null,
           referenceSolution: form.referenceSolution || null,
-          tags: form.category ? [form.category] : [],
           testCases: form.testCases.filter((tc) => tc.input || tc.expectedOutput),
         }),
       });
@@ -297,12 +395,26 @@ export default function QuestionBankPanel({ items = [], token, onProblemsChanged
       });
       const body = await res.json();
       const p = body.data ?? {};
+      // Prefer new multi-lang array, fall back to single language
+      const languages =
+        Array.isArray(p.languages) && p.languages.length > 0
+          ? p.languages
+          : p.language
+          ? [p.language]
+          : [];
+      // Prefer new tags array, fall back to category
+      const tags =
+        Array.isArray(p.tags) && p.tags.length > 0
+          ? p.tags
+          : p.category
+          ? [p.category]
+          : [];
       setForm({
         title: p.title ?? "",
         description: p.description ?? "",
         difficulty: p.difficulty ?? "Easy",
-        language: p.language ?? "javascript",
-        category: p.tags?.[0] ?? "",
+        languages,
+        tags,
         starterCode: p.starterCode ?? "",
         referenceSolution: p.referenceSolution ?? "",
         testCases: (p.testCases ?? []).length > 0
@@ -330,11 +442,12 @@ export default function QuestionBankPanel({ items = [], token, onProblemsChanged
           title: form.title,
           description: form.description,
           difficulty: form.difficulty,
-          language: form.language,
-          category: form.category || null,
+          languages: form.languages,
+          language: form.languages[0] ?? "python",
+          tags: form.tags,
+          category: form.tags[0] ?? null,
           starterCode: form.starterCode || null,
           referenceSolution: form.referenceSolution || null,
-          tags: form.category ? [form.category] : [],
           testCases: form.testCases.filter((tc) => tc.input || tc.expectedOutput),
         }),
       });
@@ -409,13 +522,15 @@ export default function QuestionBankPanel({ items = [], token, onProblemsChanged
           spacing={1.5}
           sx={{ mb: 2 }}
           alignItems="center"
+          flexWrap="wrap"
+          useFlexGap
         >
           <TextField
             size="small"
             placeholder="Search by title or topic…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            sx={{ flex: 1 }}
+            sx={{ flex: 1, minWidth: 180 }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -429,10 +544,20 @@ export default function QuestionBankPanel({ items = [], token, onProblemsChanged
             onChange={(e) => setFilterDiff(e.target.value)}
             sx={{ minWidth: 130 }}
           >
-            <MenuItem value="all">All</MenuItem>
+            <MenuItem value="all">All Difficulties</MenuItem>
             <MenuItem value="easy">Easy</MenuItem>
             <MenuItem value="medium">Medium</MenuItem>
             <MenuItem value="hard">Hard</MenuItem>
+          </TextField>
+          <TextField
+            select size="small" label="Topic" value={filterTopic}
+            onChange={(e) => setFilterTopic(e.target.value)}
+            sx={{ minWidth: 160 }}
+          >
+            <MenuItem value="all">All Topics</MenuItem>
+            {allTopics.map((t) => (
+              <MenuItem key={t} value={t}>{t}</MenuItem>
+            ))}
           </TextField>
           <TextField
             select size="small" label="Sort by" value={sortBy}
@@ -472,7 +597,18 @@ export default function QuestionBankPanel({ items = [], token, onProblemsChanged
                   <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
                     <Typography variant="h6" sx={{ fontWeight: 700 }}>{item.title}</Typography>
                     <Chip label={difficulty.label} size="small" sx={{ bgcolor: difficulty.tone, color: difficulty.color }} />
-                    {item.topic && <Chip label={item.topic} size="small" variant="outlined" />}
+                    {/* Languages: "All" chip or individual chips */}
+                    {Array.isArray(item.languages) && item.languages.length === 0 ? (
+                      <Chip label="All languages" size="small" variant="outlined" color="primary" />
+                    ) : (
+                      item.languages?.map((lang) => (
+                        <Chip key={lang} label={lang} size="small" variant="outlined" color="primary" />
+                      ))
+                    )}
+                    {/* Topic tags */}
+                    {item.tags?.map((tag) => (
+                      <Chip key={tag} label={tag} size="small" variant="outlined" />
+                    ))}
                   </Stack>
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
                     {item.usageCount} total attempts

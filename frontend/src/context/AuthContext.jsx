@@ -140,7 +140,7 @@ export function AuthProvider({ children }) {
 
   // ── auth actions ──────────────────────────────────────────────────────────
 
-  async function handleSignIn({ email, password }) {
+  async function handleSignIn({ email, password, expectedRole }) {
     setAuthLoading(true);
     setAuthError("");
     try {
@@ -151,6 +151,17 @@ export function AuthProvider({ children }) {
       const nextToken   = login.accessToken;
       const refreshTok  = login.refreshToken;
       const user        = login.user ?? null;
+
+      // Role-portal enforcement: reject if the account role doesn't match the chosen portal
+      if (expectedRole && user?.role !== expectedRole) {
+        const actualLabel   = user?.role === "teacher" ? "Teacher" : "Student";
+        const expectedLabel = expectedRole === "teacher" ? "Teacher" : "Student";
+        setAuthError(
+          `This account is a ${actualLabel} account. Please use the ${actualLabel} portal instead of the ${expectedLabel} portal.`,
+        );
+        return;
+      }
+
       localStorage.setItem("accessToken",  nextToken);
       if (refreshTok) localStorage.setItem("refreshToken", refreshTok);
       setToken(nextToken);

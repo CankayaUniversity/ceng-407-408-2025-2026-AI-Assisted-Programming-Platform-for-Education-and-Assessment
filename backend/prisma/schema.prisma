@@ -68,6 +68,7 @@ model Problem {
   referenceSolution   String?
   difficulty          String?
   language            String               @default("javascript")
+  languages           String[]             @default([])
   tags                String[]             @default([])
   category            String?
   metadata            Json?

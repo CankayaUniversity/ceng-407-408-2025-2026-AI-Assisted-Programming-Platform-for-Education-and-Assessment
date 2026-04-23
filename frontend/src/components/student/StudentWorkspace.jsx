@@ -36,7 +36,8 @@ function monacoLanguage(value) {
 function useChatScroll(chat) {
   const ref = useRef(null);
   useEffect(() => {
-    ref.current?.scrollIntoView({ behavior: "smooth" });
+    const el = ref.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [chat]);
   return ref;
 }
@@ -249,6 +250,7 @@ export default function StudentWorkspace({
           ) : (
             <>
               <Box
+                ref={chatBottomRef}
                 sx={{
                   minHeight: 420,
                   maxHeight: 520,
@@ -301,7 +303,6 @@ export default function StudentWorkspace({
                       </Typography>
                     </Box>
                   ))}
-                  <div ref={chatBottomRef} />
                 </Stack>
               </Box>
 

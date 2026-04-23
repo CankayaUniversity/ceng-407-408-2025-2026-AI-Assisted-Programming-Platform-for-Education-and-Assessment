@@ -21,11 +21,29 @@ function parseExamFlag(raw: unknown): { enabled: boolean; groupIds: number[] } {
   return { enabled: false, groupIds: [] };
 }
 
-router.get("/exam-mode", async (_req, res) => {
+router.get("/exam-mode", async (req, res) => {
   const flag = await prisma.systemFlag.findUnique({
     where: { key: "exam_mode_enabled" },
   });
   const { enabled, groupIds } = parseExamFlag(flag?.value);
+
+  // Teachers always see the raw global state (needed for the ExamModeCard UI)
+  if (req.auth!.role !== "student") {
+    res.json({ data: { key: "exam_mode_enabled", enabled, groupIds } });
+    return;
+  }
+
+  // Students: if groups are specified, only return enabled=true if THIS student
+  // is actually a member of one of the restricted groups.
+  if (enabled && groupIds.length > 0) {
+    const membership = await prisma.studentGroupMembership.findFirst({
+      where: { userId: req.auth!.userId, groupId: { in: groupIds } },
+    });
+    res.json({ data: { key: "exam_mode_enabled", enabled: membership !== null, groupIds } });
+    return;
+  }
+
+  // enabled=false OR no group filter (applies to all students)
   res.json({ data: { key: "exam_mode_enabled", enabled, groupIds } });
 });
 

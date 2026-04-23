@@ -1,0 +1,1 @@
+ALTER TABLE "Problem" ADD COLUMN "languages" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];

@@ -1,9 +1,19 @@
-import { Button, FormControl, InputLabel, MenuItem, Select, Stack, TextField, Typography } from "@mui/material";
+import {
+  Box,
+  Button,
+  Divider,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
-import SectionCard from "../common/SectionCard";
+import SectionCard   from "../common/SectionCard";
 import StatusMessage from "../common/StatusMessage";
 
 export default function LoginForm({
+  portalRole,          // "student" | "teacher"
+  onBackToRoleSelect,  // () => void
   authMode,
   setAuthMode,
   authError,
@@ -14,23 +24,26 @@ export default function LoginForm({
   setEmail,
   password,
   setPassword,
-  registerRole,
-  setRegisterRole,
   handleSignIn,
   handleRegister,
   demoEmail,
   demoPassword,
 }) {
+  const roleLabel = portalRole === "teacher" ? "Teacher" : "Student";
+  const accentColor = portalRole === "teacher" ? "secondary" : "primary";
+
   return (
     <SectionCard
-      title={authMode === "login" ? "Sign in" : "Create account"}
+      title={authMode === "login" ? `${roleLabel} Sign In` : `${roleLabel} Registration`}
       action={
-        <Stack direction="row" spacing={1}>
-          <Button variant={authMode === "login" ? "contained" : "outlined"} onClick={() => setAuthMode("login")}>
-            Sign in
-          </Button>
-          <Button variant={authMode === "register" ? "contained" : "outlined"} onClick={() => setAuthMode("register")}>
-            Register
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Button
+            size="small"
+            startIcon={<ArrowBackIcon />}
+            onClick={onBackToRoleSelect}
+            sx={{ color: "text.secondary" }}
+          >
+            Change portal
           </Button>
         </Stack>
       }
@@ -38,15 +51,38 @@ export default function LoginForm({
       <Stack spacing={2.5}>
         <StatusMessage error={authError} />
 
-        {authMode === "register" ? (
+        {/* Sign in / Register toggle */}
+        <Stack direction="row" spacing={1}>
+          <Button
+            fullWidth
+            variant={authMode === "login" ? "contained" : "outlined"}
+            color={accentColor}
+            onClick={() => setAuthMode("login")}
+          >
+            Sign In
+          </Button>
+          <Button
+            fullWidth
+            variant={authMode === "register" ? "contained" : "outlined"}
+            color={accentColor}
+            onClick={() => setAuthMode("register")}
+          >
+            Register
+          </Button>
+        </Stack>
+
+        <Divider />
+
+        {/* Name field — only on register */}
+        {authMode === "register" && (
           <TextField
-            label="Name"
+            label="Full Name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             autoComplete="name"
             fullWidth
           />
-        ) : null}
+        )}
 
         <TextField
           label="Email"
@@ -63,37 +99,46 @@ export default function LoginForm({
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete={authMode === "login" ? "current-password" : "new-password"}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              authMode === "login" ? handleSignIn() : handleRegister();
+            }
+          }}
           fullWidth
         />
 
-        {authMode === "register" ? (
-          <FormControl fullWidth>
-            <InputLabel id="register-role-label">Role</InputLabel>
-            <Select
-              labelId="register-role-label"
-              value={registerRole}
-              label="Role"
-              onChange={(e) => setRegisterRole(e.target.value)}
-            >
-              <MenuItem value="student">Student</MenuItem>
-              <MenuItem value="teacher">Teacher</MenuItem>
-            </Select>
-          </FormControl>
-        ) : null}
-
         {authMode === "login" ? (
           <>
-            <Button variant="contained" size="large" onClick={handleSignIn} disabled={authLoading}>
-              {authLoading ? "Signing in..." : "Sign in"}
+            <Button
+              variant="contained"
+              color={accentColor}
+              size="large"
+              onClick={handleSignIn}
+              disabled={authLoading}
+            >
+              {authLoading ? "Signing in…" : "Sign In"}
             </Button>
-            <Typography variant="body2" color="text.secondary">
-              Demo user: <strong>{demoEmail}</strong> / <strong>{demoPassword}</strong>
-            </Typography>
+            {demoEmail && (
+              <Typography variant="body2" color="text.secondary">
+                Demo: <strong>{demoEmail}</strong> / <strong>{demoPassword}</strong>
+              </Typography>
+            )}
           </>
         ) : (
-          <Button variant="contained" size="large" onClick={handleRegister} disabled={authLoading}>
-            {authLoading ? "Creating..." : "Register"}
-          </Button>
+          <>
+            <Button
+              variant="contained"
+              color={accentColor}
+              size="large"
+              onClick={handleRegister}
+              disabled={authLoading}
+            >
+              {authLoading ? "Creating account…" : `Create ${roleLabel} Account`}
+            </Button>
+            <Typography variant="caption" color="text.secondary" textAlign="center">
+              Registering as: <strong>{roleLabel}</strong>
+            </Typography>
+          </>
         )}
       </Stack>
     </SectionCard>

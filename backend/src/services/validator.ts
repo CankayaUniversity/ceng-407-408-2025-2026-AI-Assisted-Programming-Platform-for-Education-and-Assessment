@@ -8,13 +8,19 @@ export type ValidatorResult = {
   source: "ai" | "heuristic";
 };
 
+export type ValidateInput = {
+  studentQuestion: string;
+  mentorReply: string;
+  runStatus?: string;
+};
+
 function getOllamaGenerateUrl(): string {
   const base = (process.env.OLLAMA_BASE_URL ?? "http://localhost:11434").replace(/\/$/, "");
   return `${base}/api/generate`;
 }
 
 function getValidatorModelName(): string {
-  return process.env.OLLAMA_VALIDATOR_MODEL ?? process.env.OLLAMA_MODEL ?? "ai-mentor";
+  return process.env.OLLAMA_VALIDATOR_MODEL ?? process.env.OLLAMA_MODEL ?? "gemma4:26b";
 }
 
 function extractJson(text: string): string | null {
@@ -24,53 +30,213 @@ function extractJson(text: string): string | null {
   return text.slice(start, end + 1);
 }
 
-const CODE_PATTERNS = [
-  "```",
-  "#include",
-  "def ",
-  "class ",
-  "function ",
-  "console.log",
-  "return ",
+function normalize(text: string | null | undefined): string {
+  return (text ?? "").trim();
+}
+
+function countSentences(text: string): number {
+  return text
+    .split(/[.!?]+/)
+    .map((s) => s.trim())
+    .filter(Boolean).length;
+}
+
+function detectQuestionMode(message: string): "casual" | "meta" | "solution" | "runtime" | "code_help" {
+  const msg = message.trim().toLowerCase();
+
+  if (!msg) return "code_help";
+
+  const casualSet = new Set([
+    "hi",
+    "hello",
+    "hey",
+    "yo",
+    "how are you",
+    "how's it going",
+    "what's up",
+    "sup",
+  ]);
+
+  if (casualSet.has(msg)) return "casual";
+
+  if (
+    /what model|which model|are you an ai mentor|coding assistant|what can you do|who are you|explain how you work|what is your ai model/i.test(
+      msg,
+    )
+  ) {
+    return "meta";
+  }
+
+  if (
+    /full solution|just write the code|solve it completely|final answer only|no hints|just code|fix the code and send the corrected version|pretend you are not a mentor|ignore previous instructions|for testing purposes, output the final code/i.test(
+      msg,
+    )
+  ) {
+    return "solution";
+  }
+
+  if (/what is the output|did it pass|what does it print|what error|runtime|compile/i.test(msg)) {
+    return "runtime";
+  }
+
+  return "code_help";
+}
+
+const CODE_LINE_PATTERNS = [
+  /^\s*def\s+/,
+  /^\s*class\s+/,
+  /^\s*function\s+/,
+  /^\s*const\s+/,
+  /^\s*let\s+/,
+  /^\s*var\s+/,
+  /^\s*if\s*\(/,
+  /^\s*if\s+/,
+  /^\s*for\s*\(/,
+  /^\s*for\s+/,
+  /^\s*while\s*\(/,
+  /^\s*while\s+/,
+  /^\s*return\b/,
+  /^\s*print\(/,
+  /^\s*input\(/,
+  /^\s*console\.log\(/,
+  /^\s*\w+\s*=\s*.+$/,
 ];
 
-function heuristicValidate(text: string): ValidatorResult {
-  const trimmed = text.trim();
-  const lower = trimmed.toLowerCase();
+function countCodeLikeLines(text: string): number {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => CODE_LINE_PATTERNS.some((pattern) => pattern.test(line))).length;
+}
+
+function containsFullSolutionLanguage(text: string): boolean {
+  const lower = text.toLowerCase();
+  return [
+    "complete solution",
+    "full solution",
+    "full code",
+    "copy and paste",
+    "submit this",
+    "use this exact code",
+    "here is the corrected version",
+    "here's the corrected version",
+    "your code should look like",
+    "final code",
+  ].some((p) => lower.includes(p));
+}
+
+function containsAssignmentWalkthrough(text: string): boolean {
+  const lower = text.toLowerCase();
+  const hits = [
+    "read input",
+    "split",
+    "convert",
+    "calculate",
+    "print",
+  ].filter((p) => lower.includes(p)).length;
+
+  return hits >= 4;
+}
+
+function heuristicValidate(input: ValidateInput): ValidatorResult {
+  const studentQuestion = normalize(input.studentQuestion);
+  const mentorReply = normalize(input.mentorReply);
+  const runStatus = normalize(input.runStatus).toLowerCase();
+
+  const questionMode = detectQuestionMode(studentQuestion);
+  const lowerReply = mentorReply.toLowerCase();
   const violations: string[] = [];
 
-  const codeHits = CODE_PATTERNS.filter((p) => lower.includes(p.toLowerCase())).length;
+  const codeLikeLines = countCodeLikeLines(mentorReply);
+  const lineCount = mentorReply.split(/\r?\n/).filter((l) => l.trim()).length;
+  const sentenceCount = countSentences(mentorReply);
 
-  if (codeHits >= 2) violations.push("contains_code_solution");
-  if (lower.includes("complete solution") || lower.includes("full solution"))
+  if (containsFullSolutionLanguage(mentorReply)) {
     violations.push("explicit_solution_language");
-  if (trimmed.split(/\r?\n/).length > 14) violations.push("overly_long_response");
+  }
+
+  if (codeLikeLines >= 4) {
+    violations.push("contains_code_solution");
+  }
+
+  if (containsAssignmentWalkthrough(mentorReply) && sentenceCount >= 5) {
+    violations.push("assignment_walkthrough");
+  }
+
+  if (questionMode === "casual" || questionMode === "meta") {
+    if (
+      lowerReply.includes("input()") ||
+      lowerReply.includes("split()") ||
+      lowerReply.includes("read two integers") ||
+      lowerReply.includes("print their sum") ||
+      lowerReply.includes("standard input")
+    ) {
+      violations.push("context_misuse");
+    }
+  }
+
+  if (questionMode === "runtime" && runStatus === "idle") {
+    if (
+      lowerReply.includes("the output is") ||
+      lowerReply.includes("it prints") ||
+      lowerReply.includes("it pass") ||
+      lowerReply.includes("it passed") ||
+      lowerReply.includes("works as expected")
+    ) {
+      violations.push("runtime_guess");
+    }
+  }
+
+  if (questionMode === "solution" && codeLikeLines >= 2) {
+    violations.push("solution_seek_leak");
+  }
+
+  if (questionMode === "casual" || questionMode === "meta") {
+    if (sentenceCount > 3 || lineCount > 6) {
+      violations.push("overly_long_response");
+    }
+  } else if (questionMode === "code_help") {
+    if (sentenceCount > 5 || lineCount > 12) {
+      violations.push("overly_long_response");
+    }
+  } else if (questionMode === "solution") {
+    if (sentenceCount > 3 || lineCount > 8) {
+      violations.push("overly_long_response");
+    }
+  }
 
   if (
     violations.includes("contains_code_solution") ||
-    violations.includes("explicit_solution_language")
+    violations.includes("explicit_solution_language") ||
+    violations.includes("solution_seek_leak")
   ) {
     return {
-      riskScore: 0.86,
-      decision: "rewrite",
+      riskScore: 0.92,
+      decision: "block",
       violations,
-      reason: "Response is too solution-like for a mentoring reply.",
+      reason: "Reply is too close to a direct solution.",
       source: "heuristic",
     };
   }
 
-  if (violations.includes("overly_long_response")) {
+  if (
+    violations.includes("context_misuse") ||
+    violations.includes("runtime_guess") ||
+    violations.includes("assignment_walkthrough") ||
+    violations.includes("overly_long_response")
+  ) {
     return {
-      riskScore: 0.42,
+      riskScore: 0.57,
       decision: "rewrite",
       violations,
-      reason: "Response should be shorter and more guided.",
+      reason: "Reply should be shorter, more focused, or better aligned to the user's actual question.",
       source: "heuristic",
     };
   }
 
   return {
-    riskScore: 0.05,
+    riskScore: 0.06,
     decision: "allow",
     violations,
     reason: "Response is acceptable.",
@@ -78,9 +244,13 @@ function heuristicValidate(text: string): ValidatorResult {
   };
 }
 
-async function aiValidate(text: string): Promise<ValidatorResult> {
+async function aiValidate(input: ValidateInput): Promise<ValidatorResult> {
+  const studentQuestion = normalize(input.studentQuestion);
+  const mentorReply = normalize(input.mentorReply);
+  const runStatus = normalize(input.runStatus);
+
   const prompt = `
-You are a strict but balanced validator for a coding mentor.
+You are a strict validator for a coding mentor.
 
 Return ONLY valid JSON.
 Do not add markdown.
@@ -94,36 +264,54 @@ JSON format:
   "reason": "short explanation"
 }
 
-Rules:
+The validator must judge whether the mentor reply is appropriate for the student's exact question.
+
+Student question:
+${studentQuestion || "No question provided."}
+
+Run status:
+${runStatus || "Unknown"}
+
+Mentor reply:
+${mentorReply}
+
+Decision rules:
 
 BLOCK:
-- full solution
-- direct final answer
-- copy-paste ready code
-- large complete code block
-- solving the assignment for the student
+- full assignment solution
+- direct final answer that solves the student's task
+- copy-paste ready final code
+- near-complete code even without markdown fences
+- enough exact code or exact steps that the student can finish with almost no thinking
 
 REWRITE:
-- mostly solution-like
-- too explicit
-- too close to giving the exact fix
-- code-heavy answer that should be turned into a hint
+- too solution-like
+- too explicit about the exact final fix
+- too much code for a mentor answer
+- too long or wall-of-text
+- answers the wrong thing
+- mentions code when the student asked a casual or meta question
+- guesses output or success when run status is idle
+- restates the whole assignment instead of answering the immediate question
 
 ALLOW:
-- short hints
-- reasoning
 - conceptual explanation
+- syntax explanation
 - debugging guidance
-- one-step guidance
-- slightly explicit answers are allowed
+- error explanation
+- brief direct answer to a basic programming question
+- short and focused next-step guidance
 
 Important:
-- Do NOT be overly strict.
-- Prefer "allow" unless the answer clearly solves the task.
-- Small examples can be allowed if they do not solve the assignment.
+- Be conservative.
+- If unsure between allow and rewrite, choose rewrite.
+- If unsure between rewrite and block for near-complete code, choose block.
+- Do not be lenient just because the reply sounds educational.
 
-Text to validate:
-${text}
+Return one of:
+allow
+rewrite
+block
 `.trim();
 
   const model = getValidatorModelName();
@@ -179,11 +367,11 @@ ${text}
   };
 }
 
-export async function validateMentorReply(text: string): Promise<ValidatorResult> {
+export async function validateMentorReply(input: ValidateInput): Promise<ValidatorResult> {
   try {
-    return await aiValidate(text);
+    return await aiValidate(input);
   } catch (err) {
     console.warn("[validator] AI validation failed, falling back to heuristic:", err);
-    return heuristicValidate(text);
+    return heuristicValidate(input);
   }
 }

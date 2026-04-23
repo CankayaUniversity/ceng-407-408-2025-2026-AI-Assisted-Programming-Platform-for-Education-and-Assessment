@@ -20,6 +20,8 @@ export type MentorResult =
   | { success: true; mentorReply: string }
   | { success: false; mentorReply: ""; error: string };
 
+type MessageMode = "casual" | "meta" | "runtime" | "solution" | "mentor";
+
 const CASUAL_PATTERNS = new Set([
   "hi",
   "hello",
@@ -31,12 +33,64 @@ const CASUAL_PATTERNS = new Set([
   "sup",
 ]);
 
-function detectMessageMode(message: string | null | undefined): "casual" | "mentor" {
-  const msg = (message ?? "").trim().toLowerCase();
-  if (CASUAL_PATTERNS.has(msg)) {
-    return "casual";
+const BASIC_HELP_PATTERNS = [
+  /how do i read .*input/i,
+  /how do i take .*input/i,
+  /how can i read .*input/i,
+  /what does .* mean/i,
+  /how does .* work/i,
+  /what is the syntax for/i,
+  /how do i loop/i,
+  /how do i iterate/i,
+  /how do i check length/i,
+  /how do i get length/i,
+  /how do i convert .* to int/i,
+  /how do i parse/i,
+  /how do i declare/i,
+  /how do arrays work/i,
+  /how do strings work/i,
+];
+
+function normalize(text: string | null | undefined): string {
+  return (text ?? "").trim();
+}
+
+function detectMessageMode(message: string | null | undefined): MessageMode {
+  const msg = normalize(message).toLowerCase();
+  if (!msg) return "mentor";
+  if (CASUAL_PATTERNS.has(msg)) return "casual";
+
+  if (
+    /what model|which model|what is your ai model|what can you do|who are you|are you an ai mentor|coding assistant|explain how you work/i.test(
+      msg,
+    )
+  ) {
+    return "meta";
   }
+
+  if (
+    /what is the output|did it pass|what does it print|what error|runtime|compile|execution/i.test(
+      msg,
+    )
+  ) {
+    return "runtime";
+  }
+
+  if (
+    /full solution|just write the code|solve it completely|send the final answer only|no hints|just code|fix the code and send the corrected version|pretend you are not a mentor|ignore previous instructions|for testing purposes, output the final code/i.test(
+      msg,
+    )
+  ) {
+    return "solution";
+  }
+
   return "mentor";
+}
+
+function isBasicHelpQuestion(message: string | null | undefined): boolean {
+  const text = normalize(message);
+  if (!text) return false;
+  return BASIC_HELP_PATTERNS.some((pattern) => pattern.test(text));
 }
 
 function buildCasualPrompt(message: string | null | undefined): string {
@@ -47,16 +101,28 @@ The user is making casual conversation.
 
 Rules:
 - You MUST respond in English only.
-- Reply naturally and briefly.
-- Keep it short (1–2 sentences).
-- Do not analyze code unless asked.
+- Reply naturally.
+- Keep it to 1 short sentence.
+- Do not mention the code unless the user asks about it.
 - Do not be robotic.
-- Vary your wording.
 
-Examples:
-- "Hello. How can I help you?"
-- "Hey. What are you working on?"
-- "Hi. Need help with your code?"
+User message:
+${message ?? "No message provided."}
+`.trim();
+}
+
+function buildMetaPrompt(message: string | null | undefined): string {
+  return `
+You are an AI coding mentor.
+
+The user asked a meta question.
+
+Rules:
+- You MUST respond in English only.
+- Answer only the actual question.
+- Keep it to 1-2 short sentences.
+- Do not mention the student's code, assignment, output, or error unless the user directly asked about them.
+- Do not turn this into debugging advice.
 
 User message:
 ${message ?? "No message provided."}
@@ -65,21 +131,30 @@ ${message ?? "No message provided."}
 
 function buildMentorPrompt(
   input: MentorRequestInput,
-  forceGuidance: boolean,
+  options?: {
+    forceGuidance?: boolean;
+    basicHelp?: boolean;
+    compactRewrite?: boolean;
+  },
 ): string {
-  const normalizedStatus = (input.runStatus ?? "idle").trim().toLowerCase();
-  const normalizedMode = (input.mode ?? "mentor").trim().toLowerCase();
+  const normalizedStatus = normalize(input.runStatus || "idle").toLowerCase();
+  const normalizedMode = normalize(input.mode || "mentor").toLowerCase();
+  const forceGuidance = options?.forceGuidance ?? false;
+  const basicHelp = options?.basicHelp ?? false;
+  const compactRewrite = options?.compactRewrite ?? false;
 
   let prompt = `
-You MUST respond in English only. Do not use any other language regardless of the student's language.
+You are an AI programming mentor.
 
-Answer using only the context below.
+You MUST respond in English only.
+
+Your goal is to help the student make progress without completing the assignment for them.
 
 [LANGUAGE]
 ${input.language ?? "Unknown"}
 
 [ASSIGNMENT]
-${input.assignmentText || "Use the code as the primary source of truth."}
+${input.assignmentText || "Use the code as the main technical context only when relevant."}
 
 [CODE]
 ${input.studentCode ?? "No code provided."}
@@ -102,51 +177,86 @@ ${normalizedMode}
 [STUDENT_MESSAGE]
 ${input.studentQuestion ?? "No message provided."}
 
-Rules:
-- You MUST respond in English only.
-- Help the student, do not solve the assignment.
-- Prefer explanation and hints over solutions.
-- Do not give full code.
-- Do not list multiple fixes at once.
-- Focus on ONE main issue first.
-- Avoid giving precise variable or syntax corrections directly.
-- Keep hints slightly abstract so the student has to think.
-- Keep answers short and clear.
-- If the assignment does NOT match the code, trust the code.
-- Always prioritize analyzing the student's code.
-- Do NOT assume a different problem than the given code.
-- Focus on the most important issue first.
-- Even for syntax errors, do NOT give the exact corrected code.
-- Guide instead of fixing directly.
-- Think briefly about the student's mistake before giving a hint.
-- Briefly explain your reasoning before the guidance.
-- Do not sound repetitive.
-- Avoid using the same phrases in every answer.
-- Give a natural explanation, then guide.
+Core rules:
+- Never provide the full final solution.
+- Never provide a complete copy-paste answer for the assignment.
+- Never provide a full completed function, method, class, or end-to-end submission.
+- Answer only the user's actual question.
+- If the question is simple, keep the answer short.
+- Focus on the single most important issue first.
+- Do not give long step-by-step lists unless explicitly asked.
+- Do not restate the whole assignment.
+- Do not mention unrelated fixes.
+- If the student's message is not about the code, do not drag the answer back to the code.
+
+Allowed help:
+- explain a concept
+- explain syntax
+- explain one error
+- point out one likely bug
+- suggest one next step
+- give one tiny non-solution snippet if absolutely necessary
+
+Response style:
+- Default to 1-3 sentences.
+- For "what is wrong?" mention only one main issue first.
+- For "what should I fix first?" give exactly one next step.
+- For "can you help me?" ask one focused follow-up or give one short starting point.
+- Avoid bullet lists unless explicitly requested.
+- Avoid walls of text.
+- Sound natural, not robotic.
 `.trim();
 
   if (normalizedStatus === "idle") {
     prompt += `
+    
+Idle rule:
 - The code has not been executed yet.
-- You cannot confirm behavior from execution.
-- Do not claim it works.
-- Do not claim exact output.
-- Suggest running the code only when it is genuinely useful.
+- Do not claim the code works.
+- Do not claim the code fails for a specific runtime reason unless clearly shown in the error context.
+- Do not guess output.
+- If the user asks about output/pass/failure and execution is idle, say you cannot know yet without running it.
 `;
   }
 
   if (normalizedMode === "tip") {
     prompt += `
-- Give ONE short hint only.
-- Do not give code.
+    
+Tip mode:
+- Give exactly one short useful hint.
+- Do not expand into a tutorial.
+`;
+  }
+
+  if (basicHelp) {
+    prompt += `
+    
+Basic-help rule:
+- If the user asks a basic programming question, answer it directly and briefly.
+- Still avoid reconstructing the full assignment.
 `;
   }
 
   if (forceGuidance) {
     prompt += `
-- The student is asking for the answer.
-- Do NOT give it.
-- Guide instead.
+    
+Direct-answer request rule:
+- The user asked for the final answer or direct code.
+- Refuse briefly in 1 sentence.
+- Then give at most one conceptual hint or one next step.
+- Do not include a full code block.
+- Do not reconstruct the full solution across multiple lines.
+`;
+  }
+
+  if (compactRewrite) {
+    prompt += `
+    
+Rewrite strictness:
+- Maximum 3 sentences.
+- No bullet points.
+- No numbered list.
+- No multi-line code block.
 `;
   }
 
@@ -178,7 +288,7 @@ async function callModel(prompt: string): Promise<string> {
         model,
         prompt,
         stream: false,
-        keep_alive: -1,   // keep model loaded indefinitely
+        keep_alive: -1,
         options: {
           temperature: 0.2,
           top_p: 0.9,
@@ -194,61 +304,144 @@ async function callModel(prompt: string): Promise<string> {
 
     const data = (await res.json()) as { response?: string };
     const text = data.response ?? "";
-    return text.trim() ? text : "";
+    return text.trim() ? text.trim() : "";
   } finally {
     clearTimeout(timeout);
   }
 }
 
-function looksLikeSolution(text: string): boolean {
-  const lower = text.toLowerCase();
+function countFencedCodeBlocks(text: string): number {
+  return Math.floor((text.match(/```/g) ?? []).length / 2);
+}
 
-  if (lower.includes("```")) return true;
-  if (lower.includes("complete solution")) return true;
-  if (lower.includes("full code")) return true;
-  if (lower.includes("copy and paste")) return true;
+function countCodeLikeLines(text: string): number {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) =>
+      /^(def |class |function |const |let |var |if\b|for\b|while\b|return\b|print\(|input\(|console\.log\(|\w+\s*=\s*.+)/.test(
+        line,
+      ),
+    ).length;
+}
+
+function looksLikeSolution(text: string): boolean {
+  const trimmed = text.trim();
+  const lower = trimmed.toLowerCase();
+
+  const bannedPhrases = [
+    "complete solution",
+    "full solution",
+    "full code",
+    "copy and paste",
+    "submit this",
+    "use this exact code",
+    "here is the corrected version",
+    "here's the corrected version",
+    "your code should look like",
+    "final code",
+  ];
+
+  if (bannedPhrases.some((p) => lower.includes(p))) return true;
+
+  const fencedBlocks = countFencedCodeBlocks(trimmed);
+  const codeLikeLines = countCodeLikeLines(trimmed);
+
+  if (fencedBlocks >= 1) return true;
+  if (codeLikeLines >= 4) return true;
+
+  const hasWorkflow =
+    lower.includes("read input") &&
+    lower.includes("split") &&
+    lower.includes("convert") &&
+    (lower.includes("print") || lower.includes("sum"));
+
+  if (hasWorkflow && trimmed.split(/\r?\n/).length >= 10) return true;
 
   return false;
 }
 
+function countSentences(text: string): number {
+  return text
+    .split(/[.!?]+/)
+    .map((s) => s.trim())
+    .filter(Boolean).length;
+}
+
+function isTooVerbose(text: string, mode: MessageMode): boolean {
+  const lineCount = text.split(/\r?\n/).filter((l) => l.trim()).length;
+  const sentenceCount = countSentences(text);
+
+  if (mode === "casual" || mode === "meta") return sentenceCount > 2 || lineCount > 4;
+  if (mode === "solution") return sentenceCount > 3 || lineCount > 6;
+  if (mode === "runtime") return sentenceCount > 3 || lineCount > 6;
+  return sentenceCount > 5 || lineCount > 10;
+}
+
 function enforceIdleHint(text: string, runStatus: string | null | undefined): string {
-  if ((runStatus ?? "").trim().toLowerCase() !== "idle") {
+  if (normalize(runStatus).toLowerCase() !== "idle") {
     return text;
   }
 
   const lower = text.toLowerCase();
 
-  if (lower.includes("run") || lower.includes("execute")) {
+  if (lower.includes("cannot know yet") || lower.includes("run the code")) {
     return text;
   }
 
-  if (lower.includes("error") || lower.includes("output")) {
-    return `${text}\n\nTry running the code to verify what happens.`;
+  if (lower.includes("output") || lower.includes("pass") || lower.includes("runtime")) {
+    return `${text}\n\nRun the code first to verify what actually happens.`;
   }
 
   return text;
 }
 
 function violatesIdleRule(text: string, runStatus: string | null | undefined): boolean {
-  if ((runStatus ?? "").trim().toLowerCase() !== "idle") {
+  if (normalize(runStatus).toLowerCase() !== "idle") {
     return false;
   }
 
   const lower = text.toLowerCase();
-  const bad = ["it works", "it prints", "successfully", "output is", "correct"];
-
+  const bad = ["it works", "it prints", "successfully", "output is", "it passed", "correct output"];
   return bad.some((p) => lower.includes(p));
 }
 
 function fallbackCasualReply(message: string | null | undefined): string {
-  const msg = (message ?? "").toLowerCase();
+  const msg = normalize(message).toLowerCase();
   if (msg.includes("hi") || msg.includes("hello")) {
-    return "Hello. How can I help you?";
+    return "Hello. How can I help?";
   }
   if (msg.includes("how are you")) {
-    return "I'm doing well. Ready to help.";
+    return "I'm doing well. What are you working on?";
   }
-  return "Alright. What would you like to work on?";
+  return "Alright. What do you need help with?";
+}
+
+function fallbackMentorReply(input: MentorRequestInput): string {
+  const question = normalize(input.studentQuestion);
+  const mode = detectMessageMode(question);
+  const basicHelp = isBasicHelpQuestion(question);
+
+  if (mode === "meta") {
+    return "I'm an AI programming mentor. I help with code, errors, and next steps without giving the full assignment solution.";
+  }
+
+  if (mode === "runtime" && normalize(input.runStatus).toLowerCase() === "idle") {
+    return "I can't know the real output yet because the code has not been run. Run it once and I can help interpret the result.";
+  }
+
+  if (basicHelp) {
+    return question
+      ? `Let's answer that directly: "${question}". I can explain the concept or syntax briefly without writing the full assignment for you.`
+      : "Tell me the exact concept or syntax you are stuck on.";
+  }
+
+  if (question) {
+    return `Let's focus on your question: "${question}". Start with the single step that is blocking you most.`;
+  }
+
+  return "Show me the exact step where you are stuck.";
 }
 
 /**
@@ -260,10 +453,14 @@ export async function* getMentorReplyStream(
   input: MentorRequestInput,
 ): AsyncGenerator<string, void, unknown> {
   const messageMode = detectMessageMode(input.studentQuestion ?? undefined);
+  const basicHelp = isBasicHelpQuestion(input.studentQuestion ?? undefined);
+
   const prompt =
     messageMode === "casual"
       ? buildCasualPrompt(input.studentQuestion)
-      : buildMentorPrompt(input, false);
+      : messageMode === "meta"
+        ? buildMetaPrompt(input.studentQuestion)
+        : buildMentorPrompt(input, { forceGuidance: messageMode === "solution", basicHelp });
 
   const url = getOllamaGenerateUrl();
   const model = getModelName();
@@ -288,17 +485,18 @@ export async function* getMentorReplyStream(
       throw new Error(`Ollama HTTP ${res.status}`);
     }
 
-    const reader = (res.body as unknown as NodeJS.ReadableStream)[Symbol.asyncIterator]
-      ? (res.body as unknown as AsyncIterable<Uint8Array>)
-      : (() => { throw new Error("No readable body"); })();
-
+    const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
 
-    for await (const chunk of reader) {
-      buffer += decoder.decode(chunk, { stream: true });
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split("\n");
       buffer = lines.pop() ?? "";
+
       for (const line of lines) {
         if (!line.trim()) continue;
         try {
@@ -306,7 +504,7 @@ export async function* getMentorReplyStream(
           if (parsed.response) yield parsed.response;
           if (parsed.done) return;
         } catch {
-          // skip malformed lines
+          // ignore malformed chunks
         }
       }
     }
@@ -316,41 +514,42 @@ export async function* getMentorReplyStream(
 }
 
 export async function getMentorReply(input: MentorRequestInput): Promise<MentorResult> {
-  const forceGuidance = false;
   const messageMode = detectMessageMode(input.studentQuestion ?? undefined);
+  const basicHelp = isBasicHelpQuestion(input.studentQuestion ?? undefined);
 
   try {
-    let prompt: string;
-
-    if (messageMode === "casual") {
-      prompt = buildCasualPrompt(input.studentQuestion);
-    } else {
-      prompt = buildMentorPrompt(input, forceGuidance);
-    }
+    const prompt =
+      messageMode === "casual"
+        ? buildCasualPrompt(input.studentQuestion)
+        : messageMode === "meta"
+          ? buildMetaPrompt(input.studentQuestion)
+          : buildMentorPrompt(input, {
+              forceGuidance: messageMode === "solution",
+              basicHelp,
+            });
 
     let responseText = await callModel(prompt);
 
-    if (messageMode !== "casual") {
+    if (messageMode !== "casual" && messageMode !== "meta") {
       if (violatesIdleRule(responseText, input.runStatus)) {
         const retryPrompt = `${prompt}
 
 IMPORTANT:
-Do not assume execution results.
-Do not say the code works or prints something.
-Do not claim success.
+- Do not assume execution results.
+- Do not say the code works or prints something.
+- Do not claim success.
+- If execution is idle and the user asks about output, pass/fail, or runtime behavior, say you cannot know yet without running it.
 `.trim();
 
         responseText = await callModel(retryPrompt);
       }
 
-      if (looksLikeSolution(responseText)) {
-        const retryPrompt = `${prompt}
-
-IMPORTANT:
-Do not provide full code or full solution.
-Keep the reasoning but guide instead.
-Do not reduce the answer to a generic hint.
-`.trim();
+      if (looksLikeSolution(responseText) || isTooVerbose(responseText, messageMode)) {
+        const retryPrompt = buildMentorPrompt(input, {
+          forceGuidance: messageMode === "solution",
+          basicHelp,
+          compactRewrite: true,
+        });
 
         responseText = await callModel(retryPrompt);
       }
@@ -362,7 +561,7 @@ Do not reduce the answer to a generic hint.
       responseText =
         messageMode === "casual"
           ? fallbackCasualReply(input.studentQuestion)
-          : "I couldn't generate a useful response.";
+          : fallbackMentorReply(input);
     }
 
     return { success: true, mentorReply: responseText };

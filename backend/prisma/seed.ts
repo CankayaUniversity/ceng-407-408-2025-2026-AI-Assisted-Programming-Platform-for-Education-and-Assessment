@@ -1,5 +1,4 @@
 import "dotenv/config";
-import type { Prisma } from "@prisma/client";
 import bcrypt from "bcrypt";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
@@ -9,187 +8,661 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is not defined in .env");
 }
 
-// Inline client so the seed works in both dev (src/) and production (dist/) containers
 const pgPool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pgPool as unknown as ConstructorParameters<typeof PrismaPg>[0]);
 const prisma  = new PrismaClient({ adapter }) as unknown as PrismaClient;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Reference solutions & starter code
-// ─────────────────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// PROBLEM CONTENT
+// 15 language-specific problems (Easy / Medium / Hard per language)
+// + 1 universal problem (all languages, Medium)
+// ═══════════════════════════════════════════════════════════════════════════════
 
-// ── Python ────────────────────────────────────────────────────────────────────
-const SUM_DESC = "Read two integers from standard input (one line, space-separated) and print their sum as a single line.";
-const SUM_REF  = `line = input().strip()\na, b = map(int, line.split())\nprint(a + b)\n`;
+// ── Python — Easy ─────────────────────────────────────────────────────────────
+const PY_DIGITS_DESC = `Read a non-negative integer and print the **sum of its digits**.
 
-const PAL_DESC = "Read one line from standard input and print true if it is a palindrome, otherwise false (lowercase booleans).";
-const PAL_REF  = `s = input().strip()\nok = s == s[::-1]\nprint(str(ok).lower())\n`;
+**Example:**
+- Input: \`1234\`
+- Output: \`10\`  (1 + 2 + 3 + 4 = 10)`;
 
-const FACT_DESC = "Read a positive integer n from standard input and print n factorial (n!) on one line.";
-const FACT_REF  = `n = int(input().strip())\ndef fact(x):\n    return 1 if x <= 1 else x * fact(x - 1)\nprint(fact(n))\n`;
-
-const FIB_DESC    = "Read a positive integer N and print the first N Fibonacci numbers separated by spaces. F(1)=1, F(2)=1, F(3)=2, and so on.";
-const FIB_STARTER = `n = int(input().strip())\n# Print the first n Fibonacci numbers, space-separated\n`;
-const FIB_REF     = `n = int(input().strip())\na, b = 1, 1\nresult = []\nfor _ in range(n):\n    result.append(a)\n    a, b = b, a + b\nprint(*result)\n`;
-
-const LCS_DESC = `Given two strings on separate lines, find the length of their Longest Common Subsequence (LCS).
-
-A subsequence is derived by deleting some characters without changing the order of the remaining ones.
-The LCS is the longest such subsequence common to both strings.
-
-Example: LCS("ABCBDAB", "BDCABA") = 4`;
-const LCS_STARTER = `s1 = input().strip()\ns2 = input().strip()\n# Find the length of the LCS using dynamic programming\n`;
-const LCS_REF     = `s1 = input().strip()\ns2 = input().strip()\nm, n = len(s1), len(s2)\ndp = [[0]*(n+1) for _ in range(m+1)]\nfor i in range(1, m+1):\n    for j in range(1, n+1):\n        if s1[i-1] == s2[j-1]:\n            dp[i][j] = dp[i-1][j-1] + 1\n        else:\n            dp[i][j] = max(dp[i-1][j], dp[i][j-1])\nprint(dp[m][n])\n`;
-
-// ── C ─────────────────────────────────────────────────────────────────────────
-const C_MAX_DESC    = "Read an integer N, then N space-separated integers on the next line. Print the maximum value among them.";
-const C_MAX_STARTER = `#include <stdio.h>\n\nint main() {\n    int n;\n    scanf("%d", &n);\n    // Read n integers and find the maximum\n    \n    return 0;\n}\n`;
-const C_MAX_REF     = `#include <stdio.h>\nint main() {\n    int n; scanf("%d", &n);\n    int max, x; scanf("%d", &max);\n    for (int i = 1; i < n; i++) {\n        scanf("%d", &x);\n        if (x > max) max = x;\n    }\n    printf("%d\\n", max);\n    return 0;\n}\n`;
-
-const C_WORDS_DESC    = "Read a single line of text and print the number of words in it. Words are separated by one or more spaces.";
-const C_WORDS_STARTER = `#include <stdio.h>\n#include <ctype.h>\n\nint main() {\n    char line[1000];\n    fgets(line, sizeof(line), stdin);\n    // Count the number of words\n    \n    return 0;\n}\n`;
-const C_WORDS_REF     = `#include <stdio.h>\n#include <ctype.h>\nint main() {\n    char line[1000];\n    fgets(line, sizeof(line), stdin);\n    int count = 0, inWord = 0;\n    for (int i = 0; line[i]; i++) {\n        if (!isspace((unsigned char)line[i])) {\n            if (!inWord) { count++; inWord = 1; }\n        } else { inWord = 0; }\n    }\n    printf("%d\\n", count);\n    return 0;\n}\n`;
-
-// ── C++ ───────────────────────────────────────────────────────────────────────
-const CPP_SORT_DESC    = "Read three integers and print them in ascending (non-decreasing) order, separated by spaces.";
-const CPP_SORT_STARTER = `#include <iostream>\n#include <algorithm>\nusing namespace std;\n\nint main() {\n    int a, b, c;\n    cin >> a >> b >> c;\n    // Sort and print in ascending order\n    \n    return 0;\n}\n`;
-const CPP_SORT_REF     = `#include <iostream>\n#include <algorithm>\nusing namespace std;\nint main() {\n    int a, b, c;\n    cin >> a >> b >> c;\n    int arr[3] = {a, b, c};\n    sort(arr, arr + 3);\n    cout << arr[0] << " " << arr[1] << " " << arr[2] << endl;\n    return 0;\n}\n`;
-
-const CPP_BS_DESC    = `Given a sorted array of N integers and a target T, return the 0-based index of T using binary search. Print -1 if not found.\n\nInput:\n- Line 1: N\n- Line 2: N space-separated sorted integers\n- Line 3: T`;
-const CPP_BS_STARTER = `#include <iostream>\n#include <vector>\nusing namespace std;\n\nint binarySearch(vector<int>& arr, int target) {\n    // Implement binary search here\n    return -1;\n}\n\nint main() {\n    int n;\n    cin >> n;\n    vector<int> arr(n);\n    for (int i = 0; i < n; i++) cin >> arr[i];\n    int target;\n    cin >> target;\n    cout << binarySearch(arr, target) << endl;\n    return 0;\n}\n`;
-const CPP_BS_REF     = `#include <iostream>\n#include <vector>\nusing namespace std;\nint binarySearch(vector<int>& arr, int target) {\n    int lo = 0, hi = (int)arr.size() - 1;\n    while (lo <= hi) {\n        int mid = lo + (hi - lo) / 2;\n        if (arr[mid] == target) return mid;\n        else if (arr[mid] < target) lo = mid + 1;\n        else hi = mid - 1;\n    }\n    return -1;\n}\nint main() {\n    int n; cin >> n;\n    vector<int> arr(n);\n    for (int i = 0; i < n; i++) cin >> arr[i];\n    int target; cin >> target;\n    cout << binarySearch(arr, target) << endl;\n    return 0;\n}\n`;
-
-// ── JavaScript ────────────────────────────────────────────────────────────────
-const JS_FIZZ_DESC    = `Read a positive integer N. For each number from 1 to N:\n- If divisible by both 3 and 5, print "FizzBuzz"\n- If divisible by 3, print "Fizz"\n- If divisible by 5, print "Buzz"\n- Otherwise print the number\n\nOne result per line.`;
-const JS_FIZZ_STARTER = `const n = parseInt(require('fs').readFileSync('/dev/stdin', 'utf8').trim());\nfor (let i = 1; i <= n; i++) {\n    // Write your FizzBuzz logic here\n}\n`;
-const JS_FIZZ_REF     = `const n = parseInt(require('fs').readFileSync('/dev/stdin', 'utf8').trim());\nfor (let i = 1; i <= n; i++) {\n    if (i % 15 === 0) console.log('FizzBuzz');\n    else if (i % 3 === 0) console.log('Fizz');\n    else if (i % 5 === 0) console.log('Buzz');\n    else console.log(i);\n}\n`;
-
-const JS_SUM_DESC    = "Read N integers (first line is N, then N lines each with one integer) and print their sum.";
-const JS_SUM_STARTER = `const lines = require('fs').readFileSync('/dev/stdin', 'utf8').trim().split('\\n');\nconst n = parseInt(lines[0]);\nlet sum = 0;\n// Sum the next n numbers and print the result\n`;
-const JS_SUM_REF     = `const lines = require('fs').readFileSync('/dev/stdin', 'utf8').trim().split('\\n');\nconst n = parseInt(lines[0]);\nlet sum = 0;\nfor (let i = 1; i <= n; i++) sum += parseInt(lines[i]);\nconsole.log(sum);\n`;
-
-// ── C# ────────────────────────────────────────────────────────────────────────
-const CS_TEMP_DESC    = "Read a temperature in Celsius and print its Fahrenheit equivalent with exactly 2 decimal places.\n\nFormula: F = C × 9/5 + 32";
-const CS_TEMP_STARTER = `using System;\n\nclass Program {\n    static void Main(string[] args) {\n        double celsius = double.Parse(Console.ReadLine().Trim());\n        // Convert to Fahrenheit and print with 2 decimal places\n        \n    }\n}\n`;
-const CS_TEMP_REF     = `using System;\nclass Program {\n    static void Main(string[] args) {\n        double celsius = double.Parse(Console.ReadLine().Trim());\n        double fahrenheit = celsius * 9.0 / 5.0 + 32.0;\n        Console.WriteLine($"{fahrenheit:F2}");\n    }\n}\n`;
-
-// ── Multi-file demo ───────────────────────────────────────────────────────────
-const MULTIFILE_DESC = `This problem is designed to demonstrate the **multi-file editor** feature.
-
-You must split your solution across two editor tabs:
-
-**Tab 1 — helpers.py**
-Define three helper functions:
-- \`add(a, b)\`      → returns the sum of a and b
-- \`subtract(a, b)\` → returns the difference (a − b)
-- \`multiply(a, b)\` → returns the product of a and b
-
-**Tab 2 — main.py** (starter code is already here)
-Read two integers from input and call your helper functions to print:
-1. Their sum
-2. Their difference
-3. Their product
-
-How to add a second tab: click the **+** button next to the file tabs above the editor, rename the new file to \`helpers.py\`, and write your helper functions there.
-
-When you click **Run** or **Submit**, all open tabs are combined and executed together — so functions defined in helpers.py are directly available in main.py.`;
-
-const MULTIFILE_STARTER = `# main.py  ← this is Tab 1
-# Create a second tab called helpers.py and define add(), subtract(), multiply() there.
-# Because all tabs are merged on Run/Submit, you can call those functions directly here.
-
-a, b = map(int, input().split())
-print(add(a, b))
-print(subtract(a, b))
-print(multiply(a, b))
+const PY_DIGITS_STARTER = `n = input().strip()
+# Print the sum of the digits of the number
 `;
 
-// Combined solution (what Judge0 actually executes — both files merged)
-const MULTIFILE_REF = `# helpers.py
-def add(a, b):      return a + b
-def subtract(a, b): return a - b
-def multiply(a, b): return a * b
-
-# main.py
-a, b = map(int, input().split())
-print(add(a, b))
-print(subtract(a, b))
-print(multiply(a, b))
+const PY_DIGITS_REF = `n = input().strip()
+print(sum(int(d) for d in n))
 `;
 
-const DEMO_DESC = "Same as Sum of Two Numbers: read one line with two space-separated integers and print their sum. " +
-  "This demo problem ships four test cases (two public, two hidden). Submit passes only when all four match.";
+// ── Python — Medium ────────────────────────────────────────────────────────────
+const PY_VOWELS_DESC = `Read a line of text and print the number of **vowels** it contains.
+Vowels are: **a, e, i, o, u** (case-insensitive).
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
+**Example:**
+- Input: \`Hello World\`
+- Output: \`3\`  (e, o, o)`;
+
+const PY_VOWELS_STARTER = `line = input()
+# Count and print the number of vowels (a, e, i, o, u) — case-insensitive
+`;
+
+const PY_VOWELS_REF = `line = input()
+print(sum(1 for c in line.lower() if c in 'aeiou'))
+`;
+
+// ── Python — Hard ──────────────────────────────────────────────────────────────
+const PY_STOCK_DESC = `You are given the daily prices of a stock over N days. You may **buy on one day** and **sell on a strictly later day**. Find the **maximum profit** from a single buy-sell transaction. If no profit is possible, print \`0\`.
+
+**Input format:**
+- Line 1: N
+- Line 2: N space-separated integers (prices)
+
+**Example 1:**
+\`\`\`
+5
+7 1 5 3 6
+\`\`\`
+Output: \`5\`  (buy at 1, sell at 6)
+
+**Example 2:**
+\`\`\`
+5
+7 6 4 3 1
+\`\`\`
+Output: \`0\`  (prices only decrease — no profitable trade)`;
+
+const PY_STOCK_STARTER = `n = int(input())
+prices = list(map(int, input().split()))
+# Find and print the maximum profit from one buy-sell transaction
+`;
+
+const PY_STOCK_REF = `n = int(input())
+prices = list(map(int, input().split()))
+min_price = prices[0]
+max_profit = 0
+for p in prices[1:]:
+    max_profit = max(max_profit, p - min_price)
+    min_price = min(min_price, p)
+print(max_profit)
+`;
+
+// ── JavaScript — Easy ──────────────────────────────────────────────────────────
+const JS_REV_DESC = `Read a string and print it **reversed**.
+
+**Examples:**
+- Input: \`hello\` → Output: \`olleh\`
+- Input: \`racecar\` → Output: \`racecar\``;
+
+const JS_REV_STARTER = `const s = require('fs').readFileSync('/dev/stdin', 'utf8').trim();
+// Print the string reversed
+`;
+
+const JS_REV_REF = `const s = require('fs').readFileSync('/dev/stdin', 'utf8').trim();
+console.log(s.split('').reverse().join(''));
+`;
+
+// ── JavaScript — Medium ────────────────────────────────────────────────────────
+const JS_MISSING_DESC = `You are given N−1 distinct integers taken from the range 1 to N — exactly **one number is missing**. Find and print it.
+
+**Input format:**
+- Line 1: N
+- Line 2: N−1 space-separated integers
+
+**Example:**
+\`\`\`
+5
+1 2 4 5
+\`\`\`
+Output: \`3\`
+
+**Hint:** The sum of integers from 1 to N is N × (N + 1) / 2.`;
+
+const JS_MISSING_STARTER = `const lines = require('fs').readFileSync('/dev/stdin', 'utf8').trim().split('\\n');
+const n = parseInt(lines[0]);
+const nums = lines[1].split(' ').map(Number);
+// Find and print the missing number
+`;
+
+const JS_MISSING_REF = `const lines = require('fs').readFileSync('/dev/stdin', 'utf8').trim().split('\\n');
+const n = parseInt(lines[0]);
+const nums = lines[1].split(' ').map(Number);
+const expected = n * (n + 1) / 2;
+const actual = nums.reduce((a, b) => a + b, 0);
+console.log(expected - actual);
+`;
+
+// ── JavaScript — Hard ──────────────────────────────────────────────────────────
+const JS_PAREN_DESC = `Given a string containing only the characters \`(\`, \`)\`, \`{\`, \`}\`, \`[\`, \`]\`, determine whether the brackets are **valid**.
+
+A string is valid when:
+- Every opening bracket is closed by the **same type** of closing bracket.
+- Brackets are closed in the **correct order**.
+
+Print \`true\` if valid, \`false\` otherwise.
+
+**Examples:**
+- \`()[]{}\` → \`true\`
+- \`([)]\` → \`false\`
+- \`{[()]}\` → \`true\`
+- \`(((\` → \`false\``;
+
+const JS_PAREN_STARTER = `const s = require('fs').readFileSync('/dev/stdin', 'utf8').trim();
+// Check if the brackets in s are valid and print true or false
+`;
+
+const JS_PAREN_REF = `const s = require('fs').readFileSync('/dev/stdin', 'utf8').trim();
+const stack = [];
+const map = { ')': '(', '}': '{', ']': '[' };
+for (const c of s) {
+    if ('({['.includes(c)) stack.push(c);
+    else {
+        if (stack.pop() !== map[c]) { console.log('false'); process.exit(); }
+    }
+}
+console.log(stack.length === 0 ? 'true' : 'false');
+`;
+
+// ── C — Easy ───────────────────────────────────────────────────────────────────
+const C_GCD_DESC = `Read two positive integers and print their **Greatest Common Divisor (GCD)**.
+
+**Example:**
+- Input: \`48 18\`
+- Output: \`6\`
+
+**Hint:** Use the Euclidean algorithm: GCD(a, b) = GCD(b, a mod b), where GCD(a, 0) = a.`;
+
+const C_GCD_STARTER = `#include <stdio.h>
+
+int main() {
+    int a, b;
+    scanf("%d %d", &a, &b);
+    // Compute and print GCD(a, b)
+
+    return 0;
+}
+`;
+
+const C_GCD_REF = `#include <stdio.h>
+int gcd(int a, int b) { return b == 0 ? a : gcd(b, a % b); }
+int main() {
+    int a, b;
+    scanf("%d %d", &a, &b);
+    printf("%d\\n", gcd(a, b));
+    return 0;
+}
+`;
+
+// ── C — Medium ─────────────────────────────────────────────────────────────────
+const C_PRIME_DESC = `Read a positive integer N (N ≥ 2). Print \`prime\` if it is a prime number, or \`not prime\` otherwise.
+
+A **prime number** is divisible only by 1 and itself.
+
+**Examples:**
+- Input: \`17\` → Output: \`prime\`
+- Input: \`12\` → Output: \`not prime\``;
+
+const C_PRIME_STARTER = `#include <stdio.h>
+
+int main() {
+    int n;
+    scanf("%d", &n);
+    // Determine if n is prime and print "prime" or "not prime"
+
+    return 0;
+}
+`;
+
+const C_PRIME_REF = `#include <stdio.h>
+int main() {
+    int n; scanf("%d", &n);
+    int prime = 1;
+    for (int i = 2; (long long)i * i <= n; i++)
+        if (n % i == 0) { prime = 0; break; }
+    printf("%s\\n", prime ? "prime" : "not prime");
+    return 0;
+}
+`;
+
+// ── C — Hard ───────────────────────────────────────────────────────────────────
+const C_SELSORT_DESC = `Read N integers and sort them in **ascending order** using the **Selection Sort** algorithm. Print the sorted numbers space-separated on a single line.
+
+**Input format:**
+- Line 1: N
+- Line 2: N space-separated integers
+
+**Example:**
+\`\`\`
+5
+64 25 12 22 11
+\`\`\`
+Output: \`11 12 22 25 64\`
+
+**Note:** Implement Selection Sort from scratch — do not use any library sort function.`;
+
+const C_SELSORT_STARTER = `#include <stdio.h>
+
+int main() {
+    int n;
+    scanf("%d", &n);
+    int arr[1000];
+    for (int i = 0; i < n; i++) scanf("%d", &arr[i]);
+
+    // Implement Selection Sort here
+
+    for (int i = 0; i < n; i++) {
+        printf("%d", arr[i]);
+        if (i < n - 1) printf(" ");
+    }
+    printf("\\n");
+    return 0;
+}
+`;
+
+const C_SELSORT_REF = `#include <stdio.h>
+int main() {
+    int n; scanf("%d", &n);
+    int arr[1000];
+    for (int i = 0; i < n; i++) scanf("%d", &arr[i]);
+    for (int i = 0; i < n - 1; i++) {
+        int minIdx = i;
+        for (int j = i + 1; j < n; j++)
+            if (arr[j] < arr[minIdx]) minIdx = j;
+        int tmp = arr[i]; arr[i] = arr[minIdx]; arr[minIdx] = tmp;
+    }
+    for (int i = 0; i < n; i++) {
+        printf("%d", arr[i]);
+        if (i < n - 1) printf(" ");
+    }
+    printf("\\n");
+    return 0;
+}
+`;
+
+// ── C++ — Easy ─────────────────────────────────────────────────────────────────
+const CPP_EVEN_DESC = `Read N integers and print the **sum of all even numbers** among them. If there are no even numbers, print \`0\`.
+
+**Input format:**
+- Line 1: N
+- Line 2: N space-separated integers
+
+**Example:**
+\`\`\`
+6
+1 2 3 4 5 6
+\`\`\`
+Output: \`12\`  (2 + 4 + 6 = 12)`;
+
+const CPP_EVEN_STARTER = `#include <iostream>
+using namespace std;
+
+int main() {
+    int n;
+    cin >> n;
+    // Read n integers and print the sum of the even ones
+
+    return 0;
+}
+`;
+
+const CPP_EVEN_REF = `#include <iostream>
+using namespace std;
+int main() {
+    int n; cin >> n;
+    long long sum = 0;
+    for (int i = 0; i < n; i++) {
+        int x; cin >> x;
+        if (x % 2 == 0) sum += x;
+    }
+    cout << sum << endl;
+    return 0;
+}
+`;
+
+// ── C++ — Medium ───────────────────────────────────────────────────────────────
+const CPP_DEDUP_DESC = `Given a **sorted** array of N integers, print the array with all **duplicate values removed**. Output the remaining numbers space-separated on one line.
+
+**Input format:**
+- Line 1: N
+- Line 2: N sorted space-separated integers
+
+**Example:**
+\`\`\`
+7
+1 1 2 3 3 4 5
+\`\`\`
+Output: \`1 2 3 4 5\``;
+
+const CPP_DEDUP_STARTER = `#include <iostream>
+#include <vector>
+using namespace std;
+
+int main() {
+    int n;
+    cin >> n;
+    vector<int> arr(n);
+    for (int i = 0; i < n; i++) cin >> arr[i];
+    // Print the array without duplicates
+
+    return 0;
+}
+`;
+
+const CPP_DEDUP_REF = `#include <iostream>
+#include <vector>
+using namespace std;
+int main() {
+    int n; cin >> n;
+    vector<int> arr(n);
+    for (int i = 0; i < n; i++) cin >> arr[i];
+    bool first = true;
+    for (int i = 0; i < n; i++) {
+        if (i == 0 || arr[i] != arr[i - 1]) {
+            if (!first) cout << " ";
+            cout << arr[i];
+            first = false;
+        }
+    }
+    cout << endl;
+    return 0;
+}
+`;
+
+// ── C++ — Hard ─────────────────────────────────────────────────────────────────
+const CPP_LIS_DESC = `Find the **length of the Longest Strictly Increasing Subsequence (LIS)** of an array of N integers.
+
+A subsequence is obtained by deleting some elements (possibly none) without changing the order. "Strictly increasing" means each element is **greater than** the previous.
+
+**Input format:**
+- Line 1: N
+- Line 2: N space-separated integers
+
+**Example 1:**
+\`\`\`
+8
+10 9 2 5 3 7 101 18
+\`\`\`
+Output: \`4\`  (one LIS: 2 → 3 → 7 → 101)
+
+**Example 2:**
+\`\`\`
+4
+4 3 2 1
+\`\`\`
+Output: \`1\`  (each element is its own LIS)`;
+
+const CPP_LIS_STARTER = `#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+int main() {
+    int n;
+    cin >> n;
+    vector<int> arr(n);
+    for (int i = 0; i < n; i++) cin >> arr[i];
+    // Find and print the length of the longest strictly increasing subsequence
+
+    return 0;
+}
+`;
+
+const CPP_LIS_REF = `#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+int main() {
+    int n; cin >> n;
+    vector<int> arr(n);
+    for (int i = 0; i < n; i++) cin >> arr[i];
+    vector<int> dp(n, 1);
+    for (int i = 1; i < n; i++)
+        for (int j = 0; j < i; j++)
+            if (arr[j] < arr[i]) dp[i] = max(dp[i], dp[j] + 1);
+    cout << *max_element(dp.begin(), dp.end()) << endl;
+    return 0;
+}
+`;
+
+// ── C# — Easy ──────────────────────────────────────────────────────────────────
+const CS_BIN_DESC = `Read a **binary string** (containing only \`0\`s and \`1\`s) and print its **decimal (base-10) equivalent**.
+
+**Examples:**
+- Input: \`1010\` → Output: \`10\`
+- Input: \`1111\` → Output: \`15\`
+- Input: \`0\` → Output: \`0\``;
+
+const CS_BIN_STARTER = `using System;
+
+class Program {
+    static void Main(string[] args) {
+        string binary = Console.ReadLine().Trim();
+        // Convert the binary string to decimal and print it
+
+    }
+}
+`;
+
+const CS_BIN_REF = `using System;
+class Program {
+    static void Main(string[] args) {
+        string binary = Console.ReadLine().Trim();
+        Console.WriteLine(Convert.ToInt32(binary, 2));
+    }
+}
+`;
+
+// ── C# — Medium ────────────────────────────────────────────────────────────────
+const CS_CAESAR_DESC = `Implement the **Caesar Cipher** encryption.
+
+Read a shift amount K and a message. Shift each **letter** forward by K positions in the alphabet (wrapping around Z → A). Non-letter characters stay unchanged. Preserve the original case.
+
+**Input format:**
+- Line 1: K (integer; may be larger than 26 or negative)
+- Line 2: the message
+
+**Example:**
+\`\`\`
+3
+Hello, World!
+\`\`\`
+Output: \`Khoor, Zruog!\``;
+
+const CS_CAESAR_STARTER = `using System;
+
+class Program {
+    static void Main(string[] args) {
+        int k = int.Parse(Console.ReadLine().Trim()) % 26;
+        if (k < 0) k += 26;
+        string message = Console.ReadLine();
+        // Encrypt the message using the Caesar cipher with shift k
+
+    }
+}
+`;
+
+const CS_CAESAR_REF = `using System;
+class Program {
+    static void Main(string[] args) {
+        int k = int.Parse(Console.ReadLine().Trim()) % 26;
+        if (k < 0) k += 26;
+        string message = Console.ReadLine();
+        char[] result = message.ToCharArray();
+        for (int i = 0; i < result.Length; i++) {
+            if (char.IsLetter(result[i])) {
+                char baseChar = char.IsUpper(result[i]) ? 'A' : 'a';
+                result[i] = (char)((result[i] - baseChar + k) % 26 + baseChar);
+            }
+        }
+        Console.WriteLine(new string(result));
+    }
+}
+`;
+
+// ── C# — Hard ──────────────────────────────────────────────────────────────────
+const CS_DIAG_DESC = `Read an N×N square matrix and print the **sum of the primary diagonal** and the **sum of the secondary diagonal**, separated by a space.
+
+- **Primary diagonal**: elements at positions [i][i] (top-left → bottom-right)
+- **Secondary diagonal**: elements at positions [i][N−1−i] (top-right → bottom-left)
+
+**Input format:**
+- Line 1: N
+- Lines 2 … N+1: N space-separated integers per row
+
+**Example:**
+\`\`\`
+3
+1 2 3
+4 5 6
+7 8 9
+\`\`\`
+Output: \`15 15\`
+(Primary: 1+5+9 = 15 | Secondary: 3+5+7 = 15)`;
+
+const CS_DIAG_STARTER = `using System;
+
+class Program {
+    static void Main(string[] args) {
+        int n = int.Parse(Console.ReadLine().Trim());
+        int[,] matrix = new int[n, n];
+        for (int i = 0; i < n; i++) {
+            string[] parts = Console.ReadLine().Trim().Split(' ');
+            for (int j = 0; j < n; j++)
+                matrix[i, j] = int.Parse(parts[j]);
+        }
+        // Compute and print primary and secondary diagonal sums, space-separated
+
+    }
+}
+`;
+
+const CS_DIAG_REF = `using System;
+class Program {
+    static void Main(string[] args) {
+        int n = int.Parse(Console.ReadLine().Trim());
+        int[,] m = new int[n, n];
+        for (int i = 0; i < n; i++) {
+            string[] parts = Console.ReadLine().Trim().Split(' ');
+            for (int j = 0; j < n; j++) m[i, j] = int.Parse(parts[j]);
+        }
+        int primary = 0, secondary = 0;
+        for (int i = 0; i < n; i++) {
+            primary   += m[i, i];
+            secondary += m[i, n - 1 - i];
+        }
+        Console.WriteLine(primary + " " + secondary);
+    }
+}
+`;
+
+// ── Universal — Medium (all languages) ────────────────────────────────────────
+const UNI_COLLATZ_DESC = `The **Collatz Sequence** (3n+1 problem) starts from a positive integer N and applies these rules repeatedly:
+- If N is **even** → next = N / 2
+- If N is **odd**  → next = 3 × N + 1
+
+The sequence ends when it reaches **1**.
+
+Read a positive integer N and print the **entire Collatz sequence** from N to 1, all numbers **space-separated** on one line.
+
+**Example 1:**
+- Input: \`6\`
+- Output: \`6 3 10 5 16 8 4 2 1\`
+
+**Example 2:**
+- Input: \`1\`
+- Output: \`1\`
+
+This problem is designed to be solved in **any language**: Python, JavaScript, C, C++, or C#.`;
+
+const UNI_COLLATZ_STARTER = `n = int(input())
+result = []
+# Build the Collatz sequence from n down to 1, then print space-separated
+`;
+
+const UNI_COLLATZ_REF = `n = int(input())
+result = []
+while n != 1:
+    result.append(n)
+    n = n // 2 if n % 2 == 0 else 3 * n + 1
+result.append(1)
+print(*result)
+`;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
 
 type TestSpec = { input: string; expectedOutput: string; isHidden: boolean };
 
-async function upsertProblemWithTests(params: {
-  title: string; description: string; starterCode: string;
-  referenceSolution: string; difficulty: string; language: string;
-  tags: string[]; category?: string; createdById: number; testCases: TestSpec[];
+async function createProblem(params: {
+  title: string;
+  description: string;
+  starterCode: string;
+  referenceSolution: string;
+  difficulty: string;
+  language: string;
+  languages?: string[];
+  tags: string[];
+  category: string;
+  createdById: number;
+  testCases: TestSpec[];
 }) {
-  const existing = await prisma.problem.findFirst({ where: { title: params.title } });
-  const common = {
-    description: params.description, starterCode: params.starterCode,
-    referenceSolution: params.referenceSolution, difficulty: params.difficulty,
-    language: params.language, tags: params.tags, category: params.category ?? null,
-    metadata: undefined as Prisma.InputJsonValue | undefined,
-  };
-  if (existing) {
-    await prisma.testCase.deleteMany({ where: { problemId: existing.id } });
-    return prisma.problem.update({
-      where: { id: existing.id },
-      data: { ...common, testCases: { create: params.testCases } },
-    });
-  }
   return prisma.problem.create({
     data: {
-      title: params.title, ...common,
-      createdBy: { connect: { id: params.createdById } },
-      testCases: { create: params.testCases },
+      title:             params.title,
+      description:       params.description,
+      starterCode:       params.starterCode,
+      referenceSolution: params.referenceSolution,
+      difficulty:        params.difficulty,
+      language:          params.language,
+      languages:         params.languages ?? [],
+      tags:              params.tags,
+      category:          params.category,
+      createdBy:         { connect: { id: params.createdById } },
+      testCases:         { create: params.testCases },
     },
   });
 }
 
-async function resetDemoData() {
-  // Delete in FK-dependency order (dependents first, parents last).
-  // Verified against schema.prisma — no guessing, no try-catch needed.
-  await prisma.hintEvent.deleteMany();          // → SubmissionAttempt, AiLog, Problem
-  await prisma.aIInteractionAudit.deleteMany(); // → SubmissionAttempt, Problem
-  await prisma.aiLog.deleteMany();              // → Submission, Problem
-  await prisma.submissionAttempt.deleteMany();  // → Submission, Problem
-  await prisma.submission.deleteMany();         // → Problem
-  await prisma.grade.deleteMany();              // → Assignment, Rubric
-  await prisma.assignmentEnrollment.deleteMany();// → Assignment
-  await prisma.assignment.deleteMany();         // → Problem
-  await prisma.problemVariation.deleteMany();   // → Problem
-  await prisma.problem.deleteMany();            // cascades: TestCase, Rubric (onDelete: Cascade)
+// ─────────────────────────────────────────────────────────────────────────────
+// DATABASE RESET
+// Deletes all transactional data while preserving users and roles.
+// Order respects foreign-key dependencies (children before parents).
+// ─────────────────────────────────────────────────────────────────────────────
+async function cleanDatabase() {
+  await prisma.hintEvent.deleteMany();
+  await prisma.aIInteractionAudit.deleteMany();
+  await prisma.aiLog.deleteMany();
+  await prisma.submissionAttempt.deleteMany();
+  await prisma.submission.deleteMany();
+  await prisma.grade.deleteMany();
+  await prisma.assignmentEnrollment.deleteMany();
+  await prisma.assignment.deleteMany();
+  await prisma.problemVariation.deleteMany();
+  await prisma.problem.deleteMany();           // cascades → TestCase, Rubric
+  await prisma.studentGroupMembership.deleteMany();
+  await prisma.studentGroup.deleteMany();
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Main
-// ─────────────────────────────────────────────────────────────────────────────
-
+// ═══════════════════════════════════════════════════════════════════════════════
+// MAIN
+// ═══════════════════════════════════════════════════════════════════════════════
 async function main() {
-  // ── Roles ──────────────────────────────────────────────────────────────────
+
+  // ── Roles (idempotent) ─────────────────────────────────────────────────────
   const studentRole = await prisma.role.upsert({ where: { name: "student" }, update: {}, create: { name: "student" } });
   const teacherRole = await prisma.role.upsert({ where: { name: "teacher" }, update: {}, create: { name: "teacher" } });
   const adminRole   = await prisma.role.upsert({ where: { name: "admin"   }, update: {}, create: { name: "admin"   } });
 
   const pw = await bcrypt.hash("123456", 10);
 
-  // ── Users ──────────────────────────────────────────────────────────────────
+  // ── Users (upsert — never deleted) ────────────────────────────────────────
   const teacher = await prisma.user.upsert({
-    where: { email: "teacher1@demo.com" },
+    where:  { email: "teacher1@demo.com" },
     update: { name: "Teacher Demo", passwordHash: pw, roleId: teacherRole.id },
     create: { name: "Teacher Demo", email: "teacher1@demo.com", passwordHash: pw, roleId: teacherRole.id },
   });
 
   await prisma.user.upsert({
-    where: { email: "admin1@demo.com" },
+    where:  { email: "admin1@demo.com" },
     update: { name: "Admin Demo", passwordHash: pw, roleId: adminRole.id },
     create: { name: "Admin Demo", email: "admin1@demo.com", passwordHash: pw, roleId: adminRole.id },
   });
@@ -207,7 +680,7 @@ async function main() {
     { email: "student10@demo.com", name: "Merve Aydın"    },
   ];
 
-  const students = await Promise.all(
+  await Promise.all(
     studentDefs.map((s) =>
       prisma.user.upsert({
         where:  { email: s.email },
@@ -217,398 +690,314 @@ async function main() {
     ),
   );
 
+  // ── System flags ───────────────────────────────────────────────────────────
   await prisma.systemFlag.upsert({
     where:  { key: "exam_mode_enabled" },
-    update: { value: false },
-    create: { key: "exam_mode_enabled", value: false },
+    update: { value: { enabled: false, groupIds: [] } },
+    create: { key: "exam_mode_enabled", value: { enabled: false, groupIds: [] } },
   });
 
-  await resetDemoData();
+  // ── Wipe all transactional data ────────────────────────────────────────────
+  console.log("  Cleaning database…");
+  await cleanDatabase();
 
-  // ── Problems ───────────────────────────────────────────────────────────────
+  // ── Question Bank ──────────────────────────────────────────────────────────
+  console.log("  Seeding problems…\n");
 
-  // Python – Easy
-  const pSum = await upsertProblemWithTests({
-    title: "Sum of Two Numbers", description: SUM_DESC, starterCode: "",
-    referenceSolution: SUM_REF, difficulty: "Easy", language: "python",
-    tags: ["math", "basics", "input-output"], category: "Fundamentals",
+  // ─── Python ───────────────────────────────────────────────────────────────
+
+  await createProblem({
+    title: "Sum of Digits",
+    description: PY_DIGITS_DESC,
+    starterCode: PY_DIGITS_STARTER,
+    referenceSolution: PY_DIGITS_REF,
+    difficulty: "Easy", language: "python",
+    tags: ["math", "digits", "basics"], category: "Fundamentals",
     createdById: teacher.id,
     testCases: [
-      { input: "2 3",   expectedOutput: "5",  isHidden: false },
-      { input: "10 20", expectedOutput: "30", isHidden: true  },
-      { input: "7 8",   expectedOutput: "15", isHidden: false },
+      { input: "1234", expectedOutput: "10",  isHidden: false },
+      { input: "0",    expectedOutput: "0",   isHidden: false },
+      { input: "999",  expectedOutput: "27",  isHidden: true  },
+      { input: "100",  expectedOutput: "1",   isHidden: true  },
     ],
   });
 
-  // Python – Easy
-  const pPal = await upsertProblemWithTests({
-    title: "Check Palindrome", description: PAL_DESC, starterCode: "",
-    referenceSolution: PAL_REF, difficulty: "Easy", language: "python",
-    tags: ["string", "basics"], category: "Strings",
-    createdById: teacher.id,
-    testCases: [
-      { input: "level", expectedOutput: "true",  isHidden: false },
-      { input: "hello", expectedOutput: "false", isHidden: true  },
-      { input: "abba",  expectedOutput: "true",  isHidden: false },
-    ],
-  });
-
-  // Python – Medium
-  const pFact = await upsertProblemWithTests({
-    title: "Factorial", description: FACT_DESC, starterCode: "",
-    referenceSolution: FACT_REF, difficulty: "Medium", language: "python",
-    tags: ["math", "recursion"], category: "Algorithms",
-    createdById: teacher.id,
-    testCases: [
-      { input: "5", expectedOutput: "120", isHidden: false },
-      { input: "1", expectedOutput: "1",   isHidden: true  },
-      { input: "3", expectedOutput: "6",   isHidden: false },
-    ],
-  });
-
-  // Python – Medium
-  const pFib = await upsertProblemWithTests({
-    title: "Fibonacci Sequence", description: FIB_DESC,
-    starterCode: FIB_STARTER, referenceSolution: FIB_REF,
+  await createProblem({
+    title: "Count Vowels in a String",
+    description: PY_VOWELS_DESC,
+    starterCode: PY_VOWELS_STARTER,
+    referenceSolution: PY_VOWELS_REF,
     difficulty: "Medium", language: "python",
-    tags: ["math", "sequences"], category: "Algorithms",
+    tags: ["strings", "counting", "loops"], category: "Strings",
     createdById: teacher.id,
     testCases: [
-      { input: "5", expectedOutput: "1 1 2 3 5",          isHidden: false },
-      { input: "1", expectedOutput: "1",                  isHidden: false },
-      { input: "8", expectedOutput: "1 1 2 3 5 8 13 21", isHidden: true  },
+      { input: "Hello World",        expectedOutput: "3", isHidden: false },
+      { input: "aeiou",              expectedOutput: "5", isHidden: false },
+      { input: "rhythm",             expectedOutput: "0", isHidden: true  },
+      { input: "Programming is fun", expectedOutput: "5", isHidden: true  },
     ],
   });
 
-  // Python – Hard
-  const pLCS = await upsertProblemWithTests({
-    title: "Longest Common Subsequence", description: LCS_DESC,
-    starterCode: LCS_STARTER, referenceSolution: LCS_REF,
+  await createProblem({
+    title: "Maximum Profit from Stock Prices",
+    description: PY_STOCK_DESC,
+    starterCode: PY_STOCK_STARTER,
+    referenceSolution: PY_STOCK_REF,
     difficulty: "Hard", language: "python",
-    tags: ["dp", "strings", "algorithms"], category: "Dynamic Programming",
+    tags: ["arrays", "greedy", "algorithms"], category: "Algorithms",
     createdById: teacher.id,
     testCases: [
-      { input: "ABCBDAB\nBDCABA",  expectedOutput: "4", isHidden: false },
-      { input: "AGGTAB\nGXTXAYB", expectedOutput: "4", isHidden: true  },
-      { input: "abc\nabc",         expectedOutput: "3", isHidden: false },
-      { input: "abc\ndef",         expectedOutput: "0", isHidden: true  },
+      { input: "5\n7 1 5 3 6", expectedOutput: "5", isHidden: false },
+      { input: "5\n7 6 4 3 1", expectedOutput: "0", isHidden: false },
+      { input: "3\n1 2 3",     expectedOutput: "2", isHidden: true  },
+      { input: "4\n3 3 3 3",   expectedOutput: "0", isHidden: true  },
     ],
   });
 
-  // C – Easy
-  const pMaxC = await upsertProblemWithTests({
-    title: "Find Maximum in Array", description: C_MAX_DESC,
-    starterCode: C_MAX_STARTER, referenceSolution: C_MAX_REF,
-    difficulty: "Easy", language: "c",
-    tags: ["arrays", "loops"], category: "Arrays",
-    createdById: teacher.id,
-    testCases: [
-      { input: "5\n3 1 4 1 5",    expectedOutput: "5",  isHidden: false },
-      { input: "3\n10 20 15",     expectedOutput: "20", isHidden: false },
-      { input: "4\n-5 -3 -8 -1", expectedOutput: "-1", isHidden: true  },
-    ],
-  });
+  // ─── JavaScript ───────────────────────────────────────────────────────────
 
-  // C – Medium
-  const pWordsC = await upsertProblemWithTests({
-    title: "Count Words in String", description: C_WORDS_DESC,
-    starterCode: C_WORDS_STARTER, referenceSolution: C_WORDS_REF,
-    difficulty: "Medium", language: "c",
-    tags: ["strings", "parsing"], category: "Strings",
-    createdById: teacher.id,
-    testCases: [
-      { input: "hello world",         expectedOutput: "2", isHidden: false },
-      { input: "the quick brown fox", expectedOutput: "4", isHidden: true  },
-      { input: "one",                 expectedOutput: "1", isHidden: false },
-    ],
-  });
-
-  // C++ – Easy
-  const pSortCpp = await upsertProblemWithTests({
-    title: "Sort Three Numbers", description: CPP_SORT_DESC,
-    starterCode: CPP_SORT_STARTER, referenceSolution: CPP_SORT_REF,
-    difficulty: "Easy", language: "cpp",
-    tags: ["sorting", "basics"], category: "Sorting",
-    createdById: teacher.id,
-    testCases: [
-      { input: "3 1 2",  expectedOutput: "1 2 3",  isHidden: false },
-      { input: "5 5 5",  expectedOutput: "5 5 5",  isHidden: false },
-      { input: "-1 0 1", expectedOutput: "-1 0 1", isHidden: true  },
-    ],
-  });
-
-  // C++ – Medium
-  const pBsCpp = await upsertProblemWithTests({
-    title: "Binary Search", description: CPP_BS_DESC,
-    starterCode: CPP_BS_STARTER, referenceSolution: CPP_BS_REF,
-    difficulty: "Medium", language: "cpp",
-    tags: ["search", "binary-search", "arrays"], category: "Algorithms",
-    createdById: teacher.id,
-    testCases: [
-      { input: "5\n1 3 5 7 9\n7", expectedOutput: "3",  isHidden: false },
-      { input: "5\n1 3 5 7 9\n6", expectedOutput: "-1", isHidden: false },
-      { input: "1\n42\n42",       expectedOutput: "0",  isHidden: true  },
-    ],
-  });
-
-  // JavaScript – Easy
-  const pFizzJs = await upsertProblemWithTests({
-    title: "FizzBuzz", description: JS_FIZZ_DESC,
-    starterCode: JS_FIZZ_STARTER, referenceSolution: JS_FIZZ_REF,
+  await createProblem({
+    title: "Reverse a String",
+    description: JS_REV_DESC,
+    starterCode: JS_REV_STARTER,
+    referenceSolution: JS_REV_REF,
     difficulty: "Easy", language: "javascript",
-    tags: ["loops", "conditionals", "basics"], category: "Fundamentals",
+    tags: ["strings", "basics"], category: "Strings",
     createdById: teacher.id,
     testCases: [
-      { input: "5",  expectedOutput: "1\n2\nFizz\n4\nBuzz",                                                       isHidden: false },
-      { input: "3",  expectedOutput: "1\n2\nFizz",                                                                isHidden: false },
-      { input: "15", expectedOutput: "1\n2\nFizz\n4\nBuzz\nFizz\n7\n8\nFizz\nBuzz\n11\nFizz\n13\n14\nFizzBuzz", isHidden: true  },
+      { input: "hello",   expectedOutput: "olleh",   isHidden: false },
+      { input: "abcde",   expectedOutput: "edcba",   isHidden: false },
+      { input: "racecar", expectedOutput: "racecar", isHidden: true  },
+      { input: "OpenAI",  expectedOutput: "IAnepO",  isHidden: true  },
     ],
   });
 
-  // JavaScript – Medium
-  const pArrJs = await upsertProblemWithTests({
-    title: "Array Sum", description: JS_SUM_DESC,
-    starterCode: JS_SUM_STARTER, referenceSolution: JS_SUM_REF,
+  await createProblem({
+    title: "Find the Missing Number",
+    description: JS_MISSING_DESC,
+    starterCode: JS_MISSING_STARTER,
+    referenceSolution: JS_MISSING_REF,
     difficulty: "Medium", language: "javascript",
+    tags: ["math", "arrays"], category: "Math",
+    createdById: teacher.id,
+    testCases: [
+      { input: "5\n1 2 4 5",    expectedOutput: "3", isHidden: false },
+      { input: "3\n1 3",        expectedOutput: "2", isHidden: false },
+      { input: "6\n1 2 3 4 6",  expectedOutput: "5", isHidden: true  },
+      { input: "2\n1",          expectedOutput: "2", isHidden: true  },
+    ],
+  });
+
+  await createProblem({
+    title: "Valid Parentheses",
+    description: JS_PAREN_DESC,
+    starterCode: JS_PAREN_STARTER,
+    referenceSolution: JS_PAREN_REF,
+    difficulty: "Hard", language: "javascript",
+    tags: ["stack", "data-structures", "strings"], category: "Data Structures",
+    createdById: teacher.id,
+    testCases: [
+      { input: "()[]{}",  expectedOutput: "true",  isHidden: false },
+      { input: "([)]",    expectedOutput: "false",  isHidden: false },
+      { input: "{[()]}",  expectedOutput: "true",  isHidden: true  },
+      { input: "(((", expectedOutput: "false", isHidden: true  },
+    ],
+  });
+
+  // ─── C ────────────────────────────────────────────────────────────────────
+
+  await createProblem({
+    title: "GCD of Two Numbers",
+    description: C_GCD_DESC,
+    starterCode: C_GCD_STARTER,
+    referenceSolution: C_GCD_REF,
+    difficulty: "Easy", language: "c",
+    tags: ["math", "recursion"], category: "Math",
+    createdById: teacher.id,
+    testCases: [
+      { input: "48 18",  expectedOutput: "6",  isHidden: false },
+      { input: "100 75", expectedOutput: "25", isHidden: false },
+      { input: "7 13",   expectedOutput: "1",  isHidden: true  },
+      { input: "36 60",  expectedOutput: "12", isHidden: true  },
+    ],
+  });
+
+  await createProblem({
+    title: "Check Prime Number",
+    description: C_PRIME_DESC,
+    starterCode: C_PRIME_STARTER,
+    referenceSolution: C_PRIME_REF,
+    difficulty: "Medium", language: "c",
+    tags: ["math", "loops"], category: "Math",
+    createdById: teacher.id,
+    testCases: [
+      { input: "17",  expectedOutput: "prime",     isHidden: false },
+      { input: "12",  expectedOutput: "not prime", isHidden: false },
+      { input: "2",   expectedOutput: "prime",     isHidden: true  },
+      { input: "100", expectedOutput: "not prime", isHidden: true  },
+    ],
+  });
+
+  await createProblem({
+    title: "Selection Sort",
+    description: C_SELSORT_DESC,
+    starterCode: C_SELSORT_STARTER,
+    referenceSolution: C_SELSORT_REF,
+    difficulty: "Hard", language: "c",
+    tags: ["sorting", "algorithms", "arrays"], category: "Sorting",
+    createdById: teacher.id,
+    testCases: [
+      { input: "5\n64 25 12 22 11", expectedOutput: "11 12 22 25 64", isHidden: false },
+      { input: "3\n3 1 2",          expectedOutput: "1 2 3",          isHidden: false },
+      { input: "4\n-5 3 -1 0",      expectedOutput: "-5 -1 0 3",      isHidden: true  },
+      { input: "1\n42",             expectedOutput: "42",             isHidden: true  },
+    ],
+  });
+
+  // ─── C++ ──────────────────────────────────────────────────────────────────
+
+  await createProblem({
+    title: "Sum of Even Numbers in Array",
+    description: CPP_EVEN_DESC,
+    starterCode: CPP_EVEN_STARTER,
+    referenceSolution: CPP_EVEN_REF,
+    difficulty: "Easy", language: "cpp",
     tags: ["arrays", "loops", "math"], category: "Arrays",
     createdById: teacher.id,
     testCases: [
-      { input: "3\n1\n2\n3",            expectedOutput: "6",   isHidden: false },
-      { input: "1\n42",                 expectedOutput: "42",  isHidden: false },
-      { input: "5\n10\n20\n30\n40\n50", expectedOutput: "150", isHidden: true  },
+      { input: "6\n1 2 3 4 5 6",   expectedOutput: "12", isHidden: false },
+      { input: "4\n1 3 5 7",        expectedOutput: "0",  isHidden: false },
+      { input: "3\n2 4 6",          expectedOutput: "12", isHidden: true  },
+      { input: "5\n10 -4 3 7 2",   expectedOutput: "8",  isHidden: true  },
     ],
   });
 
-  // C# – Easy
-  const pTempCs = await upsertProblemWithTests({
-    title: "Temperature Converter", description: CS_TEMP_DESC,
-    starterCode: CS_TEMP_STARTER, referenceSolution: CS_TEMP_REF,
+  await createProblem({
+    title: "Remove Duplicates from Sorted Array",
+    description: CPP_DEDUP_DESC,
+    starterCode: CPP_DEDUP_STARTER,
+    referenceSolution: CPP_DEDUP_REF,
+    difficulty: "Medium", language: "cpp",
+    tags: ["arrays", "sorting"], category: "Arrays",
+    createdById: teacher.id,
+    testCases: [
+      { input: "7\n1 1 2 3 3 4 5",  expectedOutput: "1 2 3 4 5",   isHidden: false },
+      { input: "5\n1 1 1 1 1",       expectedOutput: "1",           isHidden: false },
+      { input: "4\n1 2 3 4",         expectedOutput: "1 2 3 4",     isHidden: true  },
+      { input: "6\n-3 -1 0 0 2 4",   expectedOutput: "-3 -1 0 2 4", isHidden: true  },
+    ],
+  });
+
+  await createProblem({
+    title: "Longest Increasing Subsequence",
+    description: CPP_LIS_DESC,
+    starterCode: CPP_LIS_STARTER,
+    referenceSolution: CPP_LIS_REF,
+    difficulty: "Hard", language: "cpp",
+    tags: ["dynamic-programming", "arrays", "algorithms"], category: "Dynamic Programming",
+    createdById: teacher.id,
+    testCases: [
+      { input: "8\n10 9 2 5 3 7 101 18", expectedOutput: "4", isHidden: false },
+      { input: "5\n3 10 2 1 20",          expectedOutput: "3", isHidden: false },
+      { input: "3\n1 2 3",                expectedOutput: "3", isHidden: true  },
+      { input: "4\n4 3 2 1",              expectedOutput: "1", isHidden: true  },
+    ],
+  });
+
+  // ─── C# ───────────────────────────────────────────────────────────────────
+
+  await createProblem({
+    title: "Binary to Decimal Conversion",
+    description: CS_BIN_DESC,
+    starterCode: CS_BIN_STARTER,
+    referenceSolution: CS_BIN_REF,
     difficulty: "Easy", language: "csharp",
-    tags: ["math", "basics", "formatting"], category: "Fundamentals",
+    tags: ["math", "conversion", "basics"], category: "Fundamentals",
     createdById: teacher.id,
     testCases: [
-      { input: "0",   expectedOutput: "32.00",  isHidden: false },
-      { input: "100", expectedOutput: "212.00", isHidden: true  },
-      { input: "37",  expectedOutput: "98.60",  isHidden: false },
+      { input: "1010",     expectedOutput: "10",  isHidden: false },
+      { input: "1111",     expectedOutput: "15",  isHidden: false },
+      { input: "0",        expectedOutput: "0",   isHidden: true  },
+      { input: "11010011", expectedOutput: "211", isHidden: true  },
     ],
   });
 
-  // Multi-file demo — shows the tab editor feature
-  const pMultiFile = await upsertProblemWithTests({
-    title: "Multi-File: Math Helper Library", description: MULTIFILE_DESC,
-    starterCode: MULTIFILE_STARTER, referenceSolution: MULTIFILE_REF,
-    difficulty: "Easy", language: "python",
-    tags: ["multi-file", "functions", "demo"], category: "Fundamentals",
+  await createProblem({
+    title: "Caesar Cipher Encryption",
+    description: CS_CAESAR_DESC,
+    starterCode: CS_CAESAR_STARTER,
+    referenceSolution: CS_CAESAR_REF,
+    difficulty: "Medium", language: "csharp",
+    tags: ["strings", "encryption", "algorithms"], category: "Strings",
     createdById: teacher.id,
     testCases: [
-      { input: "3 4",   expectedOutput: "7\n-1\n12",    isHidden: false },
-      { input: "10 5",  expectedOutput: "15\n5\n50",    isHidden: false },
-      { input: "7 3",   expectedOutput: "10\n4\n21",    isHidden: true  },
-      { input: "-2 6",  expectedOutput: "4\n-8\n-12",   isHidden: true  },
+      { input: "3\nHello, World!", expectedOutput: "Khoor, Zruog!", isHidden: false },
+      { input: "0\nABC",          expectedOutput: "ABC",           isHidden: false },
+      { input: "1\nzebra",        expectedOutput: "afcsb",         isHidden: true  },
+      { input: "26\nTest",        expectedOutput: "Test",          isHidden: true  },
     ],
   });
 
-  // Demo problem (published = false — shows teacher draft state)
-  await upsertProblemWithTests({
-    title: "Demo: Public and Hidden Tests", description: DEMO_DESC,
-    starterCode: "", referenceSolution: SUM_REF,
-    difficulty: "Easy", language: "python",
-    tags: ["demo"], category: "Fundamentals",
+  await createProblem({
+    title: "Matrix Diagonal Sums",
+    description: CS_DIAG_DESC,
+    starterCode: CS_DIAG_STARTER,
+    referenceSolution: CS_DIAG_REF,
+    difficulty: "Hard", language: "csharp",
+    tags: ["arrays", "matrix", "math"], category: "Arrays",
     createdById: teacher.id,
     testCases: [
-      { input: "3 4",   expectedOutput: "7",   isHidden: false },
-      { input: "0 0",   expectedOutput: "0",   isHidden: false },
-      { input: "-2 10", expectedOutput: "8",   isHidden: true  },
-      { input: "99 1",  expectedOutput: "100", isHidden: true  },
+      { input: "3\n1 2 3\n4 5 6\n7 8 9", expectedOutput: "15 15", isHidden: false },
+      { input: "2\n1 2\n3 4",             expectedOutput: "5 5",   isHidden: false },
+      { input: "2\n5 3\n2 7",             expectedOutput: "12 5",  isHidden: true  },
+      { input: "3\n1 0 0\n0 1 0\n0 0 1", expectedOutput: "3 1",   isHidden: true  },
     ],
   });
 
-  // ── Assignments ────────────────────────────────────────────────────────────
+  // ─── Universal (all languages) ─────────────────────────────────────────────
 
-  const now          = new Date();
-  const inOneWeek    = new Date(now.getTime() + 7  * 86_400_000);
-  const inTwoWeeks   = new Date(now.getTime() + 14 * 86_400_000);
-  const inOneMonth   = new Date(now.getTime() + 30 * 86_400_000);
-  const threeDaysAgo = new Date(now.getTime() - 3  * 86_400_000);
-
-  async function mkAssignment(opts: {
-    title: string; description?: string;
-    problemId: number; dueDate: Date | null;
-    isPublished: boolean; idx: number[]; // indices into students[]
-  }) {
-    const a = await prisma.assignment.create({
-      data: {
-        title:       opts.title,
-        description: opts.description ?? null,
-        problemId:   opts.problemId,
-        createdById: teacher.id,
-        dueDate:     opts.dueDate,
-        isPublished: opts.isPublished,
-      },
-    });
-    if (opts.idx.length > 0) {
-      await prisma.assignmentEnrollment.createMany({
-        data: opts.idx.map((i) => ({ assignmentId: a.id, userId: students[i].id })),
-        skipDuplicates: true,
-      });
-    }
-    return a;
-  }
-
-  // Python labs — all 10 students enrolled
-  await mkAssignment({ title: "Lab 1: Sum of Two Numbers",    problemId: pSum.id,     dueDate: inOneWeek,    isPublished: true,  idx: [0,1,2,3,4,5,6,7,8,9] });
-  await mkAssignment({ title: "Lab 2: Check Palindrome",      problemId: pPal.id,     dueDate: inOneWeek,    isPublished: true,  idx: [0,1,2,3,4,5,6,7,8,9] });
-  await mkAssignment({ title: "Lab 3: Factorial",             problemId: pFact.id,    dueDate: inTwoWeeks,   isPublished: true,  idx: [0,1,2,3,4,5,6,7,8,9] });
-  await mkAssignment({ title: "Lab 4: Fibonacci Sequence",    problemId: pFib.id,     dueDate: inTwoWeeks,   isPublished: true,  idx: [0,1,2,3,4,5,6,7,8,9] });
-  await mkAssignment({ title: "Challenge: LCS (overdue)",     problemId: pLCS.id,     dueDate: threeDaysAgo, isPublished: true,  idx: [0,1,2,3,4,5,6,7,8,9],
-    description: "This assignment was due 3 days ago. Demonstrates the overdue (red) due-date indicator." });
-
-  // C labs — students 1–5 (idx 0–4)
-  await mkAssignment({ title: "C Lab 1: Find Maximum in Array", problemId: pMaxC.id,   dueDate: inOneWeek,  isPublished: true, idx: [0,1,2,3,4] });
-  await mkAssignment({ title: "C Lab 2: Count Words in String", problemId: pWordsC.id, dueDate: inTwoWeeks, isPublished: true, idx: [0,1,2,3,4] });
-
-  // C++ labs — students 6–10 (idx 5–9)
-  await mkAssignment({ title: "C++ Lab 1: Sort Three Numbers", problemId: pSortCpp.id, dueDate: inOneWeek,  isPublished: true, idx: [5,6,7,8,9] });
-  await mkAssignment({ title: "C++ Lab 2: Binary Search",      problemId: pBsCpp.id,   dueDate: inOneMonth, isPublished: true, idx: [5,6,7,8,9] });
-
-  // JavaScript labs — odd-indexed students
-  await mkAssignment({ title: "JS Lab 1: FizzBuzz",  problemId: pFizzJs.id, dueDate: inOneWeek,  isPublished: true, idx: [0,2,4,6,8] });
-  await mkAssignment({ title: "JS Lab 2: Array Sum", problemId: pArrJs.id,  dueDate: inTwoWeeks, isPublished: true, idx: [0,2,4,6,8] });
-
-  // C# lab — even-indexed students
-  await mkAssignment({ title: "C# Lab: Temperature Converter", problemId: pTempCs.id, dueDate: inOneMonth, isPublished: true, idx: [1,3,5,7,9] });
-
-  // Multi-file demo assignment — all students enrolled so the feature is easy to show
-  await mkAssignment({
-    title: "Demo: Multi-File Editor",
-    description: "Open this assignment as a student and use the + tab button to add a second file. Write helper functions in one tab and your main logic in another — both tabs are merged when you Run or Submit.",
-    problemId: pMultiFile.id,
-    dueDate: inOneMonth,
-    isPublished: true,
-    idx: [0,1,2,3,4,5,6,7,8,9],
-  });
-
-  // Draft (unpublished) — demonstrates teacher draft state
-  await mkAssignment({ title: "[DRAFT] Demo: Public and Hidden Tests", problemId: pSum.id, dueDate: null, isPublished: false, idx: [] });
-
-  // ── Submissions (populate the grade book & history) ───────────────────────
-
-  const sub1 = await prisma.submission.create({
-    data: { userId: students[0].id, problemId: pSum.id,  code: SUM_REF.trim(), language: "python",
-            status: "accepted", stdout: "All tests passed", stderr: null, executionTime: 14, memory: 1024 },
-  });
-  const sub2 = await prisma.submission.create({
-    data: { userId: students[0].id, problemId: pPal.id,  code: PAL_REF.trim(), language: "python",
-            status: "accepted", stdout: "All tests passed", stderr: null, executionTime: 15, memory: 1100 },
-  });
-  const sub3 = await prisma.submission.create({
-    data: { userId: students[1].id, problemId: pSum.id,  code: SUM_REF.trim(), language: "python",
-            status: "accepted", stdout: "All tests passed", stderr: null, executionTime: 16, memory: 1024 },
-  });
-  const sub4 = await prisma.submission.create({
-    data: { userId: students[2].id, problemId: pSum.id,  code: "a,b=map(int,input().split())\nprint(a-b)", language: "python",
-            status: "failed", stdout: "Test 1: FAIL", stderr: null, executionTime: 12, memory: 900 },
-  });
-  const sub5 = await prisma.submission.create({
-    data: { userId: students[3].id, problemId: pFizzJs.id, code: JS_FIZZ_REF.trim(), language: "javascript",
-            status: "accepted", stdout: "All tests passed", stderr: null, executionTime: 18, memory: 1200 },
-  });
-  const sub6 = await prisma.submission.create({
-    data: { userId: students[4].id, problemId: pFact.id, code: FACT_REF.trim(), language: "python",
-            status: "accepted", stdout: "All tests passed", stderr: null, executionTime: 13, memory: 980 },
-  });
-  const sub7 = await prisma.submission.create({
-    data: { userId: students[5].id, problemId: pSortCpp.id, code: CPP_SORT_REF.trim(), language: "cpp",
-            status: "accepted", stdout: "All tests passed", stderr: null, executionTime: 22, memory: 1300 },
-  });
-
-  // ── SubmissionAttempts ────────────────────────────────────────────────────
-
-  await prisma.submissionAttempt.createMany({
-    data: [
-      // student1 — sum correct
-      { userId: students[0].id, problemId: pSum.id, submissionId: sub1.id,
-        mode: "tests", language: "python", sourceCode: SUM_REF.trim(),
-        judge0Status: "Accepted", normalizedStatus: "accepted",
-        publicPassed: 2, publicTotal: 2, hiddenPassed: 1, hiddenTotal: 1, allPassed: true,
-        stdout: "All tests passed", stderr: null, compileOutput: null, executionTimeMs: 14, memoryKb: 1024 },
-
-      // student1 — palindrome correct
-      { userId: students[0].id, problemId: pPal.id, submissionId: sub2.id,
-        mode: "tests", language: "python", sourceCode: PAL_REF.trim(),
-        judge0Status: "Accepted", normalizedStatus: "accepted",
-        publicPassed: 2, publicTotal: 2, hiddenPassed: 1, hiddenTotal: 1, allPassed: true,
-        stdout: "All tests passed", stderr: null, compileOutput: null, executionTimeMs: 15, memoryKb: 1100 },
-
-      // student1 — raw run
-      { userId: students[0].id, problemId: null, submissionId: null,
-        mode: "raw", language: "python", sourceCode: "print('hello world')",
-        judge0Status: "Accepted", normalizedStatus: "accepted",
-        publicPassed: null, publicTotal: null, hiddenPassed: null, hiddenTotal: null, allPassed: true,
-        stdout: "hello world\n", stderr: null, compileOutput: null, executionTimeMs: 8, memoryKb: 512 },
-
-      // student2 — sum correct
-      { userId: students[1].id, problemId: pSum.id, submissionId: sub3.id,
-        mode: "tests", language: "python", sourceCode: SUM_REF.trim(),
-        judge0Status: "Accepted", normalizedStatus: "accepted",
-        publicPassed: 2, publicTotal: 2, hiddenPassed: 1, hiddenTotal: 1, allPassed: true,
-        stdout: "All tests passed", stderr: null, compileOutput: null, executionTimeMs: 16, memoryKb: 1024 },
-
-      // student3 — sum wrong answer
-      { userId: students[2].id, problemId: pSum.id, submissionId: sub4.id,
-        mode: "tests", language: "python", sourceCode: "a,b=map(int,input().split())\nprint(a-b)",
-        judge0Status: "Wrong Answer", normalizedStatus: "wrong_answer",
-        publicPassed: 0, publicTotal: 2, hiddenPassed: 0, hiddenTotal: 1, allPassed: false,
-        stdout: "-1", stderr: null, compileOutput: null, executionTimeMs: 12, memoryKb: 900 },
-
-      // student3 — compile error attempt
-      { userId: students[2].id, problemId: pSum.id, submissionId: null,
-        mode: "tests", language: "python", sourceCode: "print(a + b",
-        judge0Status: "Compilation Error", normalizedStatus: "compile_error",
-        publicPassed: 0, publicTotal: 2, hiddenPassed: 0, hiddenTotal: 1, allPassed: false,
-        stdout: null, stderr: null, compileOutput: "SyntaxError: unexpected EOF while parsing",
-        executionTimeMs: 0, memoryKb: 0 },
-
-      // student4 — FizzBuzz correct (JavaScript)
-      { userId: students[3].id, problemId: pFizzJs.id, submissionId: sub5.id,
-        mode: "tests", language: "javascript", sourceCode: JS_FIZZ_REF.trim(),
-        judge0Status: "Accepted", normalizedStatus: "accepted",
-        publicPassed: 2, publicTotal: 2, hiddenPassed: 1, hiddenTotal: 1, allPassed: true,
-        stdout: "All tests passed", stderr: null, compileOutput: null, executionTimeMs: 18, memoryKb: 1200 },
-
-      // student5 — factorial runtime error
-      { userId: students[4].id, problemId: pFact.id, submissionId: null,
-        mode: "tests", language: "python", sourceCode: "n = int(input())\nprint(1/0)",
-        judge0Status: "Runtime Error", normalizedStatus: "runtime_error",
-        publicPassed: 0, publicTotal: 2, hiddenPassed: 0, hiddenTotal: 1, allPassed: false,
-        stdout: null, stderr: "ZeroDivisionError: division by zero", compileOutput: null,
-        executionTimeMs: 10, memoryKb: 800 },
-
-      // student5 — factorial correct (second attempt)
-      { userId: students[4].id, problemId: pFact.id, submissionId: sub6.id,
-        mode: "tests", language: "python", sourceCode: FACT_REF.trim(),
-        judge0Status: "Accepted", normalizedStatus: "accepted",
-        publicPassed: 2, publicTotal: 2, hiddenPassed: 1, hiddenTotal: 1, allPassed: true,
-        stdout: "All tests passed", stderr: null, compileOutput: null, executionTimeMs: 13, memoryKb: 980 },
-
-      // student6 — C++ sort correct
-      { userId: students[5].id, problemId: pSortCpp.id, submissionId: sub7.id,
-        mode: "tests", language: "cpp", sourceCode: CPP_SORT_REF.trim(),
-        judge0Status: "Accepted", normalizedStatus: "accepted",
-        publicPassed: 2, publicTotal: 2, hiddenPassed: 1, hiddenTotal: 1, allPassed: true,
-        stdout: "All tests passed", stderr: null, compileOutput: null, executionTimeMs: 22, memoryKb: 1300 },
+  await createProblem({
+    title: "Collatz Sequence",
+    description: UNI_COLLATZ_DESC,
+    starterCode: UNI_COLLATZ_STARTER,
+    referenceSolution: UNI_COLLATZ_REF,
+    difficulty: "Medium",
+    language: "python",
+    languages: ["python", "javascript", "c", "cpp", "csharp"],
+    tags: ["loops", "conditionals", "math"], category: "Algorithms",
+    createdById: teacher.id,
+    testCases: [
+      { input: "6",  expectedOutput: "6 3 10 5 16 8 4 2 1",          isHidden: false },
+      { input: "1",  expectedOutput: "1",                             isHidden: false },
+      { input: "12", expectedOutput: "12 6 3 10 5 16 8 4 2 1",       isHidden: true  },
+      { input: "8",  expectedOutput: "8 4 2 1",                      isHidden: true  },
     ],
   });
 
-  console.log("✅  Seed completed successfully.\n");
-  console.log("  Accounts (password: 123456)");
-  console.log("  ─────────────────────────────────────────");
-  console.log("  teacher1@demo.com   → Teacher");
-  console.log("  admin1@demo.com     → Admin");
-  studentDefs.forEach((s) => console.log(`  ${s.email.padEnd(24)} → ${s.name}`));
-  console.log(`\n  Problems   : 14  (Python×5, C×2, C++×2, JS×2, C#×1, Multi-file demo×1, Demo×1)`);
-  console.log(`  Assignments: 14  (13 published, 1 draft)`);
-  console.log(`  Submissions: 7   (accepted, wrong_answer, compile_error, runtime_error)`);
+  // ── Summary ────────────────────────────────────────────────────────────────
+  console.log("╔══════════════════════════════════════════════════════╗");
+  console.log("║              Seed completed successfully             ║");
+  console.log("╠══════════════════════════════════════════════════════╣");
+  console.log("║  Accounts (password: 123456)                         ║");
+  console.log("║  ─────────────────────────────────────────────────── ║");
+  console.log("║  teacher1@demo.com        → Teacher Demo             ║");
+  console.log("║  admin1@demo.com          → Admin Demo               ║");
+  studentDefs.forEach((s) =>
+    console.log(`║  ${s.email.padEnd(26)} → ${s.name.padEnd(20)} ║`),
+  );
+  console.log("╠══════════════════════════════════════════════════════╣");
+  console.log("║  Question Bank (16 problems)                         ║");
+  console.log("║  Python     Easy / Medium / Hard                     ║");
+  console.log("║  JavaScript Easy / Medium / Hard                     ║");
+  console.log("║  C          Easy / Medium / Hard                     ║");
+  console.log("║  C++        Easy / Medium / Hard                     ║");
+  console.log("║  C#         Easy / Medium / Hard                     ║");
+  console.log("║  Universal  Medium (all languages)                   ║");
+  console.log("╠══════════════════════════════════════════════════════╣");
+  console.log("║  Assignments : 0   (create manually as teacher)      ║");
+  console.log("║  Groups      : 0   (create manually as teacher)      ║");
+  console.log("║  Submissions : 0   (clean slate)                     ║");
+  console.log("╚══════════════════════════════════════════════════════╝");
 }
 
 main()

@@ -266,6 +266,18 @@ export default function StudentsPage({ currentUser, token, handleLogout, navItem
     return students.filter((s) => memberIds.has(s.id));
   }, [activeTab, students, groups]);
 
+  // ── studentId → group names map ─────────────────────────────────────────
+  const studentGroupMap = useMemo(() => {
+    const map = {};
+    for (const group of groups) {
+      for (const member of group.members) {
+        if (!map[member.id]) map[member.id] = [];
+        map[member.id].push(group.name);
+      }
+    }
+    return map;
+  }, [groups]);
+
   // ── Group CRUD ───────────────────────────────────────────────────────────
   async function handleSaveGroup({ name, memberIds }) {
     if (editingGroup) {
@@ -407,6 +419,7 @@ export default function StudentsPage({ currentUser, token, handleLogout, navItem
           students={displayedStudents}
           loading={studentsLoading}
           onStudentClick={handleStudentClick}
+          studentGroupMap={studentGroupMap}
         />
 
       </Stack>

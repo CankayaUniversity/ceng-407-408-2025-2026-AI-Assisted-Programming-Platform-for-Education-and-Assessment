@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import {
   Avatar,
   Box,
+  Chip,
   CircularProgress,
   InputAdornment,
   LinearProgress,
@@ -17,6 +18,7 @@ import {
   Typography,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
+import GroupIcon  from "@mui/icons-material/Group";
 
 import SectionCard from "../common/SectionCard";
 
@@ -35,7 +37,7 @@ function initials(name = '') {
     .join('');
 }
 
-export default function StudentProgressTable({ students, loading, onStudentClick }) {
+export default function StudentProgressTable({ students, loading, onStudentClick, studentGroupMap = {} }) {
   const [search,      setSearch]      = useState("");
   const [filterRange, setFilterRange] = useState("all");
 
@@ -46,7 +48,8 @@ export default function StudentProgressTable({ students, loading, onStudentClick
       result = result.filter(
         (s) =>
           s.name?.toLowerCase().includes(q) ||
-          s.email?.toLowerCase().includes(q),
+          s.email?.toLowerCase().includes(q) ||
+          (studentGroupMap[s.id] ?? []).some((g) => g.toLowerCase().includes(q)),
       );
     }
     if (filterRange === "high")   result = result.filter((s) => s.progress >= 80);
@@ -108,6 +111,7 @@ export default function StudentProgressTable({ students, loading, onStudentClick
               <TableRow sx={{ bgcolor: 'rgba(148, 163, 184, 0.08)' }}>
                 <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>STUDENT</TableCell>
                 <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>EMAIL</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>GROUPS</TableCell>
                 <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>PROBLEMS COMPLETED</TableCell>
                 <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>PROGRESS</TableCell>
               </TableRow>
@@ -130,6 +134,25 @@ export default function StudentProgressTable({ students, loading, onStudentClick
                     </Box>
                   </TableCell>
                   <TableCell sx={{ color: 'text.secondary' }}>{student.email}</TableCell>
+                  <TableCell>
+                    {(studentGroupMap[student.id] ?? []).length === 0 ? (
+                      <Typography variant="caption" color="text.disabled">—</Typography>
+                    ) : (
+                      <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                        {(studentGroupMap[student.id] ?? []).map((gName) => (
+                          <Chip
+                            key={gName}
+                            label={gName}
+                            size="small"
+                            icon={<GroupIcon style={{ fontSize: 12 }} />}
+                            variant="outlined"
+                            color="primary"
+                            sx={{ height: 20, fontSize: 11, "& .MuiChip-label": { px: 0.75 } }}
+                          />
+                        ))}
+                      </Stack>
+                    )}
+                  </TableCell>
                   <TableCell>{student.completed} / {student.total}</TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 160 }}>

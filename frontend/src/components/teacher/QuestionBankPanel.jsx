@@ -389,6 +389,7 @@ export default function QuestionBankPanel({ items = [], token, onProblemsChanged
     setEditingItem(item);
     setCreateOpen(false);
     setError("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
     try {
       const res = await fetch(`${API_BASE}/api/problems/${item.id}`, {
         headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },

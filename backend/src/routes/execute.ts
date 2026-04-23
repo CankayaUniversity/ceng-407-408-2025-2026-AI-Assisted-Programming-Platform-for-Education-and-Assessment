@@ -18,6 +18,39 @@ function normalizeOutput(s: string): string {
 }
 
 /**
+ * Smart output matching — accepts student output even when it contains extra
+ * prompt text (e.g. "Enter n: ", "The answer is: ").
+ *
+ * Strategy:
+ *   1. Exact match (after normalisation) — fastest path.
+ *   2. Loose match: every line of the expected output must appear as a
+ *      suffix of at least one line in the actual output, in order.
+ *      e.g. expected="5", actual="The maximum number is: 5"  → passes
+ *           expected="5\n3", actual=["Result: 5", "Min: 3"]  → passes
+ */
+function outputMatches(actual: string, expected: string): boolean {
+  const normActual   = normalizeOutput(actual);
+  const normExpected = normalizeOutput(expected);
+
+  // 1. Exact match
+  if (normActual === normExpected) return true;
+
+  // 2. Loose match — each expected line must appear as a suffix of an actual line
+  const expectedLines = normExpected.split("\n").filter(l => l.trim() !== "");
+  const actualLines   = normActual.split("\n").map(l => l.trim());
+
+  let ei = 0;
+  for (const aLine of actualLines) {
+    if (ei >= expectedLines.length) break;
+    const eLine = expectedLines[ei].trim();
+    if (aLine === eLine || aLine.endsWith(eLine) || aLine.endsWith(`: ${eLine}`)) {
+      ei++;
+    }
+  }
+  return ei === expectedLines.length;
+}
+
+/**
  * Normalise stdin before feeding to Judge0 / child process.
  * Only fixes CRLF → LF; does NOT trim surrounding whitespace because
  * a test-case input could intentionally start/end with blank lines.
@@ -330,11 +363,12 @@ router.post("/", async (req, res) => {
         });
 
         // Accept if the program ran cleanly AND output matches.
-        // normalizeOutput handles trailing newlines AND Windows CRLF line endings
-        // so "Hello\r\n" and "Hello\n" are treated as equal.
+        // outputMatches first tries exact comparison, then loose matching so that
+        // student programs with extra prompt text (e.g. "The answer is: 5") still
+        // pass when the expected output is just the value (e.g. "5").
         const passed =
           jr.statusId === ACCEPTED_STATUS_ID &&
-          normalizeOutput(jr.stdout) === normalizeOutput(tc.expectedOutput);
+          outputMatches(jr.stdout, tc.expectedOutput);
         if (!passed) {
           allPassed = false;
         }

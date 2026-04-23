@@ -197,4 +197,102 @@ router.get("/class/overview", async (_req, res) => {
   });
 });
 
+// ── Student Groups ─────────────────────────────────────────────────────────
+
+/** GET /api/teacher/groups — list all groups with member ids */
+router.get("/groups", async (req, res) => {
+  const groups = await prisma.studentGroup.findMany({
+    where: { createdById: req.auth!.userId },
+    include: {
+      members: {
+        include: { user: { select: { id: true, name: true, email: true } } },
+      },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+  res.json({
+    data: groups.map((g) => ({
+      id: g.id,
+      name: g.name,
+      members: g.members.map((m) => m.user),
+    })),
+  });
+});
+
+/** POST /api/teacher/groups — create group */
+router.post("/groups", async (req, res) => {
+  const { name, memberIds } = req.body as { name: string; memberIds: number[] };
+  if (!name?.trim()) {
+    res.status(400).json({ error: "Group name is required" });
+    return;
+  }
+  const group = await prisma.studentGroup.create({
+    data: {
+      name: name.trim(),
+      createdById: req.auth!.userId,
+      members: {
+        create: (memberIds ?? []).map((uid: number) => ({ userId: uid })),
+      },
+    },
+    include: { members: { include: { user: { select: { id: true, name: true, email: true } } } } },
+  });
+  res.status(201).json({
+    data: {
+      id: group.id,
+      name: group.name,
+      members: group.members.map((m) => m.user),
+    },
+  });
+});
+
+/** PUT /api/teacher/groups/:id — rename + replace membership */
+router.put("/groups/:id", async (req, res) => {
+  const groupId = parseId(req.params.id);
+  if (groupId == null) { res.status(400).json({ error: "Invalid id" }); return; }
+  const { name, memberIds } = req.body as { name?: string; memberIds?: number[] };
+
+  const existing = await prisma.studentGroup.findUnique({ where: { id: groupId } });
+  if (!existing || existing.createdById !== req.auth!.userId) {
+    res.status(404).json({ error: "Group not found" });
+    return;
+  }
+
+  // Replace all members in a transaction
+  const updated = await prisma.$transaction(async (tx) => {
+    await tx.studentGroupMembership.deleteMany({ where: { groupId } });
+    return tx.studentGroup.update({
+      where: { id: groupId },
+      data: {
+        name: name?.trim() ?? existing.name,
+        members: {
+          create: (memberIds ?? []).map((uid: number) => ({ userId: uid })),
+        },
+      },
+      include: { members: { include: { user: { select: { id: true, name: true, email: true } } } } },
+    });
+  });
+
+  res.json({
+    data: {
+      id: updated.id,
+      name: updated.name,
+      members: updated.members.map((m) => m.user),
+    },
+  });
+});
+
+/** DELETE /api/teacher/groups/:id */
+router.delete("/groups/:id", async (req, res) => {
+  const groupId = parseId(req.params.id);
+  if (groupId == null) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const existing = await prisma.studentGroup.findUnique({ where: { id: groupId } });
+  if (!existing || existing.createdById !== req.auth!.userId) {
+    res.status(404).json({ error: "Group not found" }); return;
+  }
+
+  await prisma.studentGroup.delete({ where: { id: groupId } });
+  res.json({ success: true });
+});
+
 export { router as teacherRouter };

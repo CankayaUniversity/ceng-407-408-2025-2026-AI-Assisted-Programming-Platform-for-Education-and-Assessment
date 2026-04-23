@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import Editor from "@monaco-editor/react";
 import DOMPurify from "dompurify";
 import { marked } from "marked";
@@ -30,6 +31,14 @@ function monacoLanguage(value) {
   if (value === "csharp") return "csharp";
   if (value === "cpp") return "cpp";
   return value || "python";
+}
+
+function useChatScroll(chat) {
+  const ref = useRef(null);
+  useEffect(() => {
+    ref.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chat]);
+  return ref;
 }
 
 export default function StudentWorkspace({
@@ -65,7 +74,10 @@ export default function StudentWorkspace({
   submissions,
   submissionsLoading,
   examMode,
+  lateDeduction = 0,
 }) {
+  const chatBottomRef = useChatScroll(chat);
+
   return (
     <AppLayout
       title="AI Mentor" 
@@ -145,6 +157,13 @@ export default function StudentWorkspace({
             </Stack>
           }
         >
+          {/* Late submission warning */}
+          {lateDeduction > 0 && (
+            <Alert severity="warning" sx={{ mb: 1.5, borderRadius: 2 }}>
+              You are submitting late. A <strong>{lateDeduction}%</strong> point deduction will be applied to your score.
+            </Alert>
+          )}
+
           {/* Difficulty / language chips */}
           <Box sx={{ mb: 1, display: "flex", gap: 1, flexWrap: "wrap" }}>
             {selectedProblem?.difficulty && <Chip label={selectedProblem.difficulty} size="small" />}
@@ -282,6 +301,7 @@ export default function StudentWorkspace({
                       </Typography>
                     </Box>
                   ))}
+                  <div ref={chatBottomRef} />
                 </Stack>
               </Box>
 

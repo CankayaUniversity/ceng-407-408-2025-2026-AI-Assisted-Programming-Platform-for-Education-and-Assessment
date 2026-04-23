@@ -1,0 +1,3 @@
+ALTER TABLE "Assignment" ADD COLUMN "allowedLanguages" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];
+ALTER TABLE "Assignment" ADD COLUMN "lateDeadline" TIMESTAMP(3);
+ALTER TABLE "Assignment" ADD COLUMN "lateDeduction" INTEGER NOT NULL DEFAULT 0;

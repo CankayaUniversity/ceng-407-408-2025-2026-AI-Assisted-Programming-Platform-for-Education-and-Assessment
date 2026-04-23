@@ -120,6 +120,24 @@ function toPolicyAction(action: string): PolicyAction {
   }
 }
 
+// ── Exam-mode guard (group-aware) ─────────────────────────────────────────────
+async function isUserInExamMode(userId: number): Promise<boolean> {
+  const flag = await prisma.systemFlag.findUnique({ where: { key: "exam_mode_enabled" } });
+  if (!flag?.value) return false;
+
+  const raw = flag.value as Record<string, unknown>;
+  const enabled  = Boolean(raw.enabled ?? raw); // supports legacy boolean value
+  if (!enabled) return false;
+
+  const groupIds = Array.isArray(raw.groupIds) ? (raw.groupIds as number[]) : [];
+  if (groupIds.length === 0) return true; // no groups specified → applies to everyone
+
+  const membership = await prisma.studentGroupMembership.findFirst({
+    where: { userId, groupId: { in: groupIds } },
+  });
+  return membership !== null;
+}
+
 async function handleAiRequest(req: Request, res: Response) {
   const parsed = aiChatSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -127,10 +145,7 @@ async function handleAiRequest(req: Request, res: Response) {
     return;
   }
 
-  const examFlag = await prisma.systemFlag.findUnique({
-    where: { key: "exam_mode_enabled" },
-  });
-  if (examFlag?.value === true) {
+  if (await isUserInExamMode(req.auth!.userId)) {
     res.status(403).json({
       success: false,
       error: "Exam mode is active. AI Mentor is currently disabled.",
@@ -269,8 +284,7 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
     return;
   }
 
-  const examFlag = await prisma.systemFlag.findUnique({ where: { key: "exam_mode_enabled" } });
-  if (examFlag?.value === true) {
+  if (await isUserInExamMode(req.auth!.userId)) {
     res.status(403).json({ error: "Exam mode is active. AI Mentor is currently disabled." });
     return;
   }

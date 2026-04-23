@@ -7,9 +7,11 @@ import ExamModeCard from "../../components/teacher/ExamModeCard";
 import { API_BASE } from "../../apiBase";
 
 export default function TeacherDashboardPage({ currentUser, token, handleLogout, navItems }) {
-  const [examMode, setExamMode] = useState(false);
-  const [examLoading, setExamLoading] = useState(true);
-  const [classOverview, setClassOverview] = useState({});
+  const [examMode,     setExamMode]     = useState(false);
+  const [examGroupIds, setExamGroupIds] = useState([]);
+  const [examLoading,  setExamLoading]  = useState(true);
+  const [groups,       setGroups]       = useState([]);
+  const [classOverview,        setClassOverview]        = useState({});
   const [classOverviewLoading, setClassOverviewLoading] = useState(true);
 
   const authHeaders = useMemo(() => ({
@@ -28,9 +30,16 @@ export default function TeacherDashboardPage({ currentUser, token, handleLogout,
 
     setExamLoading(true);
     fetchJson("/api/admin/exam-mode")
-      .then((body) => setExamMode(Boolean(body.data?.enabled)))
+      .then((body) => {
+        setExamMode(Boolean(body.data?.enabled));
+        setExamGroupIds(body.data?.groupIds ?? []);
+      })
       .catch((err) => console.error("exam-mode fetch failed:", err))
       .finally(() => setExamLoading(false));
+
+    fetchJson("/api/teacher/groups")
+      .then((body) => setGroups(body.data ?? []))
+      .catch((err) => console.error("groups fetch failed:", err));
 
     setClassOverviewLoading(true);
     fetchJson("/api/teacher/class/overview")
@@ -39,15 +48,19 @@ export default function TeacherDashboardPage({ currentUser, token, handleLogout,
       .finally(() => setClassOverviewLoading(false));
   }, [token, fetchJson]);
 
-  function handleExamToggle(enabled) {
+  function handleExamToggle(enabled, groupIds) {
     setExamMode(enabled);
+    setExamGroupIds(groupIds ?? []);
     fetch(`${API_BASE}/api/admin/exam-mode`, {
       method: "PATCH",
       headers: authHeaders,
-      body: JSON.stringify({ enabled }),
+      body: JSON.stringify({ enabled, groupIds: groupIds ?? [] }),
     })
       .then((res) => res.json())
-      .then((body) => setExamMode(Boolean(body.data?.enabled)))
+      .then((body) => {
+        setExamMode(Boolean(body.data?.enabled));
+        setExamGroupIds(body.data?.groupIds ?? []);
+      })
       .catch((err) => {
         console.error("exam-mode toggle failed:", err);
         setExamMode(!enabled);
@@ -67,7 +80,13 @@ export default function TeacherDashboardPage({ currentUser, token, handleLogout,
     >
       <Stack spacing={3.25}>
         <ClassOverviewCard data={classOverview} loading={classOverviewLoading} />
-        <ExamModeCard examMode={examMode} onToggle={handleExamToggle} loading={examLoading} />
+        <ExamModeCard
+          examMode={examMode}
+          examGroupIds={examGroupIds}
+          groups={groups}
+          onToggle={handleExamToggle}
+          loading={examLoading}
+        />
       </Stack>
     </AppLayout>
   );

@@ -26,14 +26,75 @@ import {
 } from "@mui/material";
 import AutoAwesomeIcon    from "@mui/icons-material/AutoAwesome";
 import CheckCircleIcon    from "@mui/icons-material/CheckCircle";
+import DownloadIcon       from "@mui/icons-material/Download";
 import GradingIcon        from "@mui/icons-material/Grading";
 import PersonIcon         from "@mui/icons-material/Person";
 import CodeIcon           from "@mui/icons-material/Code";
 import CloseIcon          from "@mui/icons-material/Close";
+import * as XLSX from "xlsx";
 
 import AppLayout from "../../components/layout/AppLayout";
 import SectionCard from "../../components/common/SectionCard";
 import { API_BASE } from "../../apiBase";
+
+// ── Export helper ─────────────────────────────────────────────────────────────
+function exportToExcel(assignmentData) {
+  if (!assignmentData) return;
+
+  const { assignment, students } = assignmentData;
+  const assignmentTitle = assignment?.title ?? "Assignment";
+  const problemTitle    = assignment?.problem?.title ?? "";
+
+  // Build rows
+  const rows = students.map((entry) => {
+    const grade = entry.grade;
+    const attempt = entry.attempt;
+
+    const row = {
+      "Student Name":    entry.user.name,
+      "Email":           entry.user.email,
+      "Submission Status": entry.submission?.status ?? "No submission",
+      "Public Tests":
+        attempt?.publicTotal != null
+          ? `${attempt.publicPassed ?? 0} / ${attempt.publicTotal}`
+          : "—",
+      "Hidden Tests":
+        attempt?.hiddenTotal != null
+          ? `${attempt.hiddenPassed ?? 0} / ${attempt.hiddenTotal}`
+          : "—",
+      "Score":    grade ? grade.score    : "",
+      "Max Score": grade ? grade.maxScore : "",
+      "Percentage":
+        grade && grade.maxScore > 0
+          ? `${((grade.score / grade.maxScore) * 100).toFixed(1)}%`
+          : "",
+      "Feedback": grade?.feedback ?? "",
+    };
+
+    // Add per-criterion breakdown columns if present
+    if (grade?.breakdown?.length) {
+      grade.breakdown.forEach((b) => {
+        row[`[Rubric] ${b.name}`] = `${b.suggested ?? b.points ?? 0} / ${b.maxScore}`;
+        if (b.comment) row[`[Comment] ${b.name}`] = b.comment;
+      });
+    }
+
+    return row;
+  });
+
+  const worksheet  = XLSX.utils.json_to_sheet(rows);
+  const workbook   = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Grades");
+
+  // Auto-width columns
+  const colWidths = Object.keys(rows[0] ?? {}).map((key) => ({
+    wch: Math.max(key.length, ...rows.map((r) => String(r[key] ?? "").length)) + 2,
+  }));
+  worksheet["!cols"] = colWidths;
+
+  const safeTitle = assignmentTitle.replace(/[\\/:*?"<>|]/g, "_").slice(0, 50);
+  XLSX.writeFile(workbook, `${safeTitle}_grades.xlsx`);
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -481,17 +542,31 @@ export default function GradingPage({ currentUser, token, handleLogout, navItems
           <SectionCard
             title={assignmentData ? `${assignmentData.assignment.problem.title} — Student Submissions` : "Loading…"}
             action={
-              assignmentData?.rubric ? (
-                <Chip
-                  icon={<GradingIcon />}
-                  label="Rubric loaded"
-                  color="success"
-                  size="small"
-                  variant="outlined"
-                />
-              ) : (
-                <Chip label="No rubric" color="warning" size="small" variant="outlined" />
-              )
+              <Stack direction="row" spacing={1} alignItems="center">
+                {assignmentData?.rubric ? (
+                  <Chip
+                    icon={<GradingIcon />}
+                    label="Rubric loaded"
+                    color="success"
+                    size="small"
+                    variant="outlined"
+                  />
+                ) : (
+                  <Chip label="No rubric" color="warning" size="small" variant="outlined" />
+                )}
+                {assignmentData?.students?.length > 0 && (
+                  <Tooltip title="Export all grades to Excel (.xlsx)">
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<DownloadIcon />}
+                      onClick={() => exportToExcel(assignmentData)}
+                    >
+                      Export Excel
+                    </Button>
+                  </Tooltip>
+                )}
+              </Stack>
             }
           >
             {loadingStudents ? (
@@ -512,9 +587,14 @@ export default function GradingPage({ currentUser, token, handleLogout, navItems
                 </TableHead>
                 <TableBody>
                   {(assignmentData?.students ?? []).map((entry) => {
-                    const graded = Boolean(entry.grade);
+                    const graded      = Boolean(entry.grade);
+                    const hasSubmission = Boolean(entry.submission);
                     return (
-                      <TableRow key={entry.user.id} hover>
+                      <TableRow
+                        key={entry.user.id}
+                        hover
+                        sx={!hasSubmission ? { opacity: 0.65 } : {}}
+                      >
                         <TableCell>
                           <Stack direction="row" alignItems="center" spacing={1}>
                             <Avatar sx={{ width: 30, height: 30, fontSize: 13, bgcolor: "primary.light" }}>
@@ -553,14 +633,25 @@ export default function GradingPage({ currentUser, token, handleLogout, navItems
                           )}
                         </TableCell>
                         <TableCell align="right">
-                          <Button
-                            size="small"
-                            variant={graded ? "outlined" : "contained"}
-                            startIcon={<GradingIcon />}
-                            onClick={() => openDrawer(entry)}
+                          <Tooltip
+                            title={
+                              !hasSubmission
+                                ? "This student has not submitted yet — nothing to grade."
+                                : ""
+                            }
                           >
-                            {graded ? "Edit Grade" : "Grade"}
-                          </Button>
+                            <span>
+                              <Button
+                                size="small"
+                                variant={graded ? "outlined" : "contained"}
+                                startIcon={<GradingIcon />}
+                                onClick={() => openDrawer(entry)}
+                                disabled={!hasSubmission}
+                              >
+                                {graded ? "Edit Grade" : "Grade"}
+                              </Button>
+                            </span>
+                          </Tooltip>
                         </TableCell>
                       </TableRow>
                     );

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { api } from "../../lib/api";
 import { API_BASE } from "../../apiBase";
@@ -48,6 +48,20 @@ export default function ProblemPage() {
   const { id } = useParams();
   const problemId = Number(id);
   const navigate  = useNavigate();
+  const location  = useLocation();
+
+  // Assignment context passed via navigation state from student AssignmentsPage
+  const assignmentAllowedLanguages = location.state?.allowedLanguages ?? [];   // [] = all
+  const assignmentLateDeduction    = location.state?.lateDeduction    ?? 0;
+
+  // Filter available languages to those the assignment allows (empty = all allowed)
+  const availableLanguages = useMemo(
+    () =>
+      assignmentAllowedLanguages.length === 0
+        ? LANGUAGE_OPTIONS
+        : LANGUAGE_OPTIONS.filter((o) => assignmentAllowedLanguages.includes(o.value)),
+    [assignmentAllowedLanguages],
+  );
 
   // ── Phase 7: Multi-file state ────────────────────────────────────────────
   const [files,          setFiles]          = useState([{ id: 1, name: "main.py", content: "" }]);
@@ -365,7 +379,8 @@ export default function ProblemPage() {
       selectProblem={selectProblem}
       selectedLanguage={selectedLanguage}
       setSelectedLanguage={handleLanguageChange}
-      languageOptions={LANGUAGE_OPTIONS}
+      languageOptions={availableLanguages}
+      lateDeduction={assignmentLateDeduction}
       runRaw={runRaw}
       running={running}
       runTests={runTests}

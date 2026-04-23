@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -11,6 +11,7 @@ import {
   DialogTitle,
   Divider,
   IconButton,
+  InputAdornment,
   MenuItem,
   Stack,
   TextField,
@@ -20,6 +21,7 @@ import {
 import DeleteIcon      from "@mui/icons-material/Delete";
 import EditIcon        from "@mui/icons-material/Edit";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import SearchIcon      from "@mui/icons-material/Search";
 
 import GradingIcon from "@mui/icons-material/Grading";
 
@@ -193,6 +195,36 @@ export default function QuestionBankPanel({ items = [], token, onProblemsChanged
   const [error, setError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+
+  // ── Filter / search / sort state ─────────────────────────────────────────
+  const [search,     setSearch]     = useState("");
+  const [filterDiff, setFilterDiff] = useState("all");
+  const [sortBy,     setSortBy]     = useState("title_asc");
+
+  const visibleItems = useMemo(() => {
+    let result = [...items];
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      result = result.filter(
+        (it) =>
+          it.title?.toLowerCase().includes(q) ||
+          it.topic?.toLowerCase().includes(q),
+      );
+    }
+    if (filterDiff !== "all") {
+      result = result.filter(
+        (it) => (it.difficulty ?? "Easy").toLowerCase() === filterDiff,
+      );
+    }
+    result.sort((a, b) => {
+      if (sortBy === "title_asc")  return (a.title ?? "").localeCompare(b.title ?? "");
+      if (sortBy === "title_desc") return (b.title ?? "").localeCompare(a.title ?? "");
+      if (sortBy === "most_used")  return (b.usageCount ?? 0) - (a.usageCount ?? 0);
+      if (sortBy === "least_used") return (a.usageCount ?? 0) - (b.usageCount ?? 0);
+      return 0;
+    });
+    return result;
+  }, [items, search, filterDiff, sortBy]);
 
   // ── Variation state ──────────────────────────────────────────────────────
   const [variationSource,  setVariationSource]  = useState(null);   // the source problem object
@@ -371,8 +403,57 @@ export default function QuestionBankPanel({ items = [], token, onProblemsChanged
           />
         </Collapse>
 
+        {/* ── Search / filter / sort toolbar ───────────────────────────── */}
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1.5}
+          sx={{ mb: 2 }}
+          alignItems="center"
+        >
+          <TextField
+            size="small"
+            placeholder="Search by title or topic…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            sx={{ flex: 1 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
+            }}
+          />
+          <TextField
+            select size="small" label="Difficulty" value={filterDiff}
+            onChange={(e) => setFilterDiff(e.target.value)}
+            sx={{ minWidth: 130 }}
+          >
+            <MenuItem value="all">All</MenuItem>
+            <MenuItem value="easy">Easy</MenuItem>
+            <MenuItem value="medium">Medium</MenuItem>
+            <MenuItem value="hard">Hard</MenuItem>
+          </TextField>
+          <TextField
+            select size="small" label="Sort by" value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            sx={{ minWidth: 160 }}
+          >
+            <MenuItem value="title_asc">Title A→Z</MenuItem>
+            <MenuItem value="title_desc">Title Z→A</MenuItem>
+            <MenuItem value="most_used">Most Attempts</MenuItem>
+            <MenuItem value="least_used">Fewest Attempts</MenuItem>
+          </TextField>
+        </Stack>
+
+        {visibleItems.length === 0 && (
+          <Typography variant="body2" color="text.secondary" sx={{ py: 3, textAlign: "center" }}>
+            No problems match your filters.
+          </Typography>
+        )}
+
         <Stack divider={<Divider flexItem />}>
-          {items.map((item) => {
+          {visibleItems.map((item) => {
             const difficulty = normalizeDifficulty(item.difficulty);
             return (
               <Box

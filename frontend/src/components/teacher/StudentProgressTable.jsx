@@ -1,16 +1,22 @@
+import { useMemo, useState } from "react";
 import {
   Avatar,
   Box,
   CircularProgress,
+  InputAdornment,
   LinearProgress,
+  MenuItem,
+  Stack,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Typography,
 } from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
 
 import SectionCard from "../common/SectionCard";
 
@@ -30,11 +36,58 @@ function initials(name = '') {
 }
 
 export default function StudentProgressTable({ students, loading, onStudentClick }) {
+  const [search,      setSearch]      = useState("");
+  const [filterRange, setFilterRange] = useState("all");
+
+  const visibleStudents = useMemo(() => {
+    let result = [...students];
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      result = result.filter(
+        (s) =>
+          s.name?.toLowerCase().includes(q) ||
+          s.email?.toLowerCase().includes(q),
+      );
+    }
+    if (filterRange === "high")   result = result.filter((s) => s.progress >= 80);
+    if (filterRange === "medium") result = result.filter((s) => s.progress >= 65 && s.progress < 80);
+    if (filterRange === "low")    result = result.filter((s) => s.progress < 65);
+    return result;
+  }, [students, search, filterRange]);
+
   return (
     <SectionCard title="Student Progress">
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 2.5 }}>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
         Overview of all students in your class
       </Typography>
+
+      {/* ── Search / filter toolbar ─────────────────────────────────── */}
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mb: 2 }} alignItems="center">
+        <TextField
+          size="small"
+          placeholder="Search by name or email…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          sx={{ flex: 1 }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" />
+              </InputAdornment>
+            ),
+          }}
+        />
+        <TextField
+          select size="small" label="Progress" value={filterRange}
+          onChange={(e) => setFilterRange(e.target.value)}
+          sx={{ minWidth: 160 }}
+        >
+          <MenuItem value="all">All students</MenuItem>
+          <MenuItem value="high">High (&ge;80%)</MenuItem>
+          <MenuItem value="medium">Medium (65–79%)</MenuItem>
+          <MenuItem value="low">Low (&lt;65%)</MenuItem>
+        </TextField>
+      </Stack>
 
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
@@ -43,6 +96,10 @@ export default function StudentProgressTable({ students, loading, onStudentClick
       ) : students.length === 0 ? (
         <Typography variant="body2" color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
           No students found.
+        </Typography>
+      ) : visibleStudents.length === 0 ? (
+        <Typography variant="body2" color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
+          No students match your filters.
         </Typography>
       ) : (
         <TableContainer sx={{ border: 1, borderColor: 'divider', borderRadius: 3, overflow: 'hidden' }}>
@@ -57,7 +114,7 @@ export default function StudentProgressTable({ students, loading, onStudentClick
             </TableHead>
 
             <TableBody>
-              {students.map((student) => (
+              {visibleStudents.map((student) => (
                 <TableRow
                   key={student.id}
                   hover

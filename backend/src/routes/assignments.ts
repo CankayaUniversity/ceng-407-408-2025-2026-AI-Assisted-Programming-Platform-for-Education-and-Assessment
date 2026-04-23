@@ -43,7 +43,15 @@ router.get("/", async (req: Request, res: Response) => {
       where:   { userId },
       include: {
         assignment: {
-          include: {
+          select: {
+            id:               true,
+            title:            true,
+            description:      true,
+            dueDate:          true,
+            isPublished:      true,
+            allowedLanguages: true,
+            lateDeadline:     true,
+            lateDeduction:    true,
             problem: { select: { id: true, title: true, language: true, difficulty: true, description: true } },
           },
         },
@@ -58,12 +66,15 @@ router.post("/", async (req: Request, res: Response) => {
   const { userId, role } = req.auth!;
   if (role !== "teacher") { res.status(403).json({ error: "Teachers only" }); return; }
 
-  const { title, description, problemId, dueDate, isPublished } = req.body as {
-    title:        string;
-    description?: string;
-    problemId:    number;
-    dueDate?:     string;
-    isPublished?: boolean;
+  const { title, description, problemId, dueDate, isPublished, allowedLanguages, lateDeadline, lateDeduction } = req.body as {
+    title:             string;
+    description?:      string;
+    problemId:         number;
+    dueDate?:          string;
+    isPublished?:      boolean;
+    allowedLanguages?: string[];
+    lateDeadline?:     string | null;
+    lateDeduction?:    number;
   };
 
   if (!title?.trim() || !problemId) {
@@ -73,12 +84,15 @@ router.post("/", async (req: Request, res: Response) => {
 
   const assignment = await prisma.assignment.create({
     data: {
-      title:       title.trim(),
-      description: description ?? null,
+      title:            title.trim(),
+      description:      description ?? null,
       problemId,
-      createdById: userId,
-      dueDate:     dueDate ? new Date(dueDate) : null,
-      isPublished: isPublished ?? false,
+      createdById:      userId,
+      dueDate:          dueDate ? new Date(dueDate) : null,
+      isPublished:      isPublished ?? false,
+      allowedLanguages: allowedLanguages ?? [],
+      lateDeadline:     lateDeadline ? new Date(lateDeadline) : null,
+      lateDeduction:    lateDeduction ?? 0,
     },
     include: { problem: { select: { id: true, title: true, language: true } } },
   });
@@ -111,20 +125,26 @@ router.put("/:id", async (req: Request, res: Response) => {
   const id = parseId(req.params.id);
   if (!id) { res.status(400).json({ error: "Invalid ID" }); return; }
 
-  const { title, description, dueDate, isPublished } = req.body as {
-    title?:       string;
-    description?: string;
-    dueDate?:     string | null;
-    isPublished?: boolean;
+  const { title, description, dueDate, isPublished, allowedLanguages, lateDeadline, lateDeduction } = req.body as {
+    title?:             string;
+    description?:       string;
+    dueDate?:           string | null;
+    isPublished?:       boolean;
+    allowedLanguages?:  string[];
+    lateDeadline?:      string | null;
+    lateDeduction?:     number;
   };
 
   const assignment = await prisma.assignment.update({
     where: { id },
     data:  {
-      ...(title       !== undefined ? { title: title.trim() }                  : {}),
-      ...(description !== undefined ? { description }                          : {}),
-      ...(dueDate     !== undefined ? { dueDate: dueDate ? new Date(dueDate) : null } : {}),
-      ...(isPublished !== undefined ? { isPublished }                          : {}),
+      ...(title            !== undefined ? { title: title.trim() }                          : {}),
+      ...(description      !== undefined ? { description }                                  : {}),
+      ...(dueDate          !== undefined ? { dueDate: dueDate ? new Date(dueDate) : null }  : {}),
+      ...(isPublished      !== undefined ? { isPublished }                                  : {}),
+      ...(allowedLanguages !== undefined ? { allowedLanguages }                             : {}),
+      ...(lateDeadline     !== undefined ? { lateDeadline: lateDeadline ? new Date(lateDeadline) : null } : {}),
+      ...(lateDeduction    !== undefined ? { lateDeduction }                                : {}),
     },
   });
 

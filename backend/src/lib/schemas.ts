@@ -139,5 +139,6 @@ export const rubricSaveSchema = z.object({
 // ── Exam mode ─────────────────────────────────────────────────────────────────
 
 export const examModeSchema = z.object({
-  enabled: z.boolean(),
+  enabled:  z.boolean(),
+  groupIds: z.array(z.number().int()).optional().default([]),
 });

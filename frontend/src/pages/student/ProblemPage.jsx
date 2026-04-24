@@ -38,10 +38,30 @@ const STARTER_CODE = {
 
 let _nextFileId = 2; // file id counter (1 is reserved for the initial file)
 
-// ── Code cache: module-level so it survives component unmount/remount ────────
-// When a student navigates away (e.g. /assignments) and back, the component
-// unmounts and remounts. A useRef() would be destroyed; a module-level Map is not.
+// ── Code cache: survives navigation (module-level) AND page refresh (localStorage) ──
+// Reads always check the in-memory Map first (fast), then fall back to localStorage.
+// Writes update both so either path works.
 const _codeCache = new Map(); // Map<problemId, { files, activeFileId, language }>
+
+function _cacheKey(problemId) { return `code_cache_${problemId}`; }
+
+function _cacheGet(problemId) {
+  if (_codeCache.has(problemId)) return _codeCache.get(problemId);
+  try {
+    const raw = localStorage.getItem(_cacheKey(problemId));
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      _codeCache.set(problemId, parsed); // warm the in-memory cache
+      return parsed;
+    }
+  } catch { /* ignore corrupt entries */ }
+  return undefined;
+}
+
+function _cacheSet(problemId, value) {
+  _codeCache.set(problemId, value);
+  try { localStorage.setItem(_cacheKey(problemId), JSON.stringify(value)); } catch { /* quota */ }
+}
 
 export default function ProblemPage() {
   const { token, currentUser, problems, examMode, handleLogout } = useAuth();
@@ -149,7 +169,7 @@ export default function ProblemPage() {
         const lang = (problem.language || "python").toLowerCase();
 
         // Restore from cache only if the student has actually written something
-        const cached = _codeCache.get(problemId);
+        const cached = _cacheGet(problemId);
         const cacheHasContent = cached?.files?.some((f) => f.content.trim() !== "");
 
         // Re-enable cache saving BEFORE the setState calls so the upcoming
@@ -230,10 +250,10 @@ export default function ProblemPage() {
     );
   }
 
-  // ── Persist current editor state to cache whenever it changes ───────────
+  // ── Persist current editor state to cache + localStorage whenever it changes ─
   useEffect(() => {
     if (!selectedId || skipCacheSave.current) return;
-    _codeCache.set(selectedId, { files, activeFileId, language: selectedLanguage });
+    _cacheSet(selectedId, { files, activeFileId, language: selectedLanguage });
   }, [files, activeFileId, selectedLanguage, selectedId]);
 
   // ── Navigation ───────────────────────────────────────────────────────────

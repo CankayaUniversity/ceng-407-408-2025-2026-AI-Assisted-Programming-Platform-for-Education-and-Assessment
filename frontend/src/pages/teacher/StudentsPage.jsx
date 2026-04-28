@@ -205,10 +205,7 @@ export default function StudentsPage({ currentUser, token, handleLogout, navItem
   const [editingGroup,         setEditingGroup]         = useState(null);
   const [deleteGroupTarget,    setDeleteGroupTarget]    = useState(null);
   const [deletingGroup,        setDeletingGroup]        = useState(false);
-
-  const [selectedStudent,      setSelectedStudent]      = useState(null);
-  const [studentMetrics,       setStudentMetrics]       = useState(null);
-  const [studentMetricsLoading,setStudentMetricsLoading]= useState(false);
+  const [selectedStudent, setSelectedStudent] = useState(null);
 
   const authHeaders = useMemo(() => ({
     Authorization: `Bearer ${token}`,
@@ -324,15 +321,6 @@ export default function StudentsPage({ currentUser, token, handleLogout, navItem
   // ── Student detail ───────────────────────────────────────────────────────
   function handleStudentClick(student) {
     setSelectedStudent(student);
-    setStudentMetrics(null);
-    setStudentMetricsLoading(true);
-    fetchJson(`/api/teacher/students/${student.id}/summary`)
-      .then((body) => setStudentMetrics(body.data?.metrics ?? null))
-      .catch((err) => {
-        console.error("student summary failed:", err);
-        setStudentMetrics(null);
-      })
-      .finally(() => setStudentMetricsLoading(false));
   }
 
   // ── Render ───────────────────────────────────────────────────────────────
@@ -453,10 +441,9 @@ export default function StudentsPage({ currentUser, token, handleLogout, navItem
       {/* ── Student detail modal ──────────────────────────────────────── */}
       <StudentDetailModal
         open={Boolean(selectedStudent)}
-        onClose={() => { setSelectedStudent(null); setStudentMetrics(null); }}
+        onClose={() => setSelectedStudent(null)}
         student={selectedStudent}
-        metrics={studentMetrics}
-        loading={studentMetricsLoading}
+        token={token}
       />
     </AppLayout>
   );

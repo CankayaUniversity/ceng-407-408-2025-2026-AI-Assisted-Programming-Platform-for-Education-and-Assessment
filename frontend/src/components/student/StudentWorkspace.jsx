@@ -4,6 +4,7 @@ import DOMPurify from "dompurify";
 import { marked } from "marked";
 import {
   Alert,
+  Badge,
   Box,
   Button,
   Chip,
@@ -17,8 +18,10 @@ import {
   Select,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
+import LightbulbIcon from "@mui/icons-material/Lightbulb";
 
 import SectionCard         from "../common/SectionCard";
 import AppLayout           from "../layout/AppLayout";
@@ -71,6 +74,8 @@ export default function StudentWorkspace({
   chatInput,
   setChatInput,
   sendChat,
+  sendHint,
+  hintCount = 0,
   chatLoading,
   submissions,
   submissionsLoading,
@@ -106,6 +111,10 @@ export default function StudentWorkspace({
             <List disablePadding>
               {problems.map((p) => {
                 const isSelected = p.id === selectedId;
+                const diffColor =
+                  p.difficulty === "Easy"   ? "#22c55e" :
+                  p.difficulty === "Medium" ? "#f59e0b" :
+                  p.difficulty === "Hard"   ? "#ef4444" : "#64748b";
                 return (
                   <ListItemButton
                     key={p.id}
@@ -117,12 +126,20 @@ export default function StudentWorkspace({
                       borderColor: isSelected ? "primary.main" : "divider",
                       borderRadius: 2,
                       alignItems: "flex-start",
+                      bgcolor: isSelected ? "rgba(99,102,241,0.08)" : "transparent",
                     }}
                   >
                     <ListItemText
                       primary={p.title}
-                      secondary={`${p.difficulty || "unknown"} · ${p.language || "n/a"}`}
-                      primaryTypographyProps={{ fontWeight: 600 }}
+                      secondary={`${p.language || "n/a"}`}
+                      primaryTypographyProps={{ fontWeight: 600, fontSize: 14 }}
+                    />
+                    <Box
+                      sx={{
+                        width: 8, height: 8, borderRadius: "50%",
+                        bgcolor: diffColor, flexShrink: 0,
+                        mt: 1.2, ml: 1,
+                      }}
                     />
                   </ListItemButton>
                 );
@@ -228,7 +245,7 @@ export default function StudentWorkspace({
               height: 200,
               border: 1,
               borderColor: "divider",
-              borderRadius: 2,
+              borderRadius: 0,
               overflow: "hidden",
               bgcolor: "#0f172a",
             }}
@@ -275,53 +292,84 @@ export default function StudentWorkspace({
                   bgcolor: "background.default",
                 }}
               >
-                <Stack spacing={1.5}>
-                  {chat.map((m, i) => (
-                    <Box
-                      key={i}
-                      sx={{
-                        borderRadius: 2,
-                        px: 1.5,
-                        py: 1.25,
-                        bgcolor:
-                          m.role === "assistant"
-                            ? "rgba(99, 102, 241, 0.14)"
-                            : "rgba(14, 165, 233, 0.14)",
-                      }}
-                    >
-                      <Typography variant="body2" component="div" sx={{ "& p": { mt: 0, mb: 0.5 }, "& pre": { overflowX: "auto" }, "& code": { fontSize: 12 } }}>
-                        <strong>{m.role === "assistant" ? "Mentor" : "You"}:</strong>{" "}
-                        {m.role === "assistant" ? (
-                          m.streaming && !m.content ? (
-                            // Empty bubble while waiting for first token
-                            <span style={{ opacity: 0.5 }}>
-                              Thinking
-                              <span style={{ display: "inline-block", animation: "blink 1s step-start infinite" }}>▋</span>
-                            </span>
-                          ) : (
-                            <span>
-                              <span
-                                dangerouslySetInnerHTML={{
-                                  __html: DOMPurify.sanitize(marked.parse(m.content || "")),
-                                }}
-                              />
-                              {m.streaming && (
-                                <span style={{ display: "inline-block", animation: "blink 1s step-start infinite", marginLeft: 1 }}>▋</span>
-                              )}
-                            </span>
-                          )
-                        ) : (
-                          <span style={{ whiteSpace: "pre-wrap" }}>{m.content}</span>
-                        )}
-                      </Typography>
-                    </Box>
-                  ))}
+                <Stack spacing={1}>
+                  {chat.map((m, i) => {
+                    const isUser = m.role === "user";
+                    return (
+                      <Box
+                        key={i}
+                        sx={{
+                          display: "flex",
+                          justifyContent: isUser ? "flex-end" : "flex-start",
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            maxWidth: "88%",
+                            px: 1.5,
+                            py: 1,
+                            borderRadius: isUser
+                              ? "14px 14px 4px 14px"
+                              : "14px 14px 14px 4px",
+                            bgcolor: isUser
+                              ? "rgba(14,165,233,0.16)"
+                              : "rgba(99,102,241,0.14)",
+                            border: "1px solid",
+                            borderColor: isUser
+                              ? "rgba(14,165,233,0.28)"
+                              : "rgba(99,102,241,0.22)",
+                          }}
+                        >
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              display: "block",
+                              fontWeight: 700,
+                              mb: 0.25,
+                              color: isUser ? "#38bdf8" : "#a5b4fc",
+                            }}
+                          >
+                            {isUser ? "You" : "AI Mentor"}
+                          </Typography>
+                          <Typography
+                            variant="body2"
+                            component="div"
+                            sx={{
+                              "& p": { mt: 0, mb: 0.5 },
+                              "& pre": { overflowX: "auto" },
+                              "& code": { fontSize: 12 },
+                            }}
+                          >
+                            {isUser ? (
+                              <span style={{ whiteSpace: "pre-wrap" }}>{m.content}</span>
+                            ) : m.streaming && !m.content ? (
+                              <span style={{ opacity: 0.5 }}>
+                                Thinking
+                                <span style={{ display: "inline-block", animation: "blink 1s step-start infinite" }}>▋</span>
+                              </span>
+                            ) : (
+                              <span>
+                                <span
+                                  dangerouslySetInnerHTML={{
+                                    __html: DOMPurify.sanitize(marked.parse(m.content || "")),
+                                  }}
+                                />
+                                {m.streaming && (
+                                  <span style={{ display: "inline-block", animation: "blink 1s step-start infinite", marginLeft: 1 }}>▋</span>
+                                )}
+                              </span>
+                            )}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    );
+                  })}
                 </Stack>
               </Box>
 
               <Divider sx={{ my: 2 }} />
 
-              <Stack spacing={2}>
+              <Stack spacing={1.5}>
                 <TextField
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
@@ -331,14 +379,50 @@ export default function StudentWorkspace({
                       if (!chatLoading && selectedProblem) sendChat();
                     }
                   }}
-                  placeholder="Ask for a hint… (Enter to send, Shift+Enter for newline)"
+                  placeholder="Ask a question… (Enter to send, Shift+Enter for newline)"
                   multiline
                   minRows={3}
                   fullWidth
                 />
-                <Button variant="contained" onClick={sendChat} disabled={chatLoading || !selectedProblem}>
-                  {chatLoading ? "Sending..." : "Send"}
-                </Button>
+                <Stack direction="row" spacing={1}>
+                  {/* Hint button */}
+                  <Tooltip title={
+                    hintCount === 0
+                      ? "Get a Socratic hint for your next step"
+                      : `Get another hint (${hintCount} used this session)`
+                  }>
+                    <span>
+                      <Button
+                        variant="outlined"
+                        color="warning"
+                        startIcon={
+                          <Badge
+                            badgeContent={hintCount > 0 ? hintCount : null}
+                            color="warning"
+                            sx={{ "& .MuiBadge-badge": { fontSize: 10, minWidth: 16, height: 16 } }}
+                          >
+                            <LightbulbIcon fontSize="small" />
+                          </Badge>
+                        }
+                        onClick={sendHint}
+                        disabled={chatLoading || !selectedProblem}
+                        sx={{ whiteSpace: "nowrap" }}
+                      >
+                        {hintCount === 0 ? "Hint" : "Another Hint"}
+                      </Button>
+                    </span>
+                  </Tooltip>
+
+                  {/* Send button */}
+                  <Button
+                    variant="contained"
+                    onClick={sendChat}
+                    disabled={chatLoading || !selectedProblem}
+                    sx={{ flex: 1 }}
+                  >
+                    {chatLoading ? "Sending…" : "Send"}
+                  </Button>
+                </Stack>
               </Stack>
             </>
           )}

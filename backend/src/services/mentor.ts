@@ -219,9 +219,25 @@ Idle rule:
 `;
   }
 
+  if (normalizedMode === "hint") {
+    prompt += `
+
+Hint mode:
+- The student pressed the Hint button — they want ONE Socratic nudge toward the next small step.
+- Do NOT reveal the algorithm, data structure, or the solution approach outright.
+- Do NOT write code. Do NOT show a function skeleton.
+- Phrase your hint as a guiding question or a short analogy.
+- Maximum 2 sentences. Stop after that.
+- If a hintLevel is provided (${input.hintLevel ?? 0}), calibrate:
+    hintLevel 0 → very vague directional hint ("Think about what happens when the list is empty.")
+    hintLevel 1 → slightly more specific ("What data structure lets you look up a value in O(1)?")
+    hintLevel 2+ → point directly at the gap, but still no code ("Your loop starts at index 1 — what about index 0?")
+`;
+  }
+
   if (normalizedMode === "tip") {
     prompt += `
-    
+
 Tip mode:
 - Give exactly one short useful hint.
 - Do not expand into a tutorial.

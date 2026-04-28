@@ -96,6 +96,7 @@ export default function ProblemPage() {
     { role: "assistant", content: "Hi! Ask for hints about your code." },
   ]);
   const [chatLoading,      setChatLoading]      = useState(false);
+  const [hintCount,        setHintCount]        = useState(0);
   const [submissions,      setSubmissions]      = useState([]);
   const [submissionsLoading, setSubmissionsLoading] = useState(false);
 
@@ -161,6 +162,7 @@ export default function ProblemPage() {
     skipCacheSave.current = true;
     setFiles([{ id: 1, name: "main.py", content: "" }]);
     setSelectedId(problemId);
+    setHintCount(0);
 
     (async () => {
       try {
@@ -355,8 +357,11 @@ export default function ProblemPage() {
   }
 
   // ── AI chat (SSE streaming) ───────────────────────────────────────────────
-  async function sendChat() {
-    const message = chatInput.trim();
+  // overrideMessage: pre-set message text (used by hint button)
+  // overrideMode:    "hint" | "practice" etc.
+  async function sendChat(overrideMessage, overrideMode) {
+    const message = overrideMessage ?? chatInput.trim();
+    const mode    = overrideMode    ?? "practice";
     if (!message || !selectedProblem) return;
 
     setChat((prev) => [
@@ -364,7 +369,7 @@ export default function ProblemPage() {
       { role: "user",      content: message },
       { role: "assistant", content: "", streaming: true },
     ]);
-    setChatInput("");
+    if (!overrideMessage) setChatInput("");
     setChatLoading(true);
 
     try {
@@ -378,6 +383,8 @@ export default function ProblemPage() {
           studentQuestion: message,
           runStatus:       "idle",
           language:        selectedLanguage,
+          mode,
+          hintLevel:       overrideMode === "hint" ? hintCount : undefined,
         }),
       });
 
@@ -436,6 +443,20 @@ export default function ProblemPage() {
     }
   }
 
+  // ── Hint button handler ───────────────────────────────────────────────────
+  async function sendHint() {
+    if (!selectedProblem || chatLoading) return;
+    // Progressive phrasing so the AI knows this is a follow-up hint
+    const hintMessages = [
+      "Give me a hint",
+      "Give me another hint",
+      "Give me one more hint",
+    ];
+    const msg = hintMessages[Math.min(hintCount, hintMessages.length - 1)];
+    setHintCount((c) => c + 1);
+    await sendChat(msg, "hint");
+  }
+
   return (
     <>
     <StudentWorkspace
@@ -468,6 +489,8 @@ export default function ProblemPage() {
       chatInput={chatInput}
       setChatInput={setChatInput}
       sendChat={sendChat}
+      sendHint={sendHint}
+      hintCount={hintCount}
       chatLoading={chatLoading}
       submissions={submissions}
       submissionsLoading={submissionsLoading}

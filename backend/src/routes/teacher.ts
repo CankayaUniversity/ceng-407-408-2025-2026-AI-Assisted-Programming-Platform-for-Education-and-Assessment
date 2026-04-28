@@ -482,8 +482,8 @@ router.get("/students/:id/analytics", async (req, res) => {
   });
 
   // Error profile + language usage
-  const errorProfile = {};
-  const languageUsage = {};
+  const errorProfile: Record<string, number> = {};
+  const languageUsage: Record<string, number> = {};
   for (const a of attempts) {
     if (a.normalizedStatus !== "accepted") {
       errorProfile[a.normalizedStatus] = (errorProfile[a.normalizedStatus] ?? 0) + 1;
@@ -497,7 +497,7 @@ router.get("/students/:id/analytics", async (req, res) => {
   let learningTrend = "stable";
   if (attempts.length >= 4) {
     const mid = Math.floor(attempts.length / 2);
-    const rate = (arr) => arr.filter((a) => a.normalizedStatus === "accepted").length / arr.length;
+    const rate = (arr: typeof attempts) => arr.filter((a) => a.normalizedStatus === "accepted").length / arr.length;
     const r1 = rate(attempts.slice(0, mid)), r2 = rate(attempts.slice(mid));
     if (r2 > r1 + 0.05) learningTrend = "improving";
     else if (r2 < r1 - 0.05) learningTrend = "declining";

@@ -437,6 +437,7 @@ export default function ProblemPage() {
   }
 
   return (
+    <>
     <StudentWorkspace
       currentUser={currentUser}
       selectedProblem={selectedProblem}
@@ -480,5 +481,6 @@ export default function ProblemPage() {
       onClose={() => setFlashcardModalOpen(false)}
       cards={flashcards}
     />
+  </>
   );
 }

@@ -47,7 +47,6 @@ router.get("/history/ai", async (req, res) => {
   res.json({ data: aiLogs });
 });
 
-export { router as studentRouter };
 
 // ── GET /api/student/analytics ─────────────────────────────────────────────
 // Returns rich analytics data for the authenticated student.

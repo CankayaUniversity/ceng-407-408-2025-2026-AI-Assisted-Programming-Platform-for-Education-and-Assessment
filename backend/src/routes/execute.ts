@@ -5,6 +5,7 @@ import { requireAuth } from "../middleware/requireAuth";
 import { AttemptMode } from "@prisma/client";
 import { runInJudge0, type Judge0RunResult } from "../services/judge0";
 import { executeSchema } from "../lib/schemas";
+import { generateFlashcards } from "../services/flashcardService";
 
 const router = Router();
 
@@ -461,6 +462,52 @@ router.post("/", async (req, res) => {
         results,
         submissionId: submission.id,
       });
+
+      // Background flashcard generation (non-blocking)
+      // Only generate once per user+problem.
+      if (allPassed) {
+        (async () => {
+          try {
+            const existing = await prisma.flashcard.count({ where: { userId, problemId } });
+            if (existing > 0) return;
+
+            const failedAttempts = await prisma.submissionAttempt.findMany({
+              where: { userId, problemId, allPassed: false, mode: AttemptMode.tests },
+              orderBy: { createdAt: "desc" },
+              take: 5,
+              select: {
+                normalizedStatus: true,
+                sourceCode: true,
+                stderr: true,
+                compileOutput: true,
+                stdout: true,
+              },
+            });
+
+            const cards = await generateFlashcards({
+              problemTitle:       problem.title,
+              problemDescription: problem.description,
+              referenceSolution:  problem.referenceSolution ?? null,
+              language:           effectiveLanguage,
+              acceptedCode:       sourceCode,
+              failedAttempts:     failedAttempts.map((a) => ({
+                normalizedStatus: a.normalizedStatus,
+                sourceCode:       a.sourceCode,
+                stderr:           a.stderr,
+                compileOutput:    a.compileOutput,
+                stdout:           a.stdout,
+              })),
+            });
+
+            await prisma.flashcard.create({
+              data: { userId, problemId, submissionId: submission.id, cards: cards },
+            });
+            console.log('[flashcards] Generated ' + cards.length + ' cards for user=' + userId + ' problem=' + problemId);
+          } catch (err) {
+            console.error('[flashcards] Generation failed:', err instanceof Error ? err.message : err);
+          }
+        })();
+      }
       return;
     }
 

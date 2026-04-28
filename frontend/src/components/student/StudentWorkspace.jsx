@@ -76,6 +76,8 @@ export default function StudentWorkspace({
   submissionsLoading,
   examMode,
   lateDeduction = 0,
+  flashcards = [],
+  onViewFlashcards,
 }) {
   const chatBottomRef = useChatScroll(chat);
 
@@ -239,6 +241,17 @@ export default function StudentWorkspace({
 
           <Box sx={{ mt: 2 }}>
             <SubmissionHistory submissions={submissions} loading={submissionsLoading} />
+            {flashcards.length > 0 && (
+              <Box sx={{ mt: 1.5, display: "flex", justifyContent: "flex-end" }}>
+                <Chip
+                  label={`View Feedback Cards (${flashcards.length})`}
+                  color="primary"
+                  variant="outlined"
+                  onClick={onViewFlashcards}
+                  sx={{ cursor: "pointer", fontWeight: 600 }}
+                />
+              </Box>
+            )}
           </Box>
         </SectionCard>
 

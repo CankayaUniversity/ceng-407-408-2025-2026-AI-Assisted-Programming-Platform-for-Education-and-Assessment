@@ -4,6 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 import { api } from "../../lib/api";
 import { API_BASE } from "../../apiBase";
 import StudentWorkspace from "../../components/student/StudentWorkspace";
+import FlashcardModal    from "../../components/student/FlashcardModal";
 
 const STUDENT_NAV = [
   { label: "Dashboard",   path: "/" },
@@ -97,6 +98,11 @@ export default function ProblemPage() {
   const [chatLoading,      setChatLoading]      = useState(false);
   const [submissions,      setSubmissions]      = useState([]);
   const [submissionsLoading, setSubmissionsLoading] = useState(false);
+
+  // ── Flashcard state ──────────────────────────────────────────────────────
+  const [flashcardModalOpen, setFlashcardModalOpen] = useState(false);
+  const [flashcards,         setFlashcards]         = useState([]);
+  const flashcardPollRef = useRef(null);
   const [selectedId,       setSelectedId]       = useState(problemId);
 
   // ── Phase 6: xterm.js terminal writer ref ───────────────────────────────
@@ -292,11 +298,53 @@ export default function ProblemPage() {
         headers: { Authorization: `Bearer ${token}` },
       }).catch(() => ({ data: [] }));
       setSubmissions(subRes?.data ?? []);
+
+      // If all tests passed, start polling for AI flashcards
+      if (result.allPassed) {
+        startFlashcardPolling(selectedProblem.id);
+      }
     } catch (err) {
       termWrite(`\x1b[31m[error] ${err.message}\x1b[0m\r\n`);
     } finally {
       setRunning(false);
     }
+  }
+
+  // ── Flashcard polling ─────────────────────────────────────────────────────
+  // After a correct submission the backend generates cards in the background.
+  // Poll /api/flashcards/status every 5 s (up to 2 minutes).
+  function startFlashcardPolling(pid) {
+    if (flashcardPollRef.current) clearInterval(flashcardPollRef.current);
+    let attempts = 0;
+    const MAX_ATTEMPTS = 24; // 24 x 5s = 2 min
+
+    flashcardPollRef.current = setInterval(async () => {
+      attempts++;
+      try {
+        const status = await api(`/api/flashcards/status?problemId=${pid}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }).catch(() => null);
+
+        if (status?.ready) {
+          clearInterval(flashcardPollRef.current);
+          flashcardPollRef.current = null;
+
+          const data = await api(`/api/flashcards?problemId=${pid}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }).catch(() => null);
+
+          if (data?.cards && Array.isArray(data.cards)) {
+            setFlashcards(data.cards);
+            setFlashcardModalOpen(true);
+          }
+        }
+      } catch { /* ignore poll errors */ }
+
+      if (attempts >= MAX_ATTEMPTS) {
+        clearInterval(flashcardPollRef.current);
+        flashcardPollRef.current = null;
+      }
+    }, 5_000);
   }
 
   function runRaw() {
@@ -423,6 +471,14 @@ export default function ProblemPage() {
       submissions={submissions}
       submissionsLoading={submissionsLoading}
       examMode={examMode}
+      flashcards={flashcards}
+      onViewFlashcards={() => setFlashcardModalOpen(true)}
+    />
+
+    <FlashcardModal
+      open={flashcardModalOpen}
+      onClose={() => setFlashcardModalOpen(false)}
+      cards={flashcards}
     />
   );
 }

@@ -15,6 +15,7 @@ import { variationsRouter } from "./routes/variations";
 import { rubricsRouter } from "./routes/rubrics";
 import { gradesRouter }       from "./routes/grades";
 import { assignmentsRouter }  from "./routes/assignments";
+import flashcardsRouter       from "./routes/flashcards";
 import { liveHandler, readyHandler } from "./routes/health";
 import { aiLimiter, executeLimiter } from "./middleware/rateLimiter";
 
@@ -54,6 +55,7 @@ app.use("/api/variations", variationsRouter);
 app.use("/api/rubrics",    rubricsRouter);
 app.use("/api/grades",       gradesRouter);
 app.use("/api/assignments",  assignmentsRouter);
+app.use("/api/flashcards",    flashcardsRouter);
 
 app.get("/health", liveHandler);
 app.get("/api/health/live", liveHandler);

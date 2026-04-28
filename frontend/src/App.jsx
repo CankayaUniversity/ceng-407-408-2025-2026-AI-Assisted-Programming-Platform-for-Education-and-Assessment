@@ -21,6 +21,7 @@ import PageShell    from "./components/layout/PageShell";
 import ProblemPage              from "./pages/student/ProblemPage";
 import AssignmentsPage          from "./pages/student/AssignmentsPage";
 import AnalyticsPage            from "./pages/student/AnalyticsPage";
+import ClassAnalyticsPage       from "./pages/teacher/ClassAnalyticsPage";
 import TeacherDashboardPage     from "./pages/teacher/TeacherDashboardPage";
 import StudentsPage             from "./pages/teacher/StudentsPage";
 import QuestionsPage            from "./pages/teacher/QuestionsPage";
@@ -44,6 +45,7 @@ const TEACHER_NAV = [
   { label: "Students",      path: "/students" },
   { label: "Question Bank", path: "/questions" },
   { label: "Grading",       path: "/grading" },
+  { label: "Analytics",     path: "/class-analytics" },
 ];
 
 // ── Role-selection landing screen ─────────────────────────────────────────────
@@ -289,7 +291,8 @@ export default function App() {
           }
         />
         <Route path="/assignments" element={<TeacherAssignmentsPage {...commonProps} navItems={TEACHER_NAV} />} />
-        <Route path="/grading"     element={<GradingPage            {...commonProps} navItems={TEACHER_NAV} />} />
+        <Route path="/grading"         element={<GradingPage            {...commonProps} navItems={TEACHER_NAV} />} />
+        <Route path="/class-analytics" element={<ClassAnalyticsPage     {...commonProps} navItems={TEACHER_NAV} />} />
         <Route path="*"            element={<Navigate to="/" replace />} />
       </Routes>
     );

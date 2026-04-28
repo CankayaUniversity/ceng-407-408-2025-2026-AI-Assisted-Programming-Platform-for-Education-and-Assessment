@@ -295,4 +295,107 @@ router.delete("/groups/:id", async (req, res) => {
   res.json({ success: true });
 });
 
+// ── GET /api/teacher/class/analytics ─────────────────────────────────────────
+// Returns class-wide analytics: per-problem error breakdown + student progress.
+router.get("/class/analytics", async (_req, res) => {
+  const [problems, attempts, students] = await Promise.all([
+    prisma.problem.findMany({ select: { id: true, title: true, difficulty: true, language: true } }),
+    prisma.submissionAttempt.findMany({
+      where: { mode: "tests" },
+      select: {
+        userId: true, problemId: true, normalizedStatus: true,
+        createdAt: true, language: true,
+      },
+      orderBy: { createdAt: "asc" },
+    }),
+    prisma.user.findMany({
+      where: { role: { is: { name: "student" } } },
+      select: { id: true, name: true, email: true },
+    }),
+  ]);
+
+  // Per-problem stats: error breakdown + accept rate + student count
+  const problemStats = problems.map((prob) => {
+    const probAttempts = attempts.filter((a) => a.problemId === prob.id);
+    const distinctStudents = new Set(probAttempts.map((a) => a.userId)).size;
+    const accepted  = probAttempts.filter((a) => a.normalizedStatus === "accepted").length;
+    const errorProfile: Record<string, number> = {};
+    for (const a of probAttempts) {
+      if (a.normalizedStatus !== "accepted") {
+        errorProfile[a.normalizedStatus] = (errorProfile[a.normalizedStatus] ?? 0) + 1;
+      }
+    }
+    // Solved = student who has at least one accepted attempt
+    const solvedStudents = new Set(
+      probAttempts.filter((a) => a.normalizedStatus === "accepted").map((a) => a.userId),
+    ).size;
+
+    return {
+      problemId:       prob.id,
+      title:           prob.title,
+      difficulty:      prob.difficulty,
+      language:        prob.language,
+      totalAttempts:   probAttempts.length,
+      acceptedAttempts: accepted,
+      distinctStudents,
+      solvedStudents,
+      acceptRate:      probAttempts.length > 0
+        ? Math.round((accepted / probAttempts.length) * 100) : 0,
+      errorProfile,
+    };
+  }).sort((a, b) => a.acceptRate - b.acceptRate); // hardest first
+
+  // Per-student progress
+  const studentProgress = students.map((s) => {
+    const sa = attempts.filter((a) => a.userId === s.id);
+    const acc = sa.filter((a) => a.normalizedStatus === "accepted").length;
+    const solvedProblems = new Set(
+      sa.filter((a) => a.normalizedStatus === "accepted").map((a) => a.problemId),
+    ).size;
+    return {
+      studentId:    s.id,
+      name:         s.name,
+      email:        s.email,
+      totalAttempts: sa.length,
+      acceptedAttempts: acc,
+      successRate:  sa.length > 0 ? Math.round((acc / sa.length) * 100) : 0,
+      problemsSolved: solvedProblems,
+    };
+  }).sort((a, b) => b.problemsSolved - a.problemsSolved);
+
+  // Weekly submission counts (last 12 weeks)
+  const now = new Date();
+  const weeklyData: { week: string; total: number; accepted: number }[] = [];
+  for (let w = 11; w >= 0; w--) {
+    const start = new Date(now);
+    start.setDate(start.getDate() - w * 7 - start.getDay());
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 7);
+    const weekAttempts = attempts.filter(
+      (a) => a.createdAt >= start && a.createdAt < end,
+    );
+    weeklyData.push({
+      week: start.toISOString().slice(0, 10),
+      total: weekAttempts.length,
+      accepted: weekAttempts.filter((a) => a.normalizedStatus === "accepted").length,
+    });
+  }
+
+  res.json({
+    data: {
+      problemStats,
+      studentProgress,
+      weeklyData,
+      totals: {
+        students: students.length,
+        attempts: attempts.length,
+        accepted: attempts.filter((a) => a.normalizedStatus === "accepted").length,
+        problems: problems.length,
+      },
+    },
+  });
+});
+
+
 export { router as teacherRouter };

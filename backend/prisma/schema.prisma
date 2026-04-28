@@ -58,6 +58,7 @@ model User {
   createdVariations   ProblemVariation[]     @relation("CreatedVariations")
   createdGroups       StudentGroup[]          @relation("CreatedGroups")
   groupMemberships    StudentGroupMembership[]
+  flashcards          Flashcard[]
 }
 
 model Problem {
@@ -86,6 +87,7 @@ model Problem {
   assignments         Assignment[]
   rubrics             Rubric[]
   variations          ProblemVariation[]
+  flashcards          Flashcard[]
 }
 
 model TestCase {
@@ -353,6 +355,23 @@ model StudentGroup {
   members     StudentGroupMembership[]
 
   @@index([createdById])
+}
+
+// ── Flashcard ─────────────────────────────────────────────────────────────────
+// AI-generated feedback cards shown to a student after a correct submission.
+model Flashcard {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  problemId    Int
+  submissionId Int
+  cards        Json     // FlashcardItem[]
+  createdAt    DateTime @default(now())
+
+  user    User    @relation(fields: [userId],       references: [id])
+  problem Problem @relation(fields: [problemId],    references: [id], onDelete: Cascade)
+
+  @@index([userId, problemId])
+  @@index([submissionId])
 }
 
 model StudentGroupMembership {

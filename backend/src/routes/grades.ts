@@ -182,7 +182,11 @@ router.post("/:assignmentId/:userId/suggest", async (req: Request, res: Response
   );
 
   if (!result.success) {
-    res.status(500).json({ success: false, error: result.error });
+    const isTimeout = (result.error ?? "").toLowerCase().includes("abort");
+    const userMsg = isTimeout
+      ? "AI scoring timed out. The model is busy — please try again in a moment."
+      : result.error;
+    res.status(500).json({ success: false, error: userMsg });
     return;
   }
 

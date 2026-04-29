@@ -152,7 +152,7 @@ function extractCards(raw: string): FlashcardItem[] {
 export async function generateFlashcards(input: FlashcardInput): Promise<FlashcardItem[]> {
   const prompt = buildPrompt(input);
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 90_000);
+  const timeout = setTimeout(() => controller.abort(), 240_000);
 
   try {
     const res = await fetch(getOllamaUrl(), {
@@ -163,7 +163,7 @@ export async function generateFlashcards(input: FlashcardInput): Promise<Flashca
         prompt,
         stream:   false,
         keep_alive: -1,
-        options:  { temperature: 0.3, top_p: 0.9 },
+        options:  { temperature: 0.3, top_p: 0.9, num_ctx: 8192 },
       }),
       signal: controller.signal,
     });

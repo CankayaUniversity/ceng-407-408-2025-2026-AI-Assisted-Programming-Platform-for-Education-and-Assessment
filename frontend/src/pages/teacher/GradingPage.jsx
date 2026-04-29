@@ -144,6 +144,8 @@ function GradingDrawer({
   token,
   onSaved,
   existingGrade,
+  globalSuggesting = false,
+  onSuggestingChange,
 }) {
   const criteria = rubric?.criteria ?? [];
 
@@ -153,6 +155,10 @@ function GradingDrawer({
   const [saving,     setSaving]     = useState(false);
   const [error,      setError]      = useState("");
   const [saved,      setSaved]      = useState(false);
+
+  // Keep local + global suggesting in sync
+  function startSuggesting() { setSuggesting(true);  onSuggestingChange?.(true); }
+  function stopSuggesting()  { setSuggesting(false); onSuggestingChange?.(false); }
 
   // Populate from existing grade when drawer opens
   useEffect(() => {
@@ -183,8 +189,8 @@ function GradingDrawer({
   const maxTotal   = breakdown.reduce((s, c) => s + c.maxScore, 0);
 
   async function handleSuggest() {
-    if (!submission) return;
-    setSuggesting(true);
+    if (!submission || globalSuggesting) return;
+    startSuggesting();
     setError("");
     try {
       const res = await fetch(
@@ -207,7 +213,7 @@ function GradingDrawer({
     } catch (err) {
       setError(err.message);
     } finally {
-      setSuggesting(false);
+      stopSuggesting();
     }
   }
 
@@ -339,11 +345,11 @@ function GradingDrawer({
                     <Button
                       size="small"
                       variant="outlined"
-                      startIcon={suggesting ? <CircularProgress size={14} /> : <AutoAwesomeIcon />}
+                      startIcon={globalSuggesting ? <CircularProgress size={14} /> : <AutoAwesomeIcon />}
                       onClick={handleSuggest}
-                      disabled={suggesting || saving || !submission}
+                      disabled={globalSuggesting || saving || !submission}
                     >
-                      {suggesting ? "Suggesting…" : "AI Suggest"}
+                      {globalSuggesting ? "Suggesting…" : "AI Suggest"}
                     </Button>
                   </span>
                 </Tooltip>
@@ -444,6 +450,7 @@ export default function GradingPage({ currentUser, token, handleLogout, navItems
   const [loadingStudents,  setLoadingStudents]  = useState(false);
   const [drawerOpen,       setDrawerOpen]       = useState(false);
   const [activeStudent,    setActiveStudent]    = useState(null);
+  const [globalSuggesting, setGlobalSuggesting] = useState(false);
   const [error,            setError]            = useState("");
 
   const authHeaders = { Authorization: `Bearer ${token}` };
@@ -499,7 +506,15 @@ export default function GradingPage({ currentUser, token, handleLogout, navItems
     : null;
 
   return (
-    <AppLayout currentUser={currentUser} handleLogout={handleLogout} navItems={navItems}>
+    <AppLayout
+      title="AI Mentor"
+      userLabel={currentUser?.name || currentUser?.email}
+      onLogout={handleLogout}
+      navItems={navItems}
+      headerVariant="teacher"
+      roleLabel="Teacher"
+      showPageTitle={false}
+    >
       <Stack spacing={3} sx={{ maxWidth: 1100, mx: "auto", px: { xs: 2, md: 3 }, py: 3 }}>
 
         {/* ── Assignment selector ── */}
@@ -676,6 +691,8 @@ export default function GradingPage({ currentUser, token, handleLogout, navItems
           token={token}
           existingGrade={activeEntry?.grade ?? null}
           onSaved={() => loadAssignment(selectedId)}
+          globalSuggesting={globalSuggesting}
+          onSuggestingChange={setGlobalSuggesting}
         />
       )}
     </AppLayout>

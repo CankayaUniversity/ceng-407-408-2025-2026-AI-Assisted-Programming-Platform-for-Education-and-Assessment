@@ -18,7 +18,10 @@ function normalizeNavItems(navItems = [], currentPath = "/") {
     return {
       label: item.label,
       path: item.path ?? "/",
-      active: item.path ? currentPath === item.path : Boolean(item.active),
+      active: item.path
+        ? currentPath === item.path ||
+          (item.matchPaths ?? []).some((p) => currentPath.startsWith(p))
+        : Boolean(item.active),
     };
   });
 }
@@ -38,15 +41,16 @@ export default function AppHeader({
   if (variant === "teacher") {
   return (
     <AppBar
-      position="sticky"
+      position="fixed"
       color="transparent"
       elevation={0}
       sx={{
         borderBottom: "1px solid rgba(148, 163, 184, 0.14)",
-        bgcolor: "rgba(15, 23, 42, 0.72)",
+        bgcolor: "rgba(15, 23, 42, 0.92)",
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
         boxShadow: "none",
+        zIndex: (theme) => theme.zIndex.drawer + 1,
       }}
     >
       <Toolbar sx={{ minHeight: 60, gap: 2, px: { xs: 2, md: 3 } }}>
@@ -94,7 +98,7 @@ export default function AppHeader({
             {items.map((item) => (
               <Box
                 key={item.label}
-                onClick={() => navigate(item.path)}
+                onClick={() => { if (!item.active) navigate(item.path); }}
                 sx={{
                   px: 1.25,
                   py: 0.75,
@@ -103,9 +107,9 @@ export default function AppHeader({
                   bgcolor: item.active ? "rgba(99, 102, 241, 0.16)" : "transparent",
                   fontSize: 15,
                   fontWeight: item.active ? 600 : 500,
-                  cursor: "pointer",
+                  cursor: item.active ? "default" : "pointer",
                   transition: "all 0.2s ease",
-                  "&:hover": { bgcolor: "rgba(99, 102, 241, 0.10)" },
+                  "&:hover": { bgcolor: item.active ? "rgba(99, 102, 241, 0.16)" : "rgba(99, 102, 241, 0.10)" },
                 }}
               >
                 {item.label}
@@ -155,15 +159,16 @@ export default function AppHeader({
 
 return (
     <AppBar
-      position="sticky"
+      position="fixed"
       color="transparent"
       elevation={0}
       sx={{
         borderBottom: "1px solid rgba(148, 163, 184, 0.14)",
-        bgcolor: "rgba(15, 23, 42, 0.72)",
+        bgcolor: "rgba(15, 23, 42, 0.92)",
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
         boxShadow: "none",
+        zIndex: (theme) => theme.zIndex.drawer + 1,
       }}
     >
       <Toolbar sx={{ minHeight: 60, gap: 2, px: { xs: 2, md: 3 } }}>
@@ -211,7 +216,7 @@ return (
             {items.map((item) => (
               <Box
                 key={item.label}
-                onClick={() => navigate(item.path)}
+                onClick={() => { if (!item.active) navigate(item.path); }}
                 sx={{
                   px: 1.25,
                   py: 0.75,
@@ -220,9 +225,9 @@ return (
                   bgcolor: item.active ? "rgba(99, 102, 241, 0.16)" : "transparent",
                   fontSize: 15,
                   fontWeight: item.active ? 600 : 500,
-                  cursor: "pointer",
+                  cursor: item.active ? "default" : "pointer",
                   transition: "all 0.2s ease",
-                  "&:hover": { bgcolor: "rgba(99, 102, 241, 0.10)" },
+                  "&:hover": { bgcolor: item.active ? "rgba(99, 102, 241, 0.16)" : "rgba(99, 102, 241, 0.10)" },
                 }}
               >
                 {item.label}

@@ -156,7 +156,7 @@ export async function generateVariation(
   const prompt = buildVariationPrompt(input, type);
 
   const controller = new AbortController();
-  const timeout    = setTimeout(() => controller.abort(), 120_000);
+  const timeout    = setTimeout(() => controller.abort(), 240_000);
 
   try {
     console.log(`[variation] type=${type} model=${model} problem="${input.title}"`);
@@ -170,8 +170,9 @@ export async function generateVariation(
         stream: false,
         keep_alive: -1,
         options: {
-          temperature: 0.75, // more creative than the mentor
+          temperature: 0.75,
           top_p: 0.95,
+          num_ctx: 8192,
         },
       }),
       signal: controller.signal,
@@ -194,7 +195,10 @@ export async function generateVariation(
 
     return { success: true, variation, model };
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
+    const raw = e instanceof Error ? e.message : String(e);
+    const message = raw.toLowerCase().includes("abort")
+      ? "AI is busy — please try again in a moment."
+      : raw;
     console.error("[variation] error:", message);
     return { success: false, error: message };
   } finally {

@@ -123,7 +123,7 @@ export function ActivityHeatmap({ dailyActivity, cellSize = 13 }) {
           {DOW.map((d, i) => (
             <Box key={i} sx={{ width: labelW, height: cellSize, display: "flex", alignItems: "center" }}>
               <Typography sx={{ fontSize: cellSize * 0.7, color: "text.disabled", lineHeight: 1 }}>
-                {i % 2 === 0 ? d : ""}
+                {d}
               </Typography>
             </Box>
           ))}
@@ -132,9 +132,10 @@ export function ActivityHeatmap({ dailyActivity, cellSize = 13 }) {
         {/* Grid */}
         {weeks.map((week, wi) => (
           <Stack key={wi} spacing={`${gap}px`}>
-            <Typography sx={{ fontSize: cellSize * 0.7, color: "text.disabled",
-              height: cellSize, lineHeight: `${cellSize}px`, mb: `${gap}px` }}>
-              {week[0].date.slice(8, 10) <= "07"
+            <Typography sx={{ fontSize: cellSize * 0.7, color: "text.secondary",
+              height: cellSize, lineHeight: `${cellSize}px`, mb: `${gap}px`,
+              fontWeight: 600 }}>
+              {wi === 0 || weeks[wi - 1][0].date.slice(0, 7) !== week[0].date.slice(0, 7)
                 ? new Date(week[0].date).toLocaleString("en", { month: "short" }) : ""}
             </Typography>
             {week.map((day) => (
@@ -459,11 +460,8 @@ export default function StudentAnalyticsContent({ data, loading, error }) {
               </Typography>
               <ResponsiveContainer width="100%" height={180}>
                 <PieChart>
-                  <Pie data={langData} cx="50%" cy="50%" outerRadius={72}
-                    paddingAngle={3} dataKey="value"
-                    label={({ name, percent }) =>
-                      percent > 0.07 ? `${name} ${Math.round(percent * 100)}%` : ""}
-                    labelLine={false}>
+                  <Pie data={langData} cx="50%" cy="50%" outerRadius={78}
+                    paddingAngle={0} dataKey="value">
                     {langData.map((_, i) => (
                       <Cell key={i} fill={LANG_COLORS[i % LANG_COLORS.length]} />
                     ))}

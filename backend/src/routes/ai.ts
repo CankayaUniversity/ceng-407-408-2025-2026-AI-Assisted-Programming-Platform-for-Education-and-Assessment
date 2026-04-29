@@ -308,12 +308,15 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
 
   let fullText = "";
   let streamError = false;
+  const isHint = (typeof body.mode === "string" ? body.mode.trim().toLowerCase() : "") === "hint";
 
   try {
     for await (const token of getMentorReplyStream(input)) {
       if (res.writableEnded) break;
       fullText += token;
       res.write(`data: ${JSON.stringify({ token })}\n\n`);
+      // Hint mode: stop after the first complete sentence
+      if (isHint && /[.?!]/.test(fullText.trimEnd().slice(-1))) break;
     }
   } catch (err) {
     streamError = true;

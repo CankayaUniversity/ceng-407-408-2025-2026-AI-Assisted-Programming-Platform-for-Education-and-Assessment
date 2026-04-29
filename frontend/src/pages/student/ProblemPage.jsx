@@ -7,7 +7,7 @@ import StudentWorkspace from "../../components/student/StudentWorkspace";
 import FlashcardModal    from "../../components/student/FlashcardModal";
 
 const STUDENT_NAV = [
-  { label: "Dashboard",   path: "/" },
+  { label: "Dashboard",   path: "/", matchPaths: ["/problem/"] },
   { label: "Assignments", path: "/assignments" },
   { label: "Analytics",   path: "/analytics" },
 ];

@@ -416,7 +416,7 @@ export default function StudentWorkspace({
                   {/* Send button */}
                   <Button
                     variant="contained"
-                    onClick={sendChat}
+                    onClick={() => sendChat()}
                     disabled={chatLoading || !selectedProblem}
                     sx={{ flex: 1 }}
                   >

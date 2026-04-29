@@ -127,7 +127,7 @@ export async function generateRubric(
   const prompt = buildRubricPrompt(title, description, language, difficulty, referenceSolution);
 
   const controller = new AbortController();
-  const timeout    = setTimeout(() => controller.abort(), 120_000);
+  const timeout    = setTimeout(() => controller.abort(), 240_000);
 
   try {
     console.log(`[rubric] model=${model} problem="${title}"`);
@@ -140,7 +140,7 @@ export async function generateRubric(
         prompt,
         stream: false,
         keep_alive: -1,
-        options: { temperature: 0.3, top_p: 0.9 },
+        options: { temperature: 0.3, top_p: 0.9, num_ctx: 8192 },
       }),
       signal: controller.signal,
     });
@@ -159,7 +159,10 @@ export async function generateRubric(
 
     return { success: true, rubric, model };
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
+    const raw = e instanceof Error ? e.message : String(e);
+    const message = raw.toLowerCase().includes("abort")
+      ? "AI is busy — please try again in a moment."
+      : raw;
     console.error("[rubric] error:", message);
     return { success: false, error: message };
   } finally {

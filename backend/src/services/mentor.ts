@@ -222,16 +222,20 @@ Idle rule:
   if (normalizedMode === "hint") {
     prompt += `
 
-Hint mode:
-- The student pressed the Hint button — they want ONE Socratic nudge toward the next small step.
-- Do NOT reveal the algorithm, data structure, or the solution approach outright.
-- Do NOT write code. Do NOT show a function skeleton.
-- Phrase your hint as a guiding question or a short analogy.
-- Maximum 2 sentences. Stop after that.
-- If a hintLevel is provided (${input.hintLevel ?? 0}), calibrate:
-    hintLevel 0 → very vague directional hint ("Think about what happens when the list is empty.")
-    hintLevel 1 → slightly more specific ("What data structure lets you look up a value in O(1)?")
-    hintLevel 2+ → point directly at the gap, but still no code ("Your loop starts at index 1 — what about index 0?")
+HINT MODE — THIS OVERRIDES ALL OTHER RESPONSE RULES:
+- Ignore the "Allowed help" and "Response style" sections above.
+- The student clicked the Hint button. Give exactly ONE hint. Nothing more.
+- Do NOT answer their question directly.
+- Do NOT explain the concept or the algorithm.
+- Do NOT restate or paraphrase the problem description or assignment text.
+- Do NOT write any code or pseudo-code.
+- Do NOT use bullet points or numbered lists.
+- Output a SINGLE short sentence. Stop immediately after that sentence.
+
+hintLevel = ${input.hintLevel ?? 0}
+- hintLevel 0 → One very vague question that nudges the student to think, without referencing the problem at all. Example: "What does it mean for one number to 'divide' another?"
+- hintLevel 1 → One slightly more focused question that points toward the missing logic. Example: "Which numbers would you need to check as potential divisors?"
+- hintLevel 2+ → One sentence that names exactly what is missing in their current code, still no code. Example: "Your loop never actually checks if the remainder is zero."
 `;
   }
 

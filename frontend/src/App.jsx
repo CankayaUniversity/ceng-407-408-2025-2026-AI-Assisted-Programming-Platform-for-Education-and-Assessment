@@ -34,7 +34,7 @@ const DEMO_EMAIL    = import.meta.env.VITE_DEMO_EMAIL    ?? "student1@demo.com";
 const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD ?? "123456";
 
 const STUDENT_NAV = [
-  { label: "Dashboard",   path: "/" },
+  { label: "Dashboard",   path: "/", matchPaths: ["/problem/"] },
   { label: "Assignments", path: "/assignments" },
   { label: "Analytics",   path: "/analytics" },
 ];

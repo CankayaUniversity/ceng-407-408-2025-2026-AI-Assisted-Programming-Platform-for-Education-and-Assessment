@@ -69,7 +69,7 @@ function getOllamaGenerateUrl(): string {
 }
 
 function getModelName(): string {
-  return process.env.OLLAMA_VALIDATOR_MODEL ?? process.env.OLLAMA_MODEL ?? "ai-mentor";
+  return process.env.OLLAMA_MODEL ?? "ai-mentor";
 }
 
 // ── JSON extraction ───────────────────────────────────────────────────────────
@@ -276,7 +276,7 @@ export async function suggestScore(
   );
 
   const controller = new AbortController();
-  const timeout    = setTimeout(() => controller.abort(), 120_000);
+  const timeout    = setTimeout(() => controller.abort(), 240_000);
 
   try {
     const passRate = exec?.publicTotal
@@ -294,7 +294,7 @@ export async function suggestScore(
         prompt,
         stream:  false,
         keep_alive: -1,
-        options: { temperature: 0.2, top_p: 0.9 },
+        options: { temperature: 0.2, top_p: 0.9, num_ctx: 8192 },
       }),
       signal: controller.signal,
     });
@@ -315,7 +315,10 @@ export async function suggestScore(
 
     return { success: true, suggestion, model };
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
+    const raw = e instanceof Error ? e.message : String(e);
+    const message = raw.toLowerCase().includes("abort")
+      ? "aborted: model took too long to respond (>240s)"
+      : raw;
     console.error("[score-suggest] error:", message);
     return { success: false, error: message };
   } finally {

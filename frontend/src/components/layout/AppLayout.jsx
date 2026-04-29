@@ -17,12 +17,12 @@ export default function AppLayout({
 }) {
   return (
     <Box
-  sx={{
-    minHeight: "100vh",
-    bgcolor: "background.default",
-    color: "text.primary",
-  }}
-   >
+      sx={{
+        minHeight: "100vh",
+        bgcolor: "background.default",
+        color: "text.primary",
+      }}
+    >
       <AppHeader
         title={title}
         userLabel={userLabel}
@@ -32,8 +32,14 @@ export default function AppLayout({
         roleLabel={roleLabel}
       />
 
-      <PageShell title={showPageTitle ? (subtitle ? undefined : title) : undefined}
-        subtitle={showPageTitle ? subtitle : undefined} maxWidth={maxWidth}>
+      {/* 60px spacer — compensates for position="fixed" AppBar height */}
+      <Box sx={{ height: 60 }} />
+
+      <PageShell
+        title={showPageTitle ? (subtitle ? undefined : title) : undefined}
+        subtitle={showPageTitle ? subtitle : undefined}
+        maxWidth={maxWidth}
+      >
         {children}
       </PageShell>
     </Box>

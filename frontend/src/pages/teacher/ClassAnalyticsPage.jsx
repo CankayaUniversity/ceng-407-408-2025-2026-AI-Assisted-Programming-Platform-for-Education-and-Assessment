@@ -39,6 +39,7 @@ import {
 
 import AppLayout   from "../../components/layout/AppLayout";
 import SectionCard from "../../components/common/SectionCard";
+import ProblemErrorAnalyticsModal from "../../components/teacher/ProblemErrorAnalyticsModal";
 import { API_BASE } from "../../apiBase";
 
 const ERROR_COLORS = {
@@ -71,9 +72,11 @@ function StatBox({ label, value, color = "text.primary", sub }) {
 }
 
 export default function ClassAnalyticsPage({ currentUser, token, handleLogout, navItems }) {
-  const [data,    setData]    = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState(null);
+  const [data,            setData]            = useState(null);
+  const [loading,         setLoading]         = useState(true);
+  const [error,           setError]           = useState(null);
+  const [drillProblem,    setDrillProblem]    = useState(null);   // problem clicked for drill-down
+  const [drillModalOpen,  setDrillModalOpen]  = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -148,7 +151,13 @@ export default function ClassAnalyticsPage({ currentUser, token, handleLogout, n
 
             {/* ── Problem difficulty table ────────────────────────────────── */}
             {problemStats.length > 0 && (
-              <SectionCard title="Problem Difficulty (sorted hardest first)">
+              <SectionCard title="Problem Difficulty (sorted hardest first)"
+                action={
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: 11 }}>
+                    Click a row to drill into error analysis
+                  </Typography>
+                }
+              >
                 <TableContainer sx={{ border: 1, borderColor: "divider", borderRadius: 2, overflow: "hidden" }}>
                   <Table size="small">
                     <TableHead>
@@ -167,7 +176,12 @@ export default function ClassAnalyticsPage({ currentUser, token, handleLogout, n
                           .sort(([, a], [, b]) => b - a)
                           .slice(0, 3);
                         return (
-                          <TableRow key={p.problemId} hover>
+                          <TableRow
+                            key={p.problemId}
+                            hover
+                            onClick={() => { setDrillProblem(p); setDrillModalOpen(true); }}
+                            sx={{ cursor: "pointer" }}
+                          >
                             <TableCell sx={{ fontWeight: 600 }}>
                               <Tooltip title={p.title}><span>{p.title}</span></Tooltip>
                             </TableCell>
@@ -282,6 +296,13 @@ export default function ClassAnalyticsPage({ currentUser, token, handleLogout, n
         )}
 
       </Stack>
+
+      <ProblemErrorAnalyticsModal
+        open={drillModalOpen}
+        onClose={() => setDrillModalOpen(false)}
+        problem={drillProblem}
+        token={token}
+      />
     </AppLayout>
   );
 }

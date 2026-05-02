@@ -11,6 +11,14 @@ enum AttemptMode {
   tests
 }
 
+// ── User verification / approval status ───────────────────────────────────────
+enum UserStatus {
+  pending_email    // registered but hasn't verified email OTP yet
+  pending_approval // email verified; waiting for admin to approve (teachers only)
+  active           // fully active — can log in
+  rejected         // admin rejected; cannot log in
+}
+
 enum NormalizedStatus {
   accepted
   wrong_answer
@@ -42,10 +50,14 @@ model User {
   email               String                 @unique
   passwordHash        String
   roleId              Int
+  status              UserStatus             @default(active)
+  isAdmin             Boolean                @default(false)
+  classYear           Int?                   // 1=1st, 2=2nd, 3=3rd, 4=4th, 5=Graduate (students only)
   createdAt           DateTime               @default(now())
   updatedAt           DateTime               @updatedAt
 
   role                Role                   @relation(fields: [roleId], references: [id])
+  verificationCodes   VerificationCode[]
   problems            Problem[]
   submissions         Submission[]
   aiLogs              AiLog[]
@@ -223,22 +235,38 @@ model SystemFlag {
   updatedAt DateTime @updatedAt
 }
 
+// ── VerificationCode ──────────────────────────────────────────────────────────
+// One-time email OTP codes (6-digit, 15-minute expiry).
+model VerificationCode {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
 // ── Assignment ────────────────────────────────────────────────────────────────
 // A teacher creates an assignment that links a problem to a deadline/instructions.
 
 model Assignment {
-  id           Int      @id @default(autoincrement())
-  title        String
-  description  String?
-  problemId    Int
-  createdById  Int
+  id               Int       @id @default(autoincrement())
+  title            String
+  description      String?
+  problemId        Int
+  createdById      Int
+  mode             String    @default("homework")   // practice | homework | exam
   dueDate          DateTime?
   isPublished      Boolean   @default(false)
   allowedLanguages String[]  @default([])
   lateDeadline     DateTime?
   lateDeduction    Int       @default(0)
   createdAt        DateTime  @default(now())
-  updatedAt    DateTime @updatedAt
+  updatedAt        DateTime  @updatedAt
 
   problem     Problem                @relation(fields: [problemId], references: [id])
   createdBy   User                   @relation("CreatedAssignments", fields: [createdById], references: [id])
@@ -384,4 +412,19 @@ model StudentGroupMembership {
 
   @@unique([groupId, userId])
   @@index([userId])
+}
+
+// ── Tutorial ──────────────────────────────────────────────────────────────────
+// AI-generated tutorial page for a topic tag + language pair.
+// Generated lazily when an assignment containing that tag is published.
+model Tutorial {
+  id        Int      @id @default(autoincrement())
+  tag       String   // e.g. "Pointers"
+  language  String   // e.g. "c"
+  content   Json     // TutorialContent: { intro, sections[], tryIt, quiz }
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tag, language])
+  @@index([tag, language])
 }

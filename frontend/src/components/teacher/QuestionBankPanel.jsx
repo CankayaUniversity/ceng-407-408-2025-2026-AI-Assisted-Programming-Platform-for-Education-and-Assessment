@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import {
-  Alert,
   Box,
   Button,
   Chip,
@@ -22,249 +21,19 @@ import DeleteIcon      from "@mui/icons-material/Delete";
 import EditIcon        from "@mui/icons-material/Edit";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import SearchIcon      from "@mui/icons-material/Search";
-
-import GradingIcon from "@mui/icons-material/Grading";
+import GradingIcon     from "@mui/icons-material/Grading";
 
 import SectionCard from "../common/SectionCard";
 import VariationReviewModal from "./VariationReviewModal";
 import RubricModal from "./RubricModal";
+import ProblemForm, { EMPTY_FORM } from "./ProblemForm";
 import { API_BASE } from "../../apiBase";
-
-const ALL_LANGUAGES = [
-  { value: "python",     label: "Python" },
-  { value: "javascript", label: "JavaScript" },
-  { value: "c",          label: "C" },
-  { value: "cpp",        label: "C++" },
-  { value: "csharp",     label: "C#" },
-];
-
-const EMPTY_FORM = {
-  title: "",
-  description: "",
-  difficulty: "Easy",
-  languages: [],   // empty = all languages allowed
-  tags: [],        // multi-topic chips
-  starterCode: "",
-  referenceSolution: "",
-  testCases: [{ input: "", expectedOutput: "", isHidden: false }],
-};
 
 function normalizeDifficulty(value = "Easy") {
   const label = String(value).toLowerCase();
-  if (label.includes("hard")) return { label: "Hard", tone: "#FEE2E2", color: "#DC2626" };
+  if (label.includes("hard"))   return { label: "Hard",   tone: "#FEE2E2", color: "#DC2626" };
   if (label.includes("medium")) return { label: "Medium", tone: "#FEF3C7", color: "#D97706" };
-  return { label: "Easy", tone: "#DCFCE7", color: "#16A34A" };
-}
-
-function ProblemForm({ form, setForm, onSave, onCancel, saving, error, submitLabel }) {
-  const [tagInput, setTagInput] = useState("");
-
-  function updateTestCase(idx, field, value) {
-    setForm((prev) => {
-      const updated = [...prev.testCases];
-      updated[idx] = { ...updated[idx], [field]: value };
-      return { ...prev, testCases: updated };
-    });
-  }
-
-  function addTestCase() {
-    setForm((prev) => ({
-      ...prev,
-      testCases: [...prev.testCases, { input: "", expectedOutput: "", isHidden: false }],
-    }));
-  }
-
-  function removeTestCase(idx) {
-    setForm((prev) => ({
-      ...prev,
-      testCases: prev.testCases.filter((_, i) => i !== idx),
-    }));
-  }
-
-  function toggleLanguage(lang) {
-    setForm((prev) => {
-      const has  = prev.languages.includes(lang);
-      const next = has ? prev.languages.filter((l) => l !== lang) : [...prev.languages, lang];
-      return { ...prev, languages: next };
-    });
-  }
-
-  function addTag(raw) {
-    const val = raw.trim();
-    if (!val) return;
-    setForm((prev) => ({
-      ...prev,
-      tags: prev.tags.includes(val) ? prev.tags : [...prev.tags, val],
-    }));
-    setTagInput("");
-  }
-
-  function removeTag(tag) {
-    setForm((prev) => ({ ...prev, tags: prev.tags.filter((t) => t !== tag) }));
-  }
-
-  const allLangsSelected = form.languages.length === 0;
-
-  return (
-    <Box sx={{ p: { xs: 2, md: 3 }, borderRadius: 3, border: 1, borderColor: "rgba(148,163,184,0.20)", mb: 3 }}>
-      <Stack spacing={2}>
-        {error && <Alert severity="error">{error}</Alert>}
-
-        <TextField
-          label="Problem Title *"
-          value={form.title}
-          onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
-          fullWidth
-        />
-
-        {/* ── Difficulty ───────────────────────────────────────────────── */}
-        <TextField
-          select label="Difficulty" value={form.difficulty}
-          onChange={(e) => setForm((prev) => ({ ...prev, difficulty: e.target.value }))}
-          sx={{ maxWidth: 200 }}
-        >
-          <MenuItem value="Easy">Easy</MenuItem>
-          <MenuItem value="Medium">Medium</MenuItem>
-          <MenuItem value="Hard">Hard</MenuItem>
-        </TextField>
-
-        {/* ── Languages (chip multi-select) ─────────────────────────────── */}
-        <Box>
-          <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
-            Languages
-          </Typography>
-          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-            <Chip
-              label="All Languages"
-              size="small"
-              variant={allLangsSelected ? "filled" : "outlined"}
-              color={allLangsSelected ? "primary" : "default"}
-              onClick={() => setForm((prev) => ({ ...prev, languages: [] }))}
-              sx={{ cursor: "pointer" }}
-            />
-            {ALL_LANGUAGES.map((lang) => {
-              const checked = form.languages.includes(lang.value);
-              return (
-                <Chip
-                  key={lang.value}
-                  label={lang.label}
-                  size="small"
-                  variant={checked ? "filled" : "outlined"}
-                  color={checked ? "primary" : "default"}
-                  onClick={() => toggleLanguage(lang.value)}
-                  sx={{ cursor: "pointer" }}
-                />
-              );
-            })}
-          </Stack>
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: "block" }}>
-            {allLangsSelected
-              ? "Students may solve in any language."
-              : `Restricted to: ${form.languages.join(", ")}`}
-          </Typography>
-        </Box>
-
-        {/* ── Topics / Tags (chip input) ────────────────────────────────── */}
-        <Box>
-          <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
-            Topics / Tags
-          </Typography>
-          {form.tags.length > 0 && (
-            <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
-              {form.tags.map((tag) => (
-                <Chip
-                  key={tag}
-                  label={tag}
-                  size="small"
-                  onDelete={() => removeTag(tag)}
-                />
-              ))}
-            </Stack>
-          )}
-          <TextField
-            size="small"
-            placeholder="Type a topic and press Enter…"
-            value={tagInput}
-            onChange={(e) => setTagInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") { e.preventDefault(); addTag(tagInput); }
-            }}
-            onBlur={() => addTag(tagInput)}
-            fullWidth
-          />
-        </Box>
-
-        <TextField
-          label="Description *"
-          value={form.description}
-          onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-          multiline minRows={4} fullWidth
-        />
-
-        <TextField
-          label="Starter Code"
-          value={form.starterCode}
-          onChange={(e) => setForm((prev) => ({ ...prev, starterCode: e.target.value }))}
-          multiline minRows={3} fullWidth
-          sx={{ "& textarea": { fontFamily: "monospace", fontSize: 13 } }}
-        />
-
-        <TextField
-          label="Reference Solution (hidden from students)"
-          value={form.referenceSolution}
-          onChange={(e) => setForm((prev) => ({ ...prev, referenceSolution: e.target.value }))}
-          multiline minRows={3} fullWidth
-          sx={{ "& textarea": { fontFamily: "monospace", fontSize: 13 } }}
-        />
-
-        <Divider />
-        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Test Cases</Typography>
-
-        {form.testCases.map((tc, idx) => (
-          <Stack key={idx} direction={{ xs: "column", md: "row" }} spacing={1} alignItems="flex-start">
-            <TextField
-              label={`Input #${idx + 1}`}
-              value={tc.input}
-              onChange={(e) => updateTestCase(idx, "input", e.target.value)}
-              multiline minRows={1} fullWidth size="small"
-              sx={{ "& textarea": { fontFamily: "monospace", fontSize: 13 } }}
-            />
-            <TextField
-              label="Expected Output"
-              value={tc.expectedOutput}
-              onChange={(e) => updateTestCase(idx, "expectedOutput", e.target.value)}
-              multiline minRows={1} fullWidth size="small"
-              sx={{ "& textarea": { fontFamily: "monospace", fontSize: 13 } }}
-            />
-            <TextField
-              select label="Visibility" value={tc.isHidden ? "hidden" : "public"} size="small"
-              onChange={(e) => updateTestCase(idx, "isHidden", e.target.value === "hidden")}
-              sx={{ minWidth: 120 }}
-            >
-              <MenuItem value="public">Public</MenuItem>
-              <MenuItem value="hidden">Hidden</MenuItem>
-            </TextField>
-            <IconButton onClick={() => removeTestCase(idx)} disabled={form.testCases.length <= 1} size="small" color="error">
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-          </Stack>
-        ))}
-
-        <Button variant="outlined" size="small" onClick={addTestCase} sx={{ alignSelf: "flex-start" }}>
-          + Add Test Case
-        </Button>
-
-        <Divider />
-
-        <Stack direction="row" spacing={1.5}>
-          <Button variant="contained" onClick={onSave} disabled={saving}>
-            {saving ? "Saving..." : submitLabel}
-          </Button>
-          <Button variant="outlined" onClick={onCancel}>Cancel</Button>
-        </Stack>
-      </Stack>
-    </Box>
-  );
+  return                               { label: "Easy",   tone: "#DCFCE7", color: "#16A34A" };
 }
 
 export default function QuestionBankPanel({ items = [], token, onProblemsChanged }) {
@@ -280,7 +49,7 @@ export default function QuestionBankPanel({ items = [], token, onProblemsChanged
   const [search,      setSearch]      = useState("");
   const [filterDiff,  setFilterDiff]  = useState("all");
   const [filterTopic, setFilterTopic] = useState("all");
-  const [sortBy,      setSortBy]      = useState("title_asc");
+  const [sortBy,      setSortBy]      = useState("newest");
 
   // Derive unique topics from all items for the dropdown
   const allTopics = useMemo(() => {
@@ -316,6 +85,16 @@ export default function QuestionBankPanel({ items = [], token, onProblemsChanged
       if (sortBy === "title_desc") return (b.title ?? "").localeCompare(a.title ?? "");
       if (sortBy === "most_used")  return (b.usageCount ?? 0) - (a.usageCount ?? 0);
       if (sortBy === "least_used") return (a.usageCount ?? 0) - (b.usageCount ?? 0);
+      if (sortBy === "newest") {
+        const ta = a.createdAt ? new Date(a.createdAt).getTime() : (a.id ?? 0);
+        const tb = b.createdAt ? new Date(b.createdAt).getTime() : (b.id ?? 0);
+        return tb - ta;
+      }
+      if (sortBy === "oldest") {
+        const ta = a.createdAt ? new Date(a.createdAt).getTime() : (a.id ?? 0);
+        const tb = b.createdAt ? new Date(b.createdAt).getTime() : (b.id ?? 0);
+        return ta - tb;
+      }
       return 0;
     });
     return result;
@@ -565,6 +344,8 @@ export default function QuestionBankPanel({ items = [], token, onProblemsChanged
             onChange={(e) => setSortBy(e.target.value)}
             sx={{ minWidth: 160 }}
           >
+            <MenuItem value="newest">Newest First</MenuItem>
+            <MenuItem value="oldest">Oldest First</MenuItem>
             <MenuItem value="title_asc">Title A→Z</MenuItem>
             <MenuItem value="title_desc">Title Z→A</MenuItem>
             <MenuItem value="most_used">Most Attempts</MenuItem>

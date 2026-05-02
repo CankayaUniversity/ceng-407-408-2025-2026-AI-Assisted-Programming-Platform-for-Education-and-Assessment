@@ -22,10 +22,14 @@ import AddIcon    from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon   from "@mui/icons-material/Edit";
 
-import AppLayout from "../../components/layout/AppLayout";
-import StudentDetailModal from "../../components/teacher/StudentDetailModal";
-import StudentProgressTable from "../../components/teacher/StudentProgressTable";
-import { API_BASE } from "../../apiBase";
+import AppLayout             from "../../components/layout/AppLayout";
+import StudentDetailModal    from "../../components/teacher/StudentDetailModal";
+import StudentProgressTable  from "../../components/teacher/StudentProgressTable";
+import { API_BASE }          from "../../apiBase";
+import { YEAR_OPTIONS, yearLabel } from "../../lib/classYear";
+
+// Year chip colour map (mirrors StudentProgressTable)
+const YEAR_COLORS = { 1: "primary", 2: "secondary", 3: "success", 4: "warning", 5: "info" };
 
 // ── Group Modal (create / edit) ───────────────────────────────────────────────
 function GroupModal({ open, onClose, onSave, allStudents, initialGroup }) {
@@ -34,14 +38,15 @@ function GroupModal({ open, onClose, onSave, allStudents, initialGroup }) {
   const [saving,    setSaving]    = useState(false);
   const [error,     setError]     = useState("");
   const [search,    setSearch]    = useState("");
+  const [yearFilter, setYearFilter] = useState(0);   // 0 = all years
 
-  // Reset state when dialog opens
   useEffect(() => {
     if (open) {
       setName(initialGroup?.name ?? "");
       setSelected(new Set(initialGroup?.members?.map((m) => m.id) ?? []));
       setError("");
       setSearch("");
+      setYearFilter(0);
     }
   }, [open, initialGroup]);
 
@@ -53,21 +58,49 @@ function GroupModal({ open, onClose, onSave, allStudents, initialGroup }) {
     });
   }
 
+  // Filtered list shown in the scrollable box
+  const filteredStudents = useMemo(() => {
+    let list = allStudents;
+    if (yearFilter !== 0) list = list.filter((s) => s.classYear === yearFilter);
+    const q = search.trim().toLowerCase();
+    if (q) list = list.filter(
+      (s) => s.name?.toLowerCase().includes(q) || s.email?.toLowerCase().includes(q),
+    );
+    return list;
+  }, [allStudents, search, yearFilter]);
+
   function toggleAll() {
-    if (selected.size === filteredStudents.length) {
-      setSelected(new Set());
+    if (filteredStudents.every((s) => selected.has(s.id))) {
+      // deselect all visible
+      setSelected((prev) => {
+        const next = new Set(prev);
+        filteredStudents.forEach((s) => next.delete(s.id));
+        return next;
+      });
     } else {
-      setSelected(new Set(filteredStudents.map((s) => s.id)));
+      // select all visible
+      setSelected((prev) => {
+        const next = new Set(prev);
+        filteredStudents.forEach((s) => next.add(s.id));
+        return next;
+      });
     }
   }
 
-  const filteredStudents = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return allStudents;
-    return allStudents.filter(
-      (s) => s.name?.toLowerCase().includes(q) || s.email?.toLowerCase().includes(q),
-    );
-  }, [allStudents, search]);
+  /** Add all students of a given year to the selection */
+  function selectYear(year) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      allStudents.filter((s) => s.classYear === year).forEach((s) => next.add(s.id));
+      return next;
+    });
+  }
+
+  // Which years have at least one student?
+  const usedYears = useMemo(() => {
+    const years = new Set(allStudents.map((s) => s.classYear).filter(Boolean));
+    return [...years].sort();
+  }, [allStudents]);
 
   async function handleSave() {
     if (!name.trim()) { setError("Group name is required."); return; }
@@ -82,6 +115,8 @@ function GroupModal({ open, onClose, onSave, allStudents, initialGroup }) {
       setSaving(false);
     }
   }
+
+  const allVisibleSelected = filteredStudents.length > 0 && filteredStudents.every((s) => selected.has(s.id));
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -98,6 +133,31 @@ function GroupModal({ open, onClose, onSave, allStudents, initialGroup }) {
             autoFocus
           />
 
+          {/* ── Year quick-add buttons ────────────────────────── */}
+          {usedYears.length > 0 && (
+            <Box>
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.75 }}>
+                Quick-add by year:
+              </Typography>
+              <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                {usedYears.map((y) => {
+                  const count = allStudents.filter((s) => s.classYear === y).length;
+                  return (
+                    <Chip
+                      key={y}
+                      label={`+ All ${yearLabel(y)} (${count})`}
+                      size="small"
+                      color={YEAR_COLORS[y] ?? "default"}
+                      variant="outlined"
+                      onClick={() => selectYear(y)}
+                      sx={{ cursor: "pointer", fontWeight: 600 }}
+                    />
+                  );
+                })}
+              </Stack>
+            </Box>
+          )}
+
           <Box>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
@@ -107,27 +167,47 @@ function GroupModal({ open, onClose, onSave, allStudents, initialGroup }) {
                 )}
               </Typography>
               <Button size="small" onClick={toggleAll} variant="text">
-                {selected.size === filteredStudents.length && filteredStudents.length > 0
-                  ? "Deselect all"
-                  : "Select all"}
+                {allVisibleSelected ? "Deselect visible" : "Select visible"}
               </Button>
             </Stack>
 
-            <TextField
-              size="small"
-              placeholder="Search students…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              fullWidth
-              sx={{ mb: 1 }}
-            />
+            {/* Search + year filter row */}
+            <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+              <TextField
+                size="small"
+                placeholder="Search students…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                sx={{ flex: 1 }}
+              />
+              <Box
+                component="select"
+                value={yearFilter}
+                onChange={(e) => setYearFilter(Number(e.target.value))}
+                sx={{
+                  minWidth: 120,
+                  borderRadius: 1,
+                  border: "1px solid",
+                  borderColor: "divider",
+                  px: 1,
+                  bgcolor: "background.paper",
+                  color: "text.primary",
+                  fontSize: 13,
+                  cursor: "pointer",
+                }}
+              >
+                {YEAR_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </Box>
+            </Stack>
 
             <Box
               sx={{
                 border: 1,
                 borderColor: "divider",
                 borderRadius: 2,
-                maxHeight: 280,
+                maxHeight: 260,
                 overflowY: "auto",
               }}
             >
@@ -154,28 +234,35 @@ function GroupModal({ open, onClose, onSave, allStudents, initialGroup }) {
                       transition: "background-color 0.15s",
                     }}
                   >
+                    {/* Checkbox */}
                     <Box
                       sx={{
-                        width: 18,
-                        height: 18,
-                        borderRadius: 0.5,
-                        border: 2,
+                        width: 18, height: 18, borderRadius: 0.5, border: 2, flexShrink: 0,
                         borderColor: selected.has(s.id) ? "primary.main" : "divider",
                         bgcolor: selected.has(s.id) ? "primary.main" : "transparent",
-                        flexShrink: 0,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
+                        display: "flex", alignItems: "center", justifyContent: "center",
                       }}
                     >
                       {selected.has(s.id) && (
                         <Box component="span" sx={{ color: "white", fontSize: 12, lineHeight: 1 }}>✓</Box>
                       )}
                     </Box>
-                    <Box>
+
+                    {/* Name + email */}
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
                       <Typography variant="body2" sx={{ fontWeight: 600 }}>{s.name}</Typography>
                       <Typography variant="caption" color="text.secondary">{s.email}</Typography>
                     </Box>
+
+                    {/* Year badge */}
+                    {s.classYear && (
+                      <Chip
+                        label={yearLabel(s.classYear)}
+                        size="small"
+                        color={YEAR_COLORS[s.classYear] ?? "default"}
+                        sx={{ fontWeight: 600, fontSize: 11, height: 20 }}
+                      />
+                    )}
                   </Box>
                 ))
               )}
@@ -195,17 +282,18 @@ function GroupModal({ open, onClose, onSave, allStudents, initialGroup }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function StudentsPage({ currentUser, token, handleLogout, navItems }) {
-  const [students,             setStudents]             = useState([]);
-  const [studentsLoading,      setStudentsLoading]      = useState(true);
-  const [groups,               setGroups]               = useState([]);
-  const [groupsLoading,        setGroupsLoading]        = useState(true);
+  const [students,          setStudents]          = useState([]);
+  const [studentsLoading,   setStudentsLoading]   = useState(true);
+  const [groups,            setGroups]            = useState([]);
+  const [groupsLoading,     setGroupsLoading]     = useState(true);
 
-  const [activeTab,            setActiveTab]            = useState(0); // 0 = All Students
-  const [groupModalOpen,       setGroupModalOpen]       = useState(false);
-  const [editingGroup,         setEditingGroup]         = useState(null);
-  const [deleteGroupTarget,    setDeleteGroupTarget]    = useState(null);
-  const [deletingGroup,        setDeletingGroup]        = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [activeTab,         setActiveTab]         = useState(0);
+  const [yearFilter,        setYearFilter]        = useState(0);   // 0 = all
+  const [groupModalOpen,    setGroupModalOpen]    = useState(false);
+  const [editingGroup,      setEditingGroup]      = useState(null);
+  const [deleteGroupTarget, setDeleteGroupTarget] = useState(null);
+  const [deletingGroup,     setDeletingGroup]     = useState(false);
+  const [selectedStudent,   setSelectedStudent]   = useState(null);
 
   const authHeaders = useMemo(() => ({
     Authorization: `Bearer ${token}`,
@@ -227,12 +315,13 @@ export default function StudentsPage({ currentUser, token, handleLogout, navItem
       .then((body) => {
         const totalProblems = body.meta?.totalProblems ?? 1;
         const rows = (body.data ?? []).map((s) => ({
-          id: s.id,
-          name: s.name,
-          email: s.email,
+          id:        s.id,
+          name:      s.name,
+          email:     s.email,
+          classYear: s.classYear ?? null,
           completed: s.distinctProblemsSolved ?? 0,
-          total: totalProblems,
-          progress: totalProblems > 0
+          total:     totalProblems,
+          progress:  totalProblems > 0
             ? Math.round(((s.distinctProblemsSolved ?? 0) / totalProblems) * 100)
             : 0,
         }));
@@ -254,14 +343,19 @@ export default function StudentsPage({ currentUser, token, handleLogout, navItem
 
   useEffect(() => { fetchGroups(); }, [fetchGroups]);
 
-  // ── Active group's students ──────────────────────────────────────────────
-  const displayedStudents = useMemo(() => {
-    if (activeTab === 0) return students; // All Students
+  // ── Students shown in the table (tab + year filter) ──────────────────────
+  const tabStudents = useMemo(() => {
+    if (activeTab === 0) return students;
     const group = groups[activeTab - 1];
     if (!group) return students;
     const memberIds = new Set(group.members.map((m) => m.id));
     return students.filter((s) => memberIds.has(s.id));
   }, [activeTab, students, groups]);
+
+  const displayedStudents = useMemo(() => {
+    if (yearFilter === 0) return tabStudents;
+    return tabStudents.filter((s) => s.classYear === yearFilter);
+  }, [tabStudents, yearFilter]);
 
   // ── studentId → group names map ─────────────────────────────────────────
   const studentGroupMap = useMemo(() => {
@@ -305,10 +399,7 @@ export default function StudentsPage({ currentUser, token, handleLogout, navItem
         method: "DELETE",
         headers: authHeaders,
       });
-      // If we were viewing the deleted group, go back to "All"
-      if (activeTab > 0 && groups[activeTab - 1]?.id === deleteGroupTarget.id) {
-        setActiveTab(0);
-      }
+      if (activeTab > 0 && groups[activeTab - 1]?.id === deleteGroupTarget.id) setActiveTab(0);
       setDeleteGroupTarget(null);
       fetchGroups();
     } catch (err) {
@@ -316,11 +407,6 @@ export default function StudentsPage({ currentUser, token, handleLogout, navItem
     } finally {
       setDeletingGroup(false);
     }
-  }
-
-  // ── Student detail ───────────────────────────────────────────────────────
-  function handleStudentClick(student) {
-    setSelectedStudent(student);
   }
 
   // ── Render ───────────────────────────────────────────────────────────────
@@ -337,82 +423,99 @@ export default function StudentsPage({ currentUser, token, handleLogout, navItem
     >
       <Stack spacing={3}>
 
-        {/* ── Group tabs ─────────────────────────────────────────────────── */}
-        <Box>
-          <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
-            <Typography variant="h6" sx={{ fontWeight: 700, flex: 1 }}>Students</Typography>
-            <Tooltip title="Create a new student group">
-              <Button
-                variant="contained"
-                size="small"
-                startIcon={<AddIcon />}
-                onClick={() => { setEditingGroup(null); setGroupModalOpen(true); }}
-              >
-                Create New Group
-              </Button>
-            </Tooltip>
-          </Stack>
+        {/* ── Header row ──────────────────────────────────────────────── */}
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <Typography variant="h6" sx={{ fontWeight: 700, flex: 1 }}>Students</Typography>
+          <Tooltip title="Create a new student group">
+            <Button
+              variant="contained"
+              size="small"
+              startIcon={<AddIcon />}
+              onClick={() => { setEditingGroup(null); setGroupModalOpen(true); }}
+            >
+              Create New Group
+            </Button>
+          </Tooltip>
+        </Stack>
 
-          {groupsLoading ? (
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, py: 1 }}>
-              <CircularProgress size={16} />
-              <Typography variant="body2" color="text.secondary">Loading groups…</Typography>
-            </Box>
-          ) : (
-            <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
-              <Tabs
-                value={activeTab}
-                onChange={(_, v) => setActiveTab(v)}
-                variant="scrollable"
-                scrollButtons="auto"
-              >
-                <Tab label={`All Students (${students.length})`} value={0} />
-                {groups.map((g, idx) => (
-                  <Tab
-                    key={g.id}
-                    value={idx + 1}
-                    label={
-                      <Stack direction="row" alignItems="center" spacing={0.75}>
-                        <span>{g.name}</span>
-                        <Chip label={g.members.length} size="small" variant="outlined" sx={{ height: 18, fontSize: 11 }} />
-                        <Tooltip title="Edit group">
-                          <IconButton
-                            size="small"
-                            onClick={(e) => { e.stopPropagation(); setEditingGroup(g); setGroupModalOpen(true); }}
-                            sx={{ p: 0.25 }}
-                          >
-                            <EditIcon sx={{ fontSize: 14 }} />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Delete group">
-                          <IconButton
-                            size="small"
-                            onClick={(e) => { e.stopPropagation(); setDeleteGroupTarget(g); }}
-                            sx={{ p: 0.25, color: "error.main" }}
-                          >
-                            <DeleteIcon sx={{ fontSize: 14 }} />
-                          </IconButton>
-                        </Tooltip>
-                      </Stack>
-                    }
-                  />
-                ))}
-              </Tabs>
-            </Box>
-          )}
-        </Box>
+        {/* ── Year filter chips ────────────────────────────────────────── */}
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          {YEAR_OPTIONS.map((opt) => (
+            <Chip
+              key={opt.value}
+              label={
+                opt.value === 0
+                  ? `All Years (${students.length})`
+                  : `${opt.label} (${students.filter((s) => s.classYear === opt.value).length})`
+              }
+              onClick={() => setYearFilter(opt.value)}
+              color={yearFilter === opt.value ? (YEAR_COLORS[opt.value] ?? "primary") : "default"}
+              variant={yearFilter === opt.value ? "filled" : "outlined"}
+              sx={{ fontWeight: 600, cursor: "pointer" }}
+            />
+          ))}
+        </Stack>
 
-        {/* ── Student table (filtered by selected group) ──────────────── */}
+        {/* ── Group tabs ──────────────────────────────────────────────── */}
+        {groupsLoading ? (
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <CircularProgress size={16} />
+            <Typography variant="body2" color="text.secondary">Loading groups…</Typography>
+          </Box>
+        ) : (
+          <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+            <Tabs
+              value={activeTab}
+              onChange={(_, v) => setActiveTab(v)}
+              variant="scrollable"
+              scrollButtons="auto"
+            >
+              <Tab label={`All Students (${students.length})`} value={0} />
+              {groups.map((g, idx) => (
+                <Tab
+                  key={g.id}
+                  value={idx + 1}
+                  label={
+                    <Stack direction="row" alignItems="center" spacing={0.75}>
+                      <span>{g.name}</span>
+                      <Chip label={g.members.length} size="small" variant="outlined" sx={{ height: 18, fontSize: 11 }} />
+                      <Tooltip title="Edit group">
+                        <IconButton
+                          size="small"
+                          onClick={(e) => { e.stopPropagation(); setEditingGroup(g); setGroupModalOpen(true); }}
+                          sx={{ p: 0.25 }}
+                        >
+                          <EditIcon sx={{ fontSize: 14 }} />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete group">
+                        <IconButton
+                          size="small"
+                          onClick={(e) => { e.stopPropagation(); setDeleteGroupTarget(g); }}
+                          sx={{ p: 0.25, color: "error.main" }}
+                        >
+                          <DeleteIcon sx={{ fontSize: 14 }} />
+                        </IconButton>
+                      </Tooltip>
+                    </Stack>
+                  }
+                />
+              ))}
+            </Tabs>
+          </Box>
+        )}
+
+        {/* ── Student table ─────────────────────────────────────────── */}
         <StudentProgressTable
           students={displayedStudents}
           loading={studentsLoading}
-          onStudentClick={handleStudentClick}
+          onStudentClick={setSelectedStudent}
           studentGroupMap={studentGroupMap}
         />
 
       </Stack>
 
-      {/* ── Create / Edit group modal ─────────────────────────────────── */}
+      {/* ── Create / Edit group modal ────────────────────────────────── */}
       <GroupModal
         open={groupModalOpen}
         onClose={() => { setGroupModalOpen(false); setEditingGroup(null); }}
@@ -421,13 +524,13 @@ export default function StudentsPage({ currentUser, token, handleLogout, navItem
         initialGroup={editingGroup}
       />
 
-      {/* ── Delete confirmation ───────────────────────────────────────── */}
+      {/* ── Delete confirmation ──────────────────────────────────────── */}
       <Dialog open={Boolean(deleteGroupTarget)} onClose={() => setDeleteGroupTarget(null)}>
         <DialogTitle>Delete Group</DialogTitle>
         <DialogContent>
           <Typography>
-            Delete group <strong>{deleteGroupTarget?.name}</strong>? Students will not be removed from the
-            platform, only from this group.
+            Delete group <strong>{deleteGroupTarget?.name}</strong>? Students will not be removed
+            from the platform, only from this group.
           </Typography>
         </DialogContent>
         <DialogActions>
@@ -438,7 +541,7 @@ export default function StudentsPage({ currentUser, token, handleLogout, navItem
         </DialogActions>
       </Dialog>
 
-      {/* ── Student detail modal ──────────────────────────────────────── */}
+      {/* ── Student detail modal ─────────────────────────────────────── */}
       <StudentDetailModal
         open={Boolean(selectedStudent)}
         onClose={() => setSelectedStudent(null)}

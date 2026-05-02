@@ -2,7 +2,8 @@
  * flashcards.ts
  *
  * Routes:
- *   GET  /api/flashcards?problemId=:id         — return flashcards for the current user + problem
+ *   GET  /api/flashcards/library               — all flashcards for the current user (with problem metadata)
+ *   GET  /api/flashcards?problemId=:id         — flashcards for the current user + a specific problem
  *   GET  /api/flashcards/status?problemId=:id  — { ready: bool }
  */
 
@@ -12,6 +13,45 @@ import { requireAuth } from "../middleware/requireAuth";
 
 const router = Router();
 router.use(requireAuth);
+
+// ── GET /api/flashcards/library ───────────────────────────────────────────────
+// Returns every flashcard set the student has earned, with problem metadata
+// needed for client-side filtering (language, category, difficulty, tags).
+// Must be defined before the "/?problemId" route to avoid path ambiguity.
+router.get("/library", async (req, res) => {
+  const userId = req.auth!.userId;
+
+  const rows = await prisma.flashcard.findMany({
+    where:   { userId },
+    orderBy: { createdAt: "desc" },
+    include: {
+      problem: {
+        select: {
+          id:         true,
+          title:      true,
+          language:   true,
+          category:   true,
+          difficulty: true,
+          tags:       true,
+        },
+      },
+    },
+  });
+
+  const data = rows.map((f) => ({
+    id:           f.id,
+    problemId:    f.problemId,
+    problemTitle: f.problem.title,
+    language:     f.problem.language,
+    category:     f.problem.category ?? null,
+    difficulty:   f.problem.difficulty ?? null,
+    tags:         f.problem.tags ?? [],
+    cards:        f.cards,
+    createdAt:    f.createdAt,
+  }));
+
+  res.json({ data });
+});
 
 // ── GET /api/flashcards ───────────────────────────────────────────────────────
 router.get("/", async (req, res) => {

@@ -30,6 +30,7 @@ RUN apt-get update -y && \
       gcc \
       g++ \
       coreutils \
+      default-jdk \
     && rm -rf /var/lib/apt/lists/*
 
 # ── .NET SDK (C# support) ────────────────────────────────────────────────────

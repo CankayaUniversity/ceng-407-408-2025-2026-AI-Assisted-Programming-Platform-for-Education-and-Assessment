@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Stack } from "@mui/material";
+import { Box, Stack } from "@mui/material";
 
-import AppLayout from "../../components/layout/AppLayout";
-import ClassOverviewCard from "../../components/teacher/ClassOverviewCard";
-import ExamModeCard from "../../components/teacher/ExamModeCard";
+import AppLayout                from "../../components/layout/AppLayout";
+import ClassOverviewCard        from "../../components/teacher/ClassOverviewCard";
+import ExamModeCard             from "../../components/teacher/ExamModeCard";
+import DashboardAssignmentsCard from "../../components/teacher/DashboardAssignmentsCard";
 import { API_BASE } from "../../apiBase";
 
 export default function TeacherDashboardPage({ currentUser, token, handleLogout, navItems }) {
@@ -79,14 +80,28 @@ export default function TeacherDashboardPage({ currentUser, token, handleLogout,
       showPageTitle={false}
     >
       <Stack spacing={3.25}>
+        {/* ── Row 1: class stats (full width) ─────────────────────── */}
         <ClassOverviewCard data={classOverview} loading={classOverviewLoading} />
-        <ExamModeCard
-          examMode={examMode}
-          examGroupIds={examGroupIds}
-          groups={groups}
-          onToggle={handleExamToggle}
-          loading={examLoading}
-        />
+
+        {/* ── Row 2: assignments (left) + exam mode (right) ────────── */}
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", md: "1fr 420px" },
+            gap: 3.25,
+            alignItems: "start",
+          }}
+        >
+          <DashboardAssignmentsCard token={token} />
+
+          <ExamModeCard
+            examMode={examMode}
+            examGroupIds={examGroupIds}
+            groups={groups}
+            onToggle={handleExamToggle}
+            loading={examLoading}
+          />
+        </Box>
       </Stack>
     </AppLayout>
   );

@@ -8,10 +8,11 @@ export const loginSchema = z.object({
 });
 
 export const registerSchema = z.object({
-  name:     z.string().min(1, "Name is required"),
-  email:    z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  role:     z.enum(["student", "teacher"]).default("student"),
+  name:      z.string().min(1, "Name is required"),
+  email:     z.string().email("Invalid email address"),
+  password:  z.string().min(6, "Password must be at least 6 characters"),
+  role:      z.enum(["student", "teacher"]).default("student"),
+  classYear: z.number().int().min(1).max(5).optional().nullable(), // students only; 1–4 = year, 5 = graduate
 });
 
 export const refreshTokenSchema = z.object({

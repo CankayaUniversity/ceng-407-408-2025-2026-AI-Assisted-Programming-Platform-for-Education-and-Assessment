@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   Box,
   Chip,
@@ -18,11 +18,20 @@ import AccessTimeIcon  from "@mui/icons-material/AccessTime";
 import WarningIcon     from "@mui/icons-material/Warning";
 import { useNavigate } from "react-router-dom";
 
-import AppLayout   from "../../components/layout/AppLayout";
-import SectionCard from "../../components/common/SectionCard";
-import { API_BASE } from "../../apiBase";
+import AppLayout       from "../../components/layout/AppLayout";
+import SectionCard     from "../../components/common/SectionCard";
+import TutorialModal   from "../../components/student/TutorialModal";
+import { API_BASE }    from "../../apiBase";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+function modeChipProps(mode) {
+  switch ((mode ?? "homework").toLowerCase()) {
+    case "exam":     return { label: "Exam",     sx: { bgcolor: "#ef4444", color: "#fff", fontWeight: 700 } };
+    case "practice": return { label: "Practice", sx: { bgcolor: "#22c55e", color: "#fff", fontWeight: 700 } };
+    default:         return { label: "Homework", sx: { bgcolor: "#6366f1", color: "#fff", fontWeight: 700 } };
+  }
+}
 
 function difficultyColor(d) {
   const v = (d ?? "").toLowerCase();
@@ -108,9 +117,18 @@ function DeadlineCell({ assignment }) {
 
 export default function AssignmentsPage({ currentUser, token, handleLogout, navItems }) {
   const navigate = useNavigate();
-  const [assignments,  setAssignments]  = useState([]);
-  const [submissions,  setSubmissions]  = useState([]);
-  const [loading,      setLoading]      = useState(true);
+  const [assignments,      setAssignments]      = useState([]);
+  const [submissions,      setSubmissions]      = useState([]);
+  const [loading,          setLoading]          = useState(true);
+  const [tutorialTag,      setTutorialTag]      = useState(null);
+  const [tutorialLanguage, setTutorialLanguage] = useState(null);
+  const [tutorialOpen,     setTutorialOpen]     = useState(false);
+
+  const openTutorial = useCallback((tag, language) => {
+    setTutorialTag(tag);
+    setTutorialLanguage(language);
+    setTutorialOpen(true);
+  }, []);
 
   useEffect(() => {
     if (!token) return;
@@ -181,6 +199,7 @@ export default function AssignmentsPage({ currentUser, token, handleLogout, navI
                   <TableRow sx={{ bgcolor: "rgba(148,163,184,0.08)" }}>
                     <TableCell sx={{ fontWeight: 700 }}>#</TableCell>
                     <TableCell sx={{ fontWeight: 700 }}>Title</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Topics</TableCell>
                     <TableCell sx={{ fontWeight: 700 }}>Difficulty</TableCell>
                     <TableCell sx={{ fontWeight: 700 }}>Languages</TableCell>
                     <TableCell sx={{ fontWeight: 700 }}>Deadline</TableCell>
@@ -217,11 +236,39 @@ export default function AssignmentsPage({ currentUser, token, handleLogout, navI
                         <TableCell>{idx + 1}</TableCell>
 
                         <TableCell>
-                          <Typography variant="body2" fontWeight={600}>{a.title}</Typography>
+                          <Stack direction="row" alignItems="center" spacing={0.75} flexWrap="wrap" useFlexGap>
+                            <Typography variant="body2" fontWeight={600}>{a.title}</Typography>
+                            <Chip
+                              {...modeChipProps(a.mode)}
+                              size="small"
+                              sx={{ fontSize: 10, height: 18, px: 0.25, ...modeChipProps(a.mode).sx }}
+                            />
+                          </Stack>
                           {problem.title && a.title !== problem.title && (
                             <Typography variant="caption" color="text.secondary">
                               {problem.title}
                             </Typography>
+                          )}
+                        </TableCell>
+
+                        {/* Topics — clickable tutorial chips */}
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          {(problem.tags ?? []).length === 0 ? (
+                            <Typography variant="caption" color="text.secondary">—</Typography>
+                          ) : (
+                            <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                              {(problem.tags ?? []).map((tag) => (
+                                <Chip
+                                  key={tag}
+                                  label={tag}
+                                  size="small"
+                                  variant="outlined"
+                                  color="info"
+                                  sx={{ fontSize: 11, cursor: "pointer" }}
+                                  onClick={() => openTutorial(tag, problem.language ?? "python")}
+                                />
+                              ))}
+                            </Stack>
                           )}
                         </TableCell>
 
@@ -273,6 +320,14 @@ export default function AssignmentsPage({ currentUser, token, handleLogout, navI
           </>
         )}
       </SectionCard>
+
+      <TutorialModal
+        open={tutorialOpen}
+        onClose={() => setTutorialOpen(false)}
+        tag={tutorialTag}
+        language={tutorialLanguage}
+        token={token}
+      />
     </AppLayout>
   );
 }

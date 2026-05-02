@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Avatar,
   Box,
@@ -23,21 +23,26 @@ import {
 import GroupAddIcon  from "@mui/icons-material/GroupAdd";
 import GroupIcon     from "@mui/icons-material/Group";
 import PersonIcon    from "@mui/icons-material/Person";
-import { API_BASE } from "../../apiBase";
+import { API_BASE }  from "../../apiBase";
+import { YEAR_OPTIONS, yearLabel } from "../../lib/classYear";
+
+const YEAR_COLORS = { 1: "primary", 2: "secondary", 3: "success", 4: "warning", 5: "info" };
 
 export default function EnrollModal({ open, onClose, onSaved, assignment, token }) {
   const [students, setStudents] = useState([]);
-  const [groups,   setGroups]   = useState([]);   // [{ id, name, members: [{id,name,email}] }]
+  const [groups,   setGroups]   = useState([]);
   const [selected, setSelected] = useState(new Set());
   const [loading,  setLoading]  = useState(false);
   const [saving,   setSaving]   = useState(false);
   const [error,    setError]    = useState("");
+  const [yearFilter, setYearFilter] = useState(0);   // 0 = all
 
   // Load students, groups, and current enrollments whenever modal opens
   useEffect(() => {
     if (!open || !assignment?.id || !token) return;
     setError("");
     setLoading(true);
+    setYearFilter(0);
 
     const headers = { Authorization: `Bearer ${token}` };
     Promise.all([
@@ -46,20 +51,15 @@ export default function EnrollModal({ open, onClose, onSaved, assignment, token 
       fetch(`${API_BASE}/api/assignments/${assignment.id}`, { headers }).then((r) => r.json()),
     ])
       .then(([stuRes, grpRes, assRes]) => {
-        const allStudents = stuRes?.data ?? [];
-        const allGroups   = grpRes?.data ?? [];
-        const enrolledIds = new Set(
-          (assRes?.data?.enrollments ?? []).map((e) => e.userId),
-        );
-        setStudents(allStudents);
-        setGroups(allGroups);
-        setSelected(enrolledIds);
+        setStudents(stuRes?.data ?? []);
+        setGroups(grpRes?.data ?? []);
+        setSelected(new Set((assRes?.data?.enrollments ?? []).map((e) => e.userId)));
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, [open, assignment?.id, token]);
 
-  // ── Individual student toggle ──────────────────────────────────────────────
+  // ── Toggles ────────────────────────────────────────────────────────────────
   function toggleStudent(id) {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -76,13 +76,22 @@ export default function EnrollModal({ open, onClose, onSaved, assignment, token 
     }
   }
 
-  // ── Group toggle — adds/removes all group members ──────────────────────────
+  /** Select all students of a given university year */
+  function selectYear(year) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      students.filter((s) => s.classYear === year).forEach((s) => next.add(s.id));
+      return next;
+    });
+  }
+
+  // ── Group toggle ────────────────────────────────────────────────────────────
   function groupState(group) {
     const memberIds = group.members.map((m) => m.id);
     if (memberIds.length === 0) return "none";
-    const selectedCount = memberIds.filter((id) => selected.has(id)).length;
-    if (selectedCount === 0)              return "none";
-    if (selectedCount === memberIds.length) return "all";
+    const count = memberIds.filter((id) => selected.has(id)).length;
+    if (count === 0)                return "none";
+    if (count === memberIds.length) return "all";
     return "partial";
   }
 
@@ -91,16 +100,23 @@ export default function EnrollModal({ open, onClose, onSaved, assignment, token 
     const state = groupState(group);
     setSelected((prev) => {
       const next = new Set(prev);
-      if (state === "all") {
-        // deselect all members
-        memberIds.forEach((id) => next.delete(id));
-      } else {
-        // select all members
-        memberIds.forEach((id) => next.add(id));
-      }
+      if (state === "all") memberIds.forEach((id) => next.delete(id));
+      else                 memberIds.forEach((id) => next.add(id));
       return next;
     });
   }
+
+  // ── Filtered individual students list ───────────────────────────────────────
+  const visibleStudents = useMemo(() => {
+    if (yearFilter === 0) return students;
+    return students.filter((s) => s.classYear === yearFilter);
+  }, [students, yearFilter]);
+
+  // ── Which years have students? ──────────────────────────────────────────────
+  const usedYears = useMemo(() => {
+    const years = new Set(students.map((s) => s.classYear).filter(Boolean));
+    return [...years].sort();
+  }, [students]);
 
   // ── Save ───────────────────────────────────────────────────────────────────
   async function handleSave() {
@@ -109,29 +125,24 @@ export default function EnrollModal({ open, onClose, onSaved, assignment, token 
     setError("");
     try {
       const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-
-      const assRes   = await fetch(`${API_BASE}/api/assignments/${assignment.id}`, { headers });
-      const assData  = await assRes.json();
+      const assRes  = await fetch(`${API_BASE}/api/assignments/${assignment.id}`, { headers });
+      const assData = await assRes.json();
       const existing = new Set((assData?.data?.enrollments ?? []).map((e) => e.userId));
 
       const toRemove = [...existing].filter((id) => !selected.has(id));
       await Promise.all(
         toRemove.map((uid) =>
-          fetch(`${API_BASE}/api/assignments/${assignment.id}/enroll/${uid}`, {
-            method: "DELETE", headers,
-          }),
+          fetch(`${API_BASE}/api/assignments/${assignment.id}/enroll/${uid}`, { method: "DELETE", headers }),
         ),
       );
 
       const toAdd = [...selected].filter((id) => !existing.has(id));
       if (toAdd.length > 0) {
         await fetch(`${API_BASE}/api/assignments/${assignment.id}/enroll`, {
-          method: "POST",
-          headers,
-          body:   JSON.stringify({ studentIds: toAdd }),
+          method: "POST", headers,
+          body: JSON.stringify({ studentIds: toAdd }),
         });
       }
-
       onSaved();
     } catch (err) {
       setError(err.message);
@@ -143,14 +154,17 @@ export default function EnrollModal({ open, onClose, onSaved, assignment, token 
   const allChecked  = students.length > 0 && selected.size === students.length;
   const someChecked = selected.size > 0 && selected.size < students.length;
 
-  // Build a map: studentId → group names they belong to
-  const studentGroupMap = {};
-  for (const group of groups) {
-    for (const member of group.members) {
-      if (!studentGroupMap[member.id]) studentGroupMap[member.id] = [];
-      studentGroupMap[member.id].push(group.name);
+  // studentId → group names
+  const studentGroupMap = useMemo(() => {
+    const map = {};
+    for (const group of groups) {
+      for (const member of group.members) {
+        if (!map[member.id]) map[member.id] = [];
+        map[member.id].push(group.name);
+      }
     }
-  }
+    return map;
+  }, [groups]);
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm" scroll="paper">
@@ -160,9 +174,7 @@ export default function EnrollModal({ open, onClose, onSaved, assignment, token 
           <Box>
             <Typography variant="h6" fontWeight={700}>Enroll Students</Typography>
             {assignment?.title && (
-              <Typography variant="body2" color="text.secondary" noWrap>
-                {assignment.title}
-              </Typography>
+              <Typography variant="body2" color="text.secondary" noWrap>{assignment.title}</Typography>
             )}
           </Box>
         </Stack>
@@ -184,14 +196,12 @@ export default function EnrollModal({ open, onClose, onSaved, assignment, token 
               <>
                 <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
                   <GroupIcon fontSize="small" color="primary" />
-                  <Typography variant="subtitle2" fontWeight={700}>
-                    Groups
-                  </Typography>
+                  <Typography variant="subtitle2" fontWeight={700}>Groups</Typography>
                 </Stack>
 
                 <Stack spacing={0.5} sx={{ mb: 1.5 }}>
                   {groups.map((group) => {
-                    const state = groupState(group);
+                    const state       = groupState(group);
                     const checked     = state === "all";
                     const indeterminate = state === "partial";
                     return (
@@ -199,37 +209,25 @@ export default function EnrollModal({ open, onClose, onSaved, assignment, token 
                         key={group.id}
                         onClick={() => toggleGroup(group)}
                         sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 1,
-                          px: 1.5,
-                          py: 0.75,
-                          borderRadius: 1.5,
-                          border: "1px solid",
+                          display: "flex", alignItems: "center", gap: 1,
+                          px: 1.5, py: 0.75, borderRadius: 1.5, border: "1px solid",
                           borderColor: checked ? "primary.main" : "divider",
                           bgcolor: checked ? "primary.50" : "transparent",
-                          cursor: "pointer",
-                          transition: "all 0.15s",
+                          cursor: "pointer", transition: "all 0.15s",
                           "&:hover": { bgcolor: "action.hover" },
                         }}
                       >
                         <Checkbox
-                          checked={checked}
-                          indeterminate={indeterminate}
-                          size="small"
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={() => toggleGroup(group)}
+                          checked={checked} indeterminate={indeterminate} size="small"
+                          onClick={(e) => e.stopPropagation()} onChange={() => toggleGroup(group)}
                           sx={{ p: 0 }}
                         />
                         <GroupIcon fontSize="small" color={checked ? "primary" : "action"} />
-                        <Typography variant="body2" fontWeight={600} sx={{ flex: 1 }}>
-                          {group.name}
-                        </Typography>
+                        <Typography variant="body2" fontWeight={600} sx={{ flex: 1 }}>{group.name}</Typography>
                         <Tooltip title={group.members.map((m) => m.name || m.email).join(", ") || "No members"}>
                           <Chip
                             label={`${group.members.length} student${group.members.length !== 1 ? "s" : ""}`}
-                            size="small"
-                            variant="outlined"
+                            size="small" variant="outlined"
                             color={checked ? "primary" : "default"}
                           />
                         </Tooltip>
@@ -244,6 +242,31 @@ export default function EnrollModal({ open, onClose, onSaved, assignment, token 
               </>
             )}
 
+            {/* ── Year quick-select ───────────────────────────── */}
+            {usedYears.length > 0 && (
+              <Box sx={{ mb: 1.5 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.75 }}>
+                  Select all students by year:
+                </Typography>
+                <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                  {usedYears.map((y) => {
+                    const count = students.filter((s) => s.classYear === y).length;
+                    return (
+                      <Chip
+                        key={y}
+                        label={`+ All ${yearLabel(y)} (${count})`}
+                        size="small"
+                        color={YEAR_COLORS[y] ?? "default"}
+                        variant="outlined"
+                        onClick={() => selectYear(y)}
+                        sx={{ cursor: "pointer", fontWeight: 600 }}
+                      />
+                    );
+                  })}
+                </Stack>
+              </Box>
+            )}
+
             {/* ── Individual students section ─────────────────── */}
             {students.length === 0 ? (
               <Typography color="text.secondary" sx={{ py: 3, textAlign: "center" }}>
@@ -251,21 +274,32 @@ export default function EnrollModal({ open, onClose, onSaved, assignment, token 
               </Typography>
             ) : (
               <>
-                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5 }}>
-                  <PersonIcon fontSize="small" color="action" />
-                  <Typography variant="subtitle2" fontWeight={700}>
-                    Individual Students
-                  </Typography>
+                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.5 }}>
+                  <Stack direction="row" alignItems="center" spacing={1}>
+                    <PersonIcon fontSize="small" color="action" />
+                    <Typography variant="subtitle2" fontWeight={700}>Individual Students</Typography>
+                  </Stack>
+
+                  {/* Year filter chips */}
+                  <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                    {[{ value: 0, label: "All" }, ...YEAR_OPTIONS.slice(1).filter((o) => usedYears.includes(o.value))].map((opt) => (
+                      <Chip
+                        key={opt.value}
+                        label={opt.label}
+                        size="small"
+                        variant={yearFilter === opt.value ? "filled" : "outlined"}
+                        color={yearFilter === opt.value ? (YEAR_COLORS[opt.value] ?? "primary") : "default"}
+                        onClick={() => setYearFilter(opt.value)}
+                        sx={{ cursor: "pointer", height: 22, fontSize: 11 }}
+                      />
+                    ))}
+                  </Stack>
                 </Stack>
 
                 <FormControlLabel
                   sx={{ ml: 0.5, mb: 0.5 }}
                   control={
-                    <Checkbox
-                      checked={allChecked}
-                      indeterminate={someChecked}
-                      onChange={toggleAll}
-                    />
+                    <Checkbox checked={allChecked} indeterminate={someChecked} onChange={toggleAll} />
                   }
                   label={
                     <Typography variant="body2" fontWeight={600}>
@@ -275,7 +309,7 @@ export default function EnrollModal({ open, onClose, onSaved, assignment, token 
                 />
                 <Divider />
                 <List disablePadding dense>
-                  {students.map((s) => (
+                  {visibleStudents.map((s) => (
                     <ListItem
                       key={s.id}
                       disableGutters
@@ -301,6 +335,18 @@ export default function EnrollModal({ open, onClose, onSaved, assignment, token 
                             <Typography variant="body2" fontWeight={600}>
                               {s.name || "(no name)"}
                             </Typography>
+
+                            {/* Year badge */}
+                            {s.classYear && (
+                              <Chip
+                                label={yearLabel(s.classYear)}
+                                size="small"
+                                color={YEAR_COLORS[s.classYear] ?? "default"}
+                                sx={{ height: 18, fontSize: 10, fontWeight: 600, "& .MuiChip-label": { px: 0.75 } }}
+                              />
+                            )}
+
+                            {/* Group badges */}
                             {(studentGroupMap[s.id] ?? []).map((gName) => (
                               <Chip
                                 key={gName}

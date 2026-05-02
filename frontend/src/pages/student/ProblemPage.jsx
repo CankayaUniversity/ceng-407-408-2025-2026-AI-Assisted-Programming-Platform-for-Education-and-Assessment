@@ -18,6 +18,7 @@ const LANGUAGE_OPTIONS = [
   { value: "c",          label: "C",          id: 50 },
   { value: "cpp",        label: "C++",        id: 54 },
   { value: "csharp",     label: "C#",         id: 51 },
+  { value: "java",       label: "Java",       id: 62 },
 ];
 
 function languageIdFromSelection(value) {
@@ -25,7 +26,7 @@ function languageIdFromSelection(value) {
 }
 
 function extForLanguage(lang) {
-  const map = { python: "py", javascript: "js", c: "c", cpp: "cpp", csharp: "cs" };
+  const map = { python: "py", javascript: "js", c: "c", cpp: "cpp", csharp: "cs", java: "java" };
   return map[lang] ?? "txt";
 }
 
@@ -35,6 +36,7 @@ const STARTER_CODE = {
   c: `#include <stdio.h>\n\nint main() {\n    \n    return 0;\n}\n`,
   cpp: `#include <iostream>\nusing namespace std;\n\nint main() {\n    \n    return 0;\n}\n`,
   csharp: `using System;\n\nclass Program {\n    static void Main(string[] args) {\n        \n    }\n}\n`,
+  java: `public class Main {\n    public static void main(String[] args) {\n        \n    }\n}\n`,
 };
 
 let _nextFileId = 2; // file id counter (1 is reserved for the initial file)

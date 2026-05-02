@@ -3,6 +3,7 @@ import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireRole } from "../middleware/requireRole";
 import { examModeSchema } from "../lib/schemas";
+import { sendApprovalEmail, sendRejectionEmail } from "../lib/emailService";
 
 const router = Router();
 
@@ -65,6 +66,110 @@ router.patch("/exam-mode", requireRole("admin", "teacher"), async (req, res) => 
   res.json({
     data: { key: flag.key, enabled: result.enabled, groupIds: result.groupIds, updatedAt: flag.updatedAt },
   });
+});
+
+// ── Teacher approval endpoints (isAdmin guard) ────────────────────────────────
+
+/** Middleware: require the caller to have isAdmin=true */
+async function requireAdmin(req: any, res: any, next: any) {
+  const user = await prisma.user.findUnique({ where: { id: req.auth!.userId } });
+  if (!user?.isAdmin) {
+    res.status(403).json({ error: "Admin access required" });
+    return;
+  }
+  next();
+}
+
+/**
+ * GET /api/admin/pending-teachers
+ * Returns all teacher accounts with status=pending_approval.
+ */
+router.get("/pending-teachers", requireAdmin, async (req, res) => {
+  const pending = await prisma.user.findMany({
+    where:   { status: "pending_approval", role: { name: "teacher" } },
+    include: { role: true },
+    orderBy: { createdAt: "asc" },
+  });
+
+  res.json({
+    data: pending.map((u) => ({
+      id:        u.id,
+      name:      u.name,
+      email:     u.email,
+      createdAt: u.createdAt,
+    })),
+  });
+});
+
+/**
+ * POST /api/admin/approve/:userId
+ * Activates the teacher account and notifies them by email.
+ */
+router.post("/approve/:userId", requireAdmin, async (req, res) => {
+  const userId = parseInt(req.params.userId, 10);
+  if (isNaN(userId)) {
+    res.status(400).json({ error: "Invalid userId" });
+    return;
+  }
+
+  const user = await prisma.user.findUnique({
+    where:   { id: userId },
+    include: { role: true },
+  });
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+  if (user.status !== "pending_approval") {
+    res.status(400).json({ error: "User is not pending approval" });
+    return;
+  }
+
+  const updated = await prisma.user.update({
+    where: { id: userId },
+    data:  { status: "active" },
+  });
+
+  await sendApprovalEmail(user.email, user.name).catch(console.error);
+
+  res.json({ success: true, user: { id: updated.id, email: updated.email, status: updated.status } });
+});
+
+/**
+ * POST /api/admin/reject/:userId
+ * Rejects the teacher account (status=rejected) and notifies them.
+ * Optional body: { reason: string }
+ */
+router.post("/reject/:userId", requireAdmin, async (req, res) => {
+  const userId = parseInt(req.params.userId, 10);
+  if (isNaN(userId)) {
+    res.status(400).json({ error: "Invalid userId" });
+    return;
+  }
+
+  const { reason } = req.body as { reason?: string };
+
+  const user = await prisma.user.findUnique({
+    where:   { id: userId },
+    include: { role: true },
+  });
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+  if (user.status !== "pending_approval") {
+    res.status(400).json({ error: "User is not pending approval" });
+    return;
+  }
+
+  const updated = await prisma.user.update({
+    where: { id: userId },
+    data:  { status: "rejected" },
+  });
+
+  await sendRejectionEmail(user.email, user.name, reason).catch(console.error);
+
+  res.json({ success: true, user: { id: updated.id, email: updated.email, status: updated.status } });
 });
 
 export { router as adminRouter };

@@ -30,7 +30,11 @@ export async function api(path, options = {}) {
       body = { raw };
     }
     if (!res.ok) {
-      throw new Error(body?.error || body?.detail || `HTTP ${res.status}`);
+      const err = new Error(body?.error || body?.detail || `HTTP ${res.status}`);
+      // Attach full response body so callers can inspect extra fields (e.g. status, userId)
+      err.responseBody = body;
+      err.statusCode   = res.status;
+      throw err;
     }
     return body;
   } catch (e) {

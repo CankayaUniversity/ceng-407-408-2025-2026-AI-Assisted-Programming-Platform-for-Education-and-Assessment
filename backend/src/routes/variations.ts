@@ -29,11 +29,12 @@ router.post("/generate", async (req, res) => {
 
   const result = await generateVariation(
     {
-      title:       problem.title,
-      description: problem.description,
-      difficulty:  problem.difficulty,
-      language:    problem.language,
-      starterCode: problem.starterCode,
+      title:             problem.title,
+      description:       problem.description,
+      difficulty:        problem.difficulty,
+      language:          problem.language,
+      starterCode:       problem.starterCode,
+      referenceSolution: problem.referenceSolution,
     },
     type as VariationType,
   );
@@ -54,7 +55,7 @@ router.post("/generate", async (req, res) => {
       starterCode:     result.variation.starterCode || null,
       status:          "pending",
       aiModel:         result.model,
-      promptVersion:   "variation_v1",
+      promptVersion:   "variation_v2",
     },
   });
 

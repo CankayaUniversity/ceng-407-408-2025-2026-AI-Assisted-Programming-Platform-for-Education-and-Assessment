@@ -10,11 +10,24 @@
  *                   or /api/teacher/students/:id/analytics
  *   loading       — boolean
  *   error         — string | null
+ *
+ * Error interactivity:
+ *   - Hovering a pie slice or legend row shows a tooltip listing which
+ *     problems produced that error and how many times.
+ *   - Clicking a pie slice, legend row, or any error chip in the
+ *     per-problem table opens ErrorDetailModal with the full breakdown.
  */
+import { useMemo, useState } from "react";
 import {
+  Alert,
   Box,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  IconButton,
   LinearProgress,
   Stack,
   Table,
@@ -25,8 +38,8 @@ import {
   TableRow,
   Tooltip,
   Typography,
-  Alert,
 } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
 import {
   AreaChart, Area,
   BarChart, Bar,
@@ -58,6 +71,153 @@ function fmtDate(iso) {
 }
 export function errorLabel(key) {
   return key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+// ── Error detail modal ────────────────────────────────────────────────────────
+function ErrorDetailModal({ open, onClose, errorKey, errorToProblems }) {
+  if (!errorKey) return null;
+
+  const problems = errorToProblems[errorKey] ?? [];
+  const color    = ERROR_COLORS[errorKey] ?? "#6b7280";
+  const label    = errorLabel(errorKey);
+  const total    = problems.reduce((s, p) => s + p.count, 0);
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{ sx: { bgcolor: "#0d1117", color: "text.primary" } }}
+    >
+      <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1.5, pr: 1 }}>
+        <Box sx={{
+          width: 12, height: 12, borderRadius: "50%",
+          bgcolor: color, flexShrink: 0,
+        }} />
+        <Box sx={{ flexGrow: 1 }}>
+          <Typography variant="h6">{label}</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {total} occurrence{total !== 1 ? "s" : ""} across{" "}
+            {problems.length} problem{problems.length !== 1 ? "s" : ""}
+          </Typography>
+        </Box>
+        <IconButton onClick={onClose} size="small">
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </DialogTitle>
+
+      <Divider />
+
+      <DialogContent sx={{ pt: 2, pb: 3 }}>
+        {problems.length === 0 ? (
+          <Typography color="text.secondary">No detail available.</Typography>
+        ) : (
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow sx={{ bgcolor: "rgba(148,163,184,0.08)" }}>
+                  <TableCell sx={{ fontWeight: 700 }}>Problem</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }} align="center">Difficulty</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }} align="center">Occurrences</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }} align="center">Solved?</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {problems.map((p) => (
+                  <TableRow key={p.problemId} hover>
+                    <TableCell sx={{ fontWeight: 600 }}>{p.title}</TableCell>
+                    <TableCell align="center">
+                      {p.difficulty
+                        ? (
+                          <Chip
+                            label={p.difficulty}
+                            size="small"
+                            variant="outlined"
+                            sx={{
+                              color: DIFF_COLOR[p.difficulty] ?? "text.secondary",
+                              borderColor: DIFF_COLOR[p.difficulty] ?? "divider",
+                              fontSize: 10,
+                            }}
+                          />
+                        )
+                        : "—"}
+                    </TableCell>
+                    <TableCell align="center">
+                      <Chip
+                        label={`×${p.count}`}
+                        size="small"
+                        sx={{
+                          bgcolor: color + "22",
+                          color,
+                          border: `1px solid ${color}44`,
+                          fontWeight: 700,
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell align="center">
+                      <Chip
+                        label={p.solved ? "Solved" : "Unsolved"}
+                        size="small"
+                        color={p.solved ? "success" : "default"}
+                        variant={p.solved ? "filled" : "outlined"}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Custom Recharts tooltip for the error pie ─────────────────────────────────
+function ErrorPieTooltip({ active, payload, errorToProblems }) {
+  if (!active || !payload?.length) return null;
+  const { rawName, name, value } = payload[0].payload;
+  const color    = ERROR_COLORS[rawName] ?? "#6b7280";
+  const problems = errorToProblems[rawName] ?? [];
+  const preview  = problems.slice(0, 4);
+
+  return (
+    <Box sx={{
+      bgcolor: "#0f172a",
+      border: "1px solid #334155",
+      borderRadius: 1.5,
+      p: 1.5,
+      minWidth: 200,
+      maxWidth: 260,
+      pointerEvents: "none",
+    }}>
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.75 }}>
+        <Box sx={{ width: 10, height: 10, borderRadius: "50%", bgcolor: color, flexShrink: 0 }} />
+        <Typography variant="caption" fontWeight={700} sx={{ color }}>
+          {name}
+        </Typography>
+      </Stack>
+      <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.75 }}>
+        {value} total occurrence{value !== 1 ? "s" : ""}
+      </Typography>
+      {preview.map((p) => (
+        <Typography key={p.problemId} variant="caption" color="text.disabled" display="block">
+          · {p.title.length > 28 ? p.title.slice(0, 26) + "…" : p.title}
+          {" "}
+          <span style={{ color, fontWeight: 700 }}>×{p.count}</span>
+        </Typography>
+      ))}
+      {problems.length > 4 && (
+        <Typography variant="caption" color="text.disabled" display="block" sx={{ mt: 0.25 }}>
+          +{problems.length - 4} more…
+        </Typography>
+      )}
+      <Typography variant="caption" display="block" sx={{ mt: 1, color: "#475569", fontStyle: "italic" }}>
+        Click to see full breakdown
+      </Typography>
+    </Box>
+  );
 }
 
 // ── Stat box ──────────────────────────────────────────────────────────────────
@@ -130,27 +290,36 @@ export function ActivityHeatmap({ dailyActivity, cellSize = 13 }) {
         </Stack>
 
         {/* Grid */}
-        {weeks.map((week, wi) => (
-          <Stack key={wi} spacing={`${gap}px`}>
-            <Typography sx={{ fontSize: cellSize * 0.7, color: "text.secondary",
-              height: cellSize, lineHeight: `${cellSize}px`, mb: `${gap}px`,
-              fontWeight: 600 }}>
-              {wi === 0 || weeks[wi - 1][0].date.slice(0, 7) !== week[0].date.slice(0, 7)
-                ? new Date(week[0].date).toLocaleString("en", { month: "short" }) : ""}
-            </Typography>
-            {week.map((day) => (
-              <Tooltip key={day.date} placement="top"
-                title={`${day.date}: ${day.count} submission${day.count !== 1 ? "s" : ""}, ${day.accepted} accepted`}>
-                <Box sx={{
-                  width: cellSize, height: cellSize, borderRadius: "3px",
-                  bgcolor: cellColor(day.count), cursor: "default",
-                  transition: "transform 0.1s",
-                  "&:hover": { transform: "scale(1.3)" },
-                }} />
-              </Tooltip>
-            ))}
-          </Stack>
-        ))}
+        {(() => {
+          let lastLabelWi = -4;
+          return weeks.map((week, wi) => {
+            const isNewMonth = wi === 0 || weeks[wi - 1][0].date.slice(0, 7) !== week[0].date.slice(0, 7);
+            const farEnough  = wi - lastLabelWi >= 3;
+            const showLabel  = isNewMonth && farEnough;
+            if (showLabel) lastLabelWi = wi;
+            return (
+              <Stack key={wi} spacing={`${gap}px`}>
+                <Typography sx={{
+                  fontSize: cellSize * 0.7, color: "text.secondary",
+                  height: cellSize, lineHeight: `${cellSize}px`, mb: `${gap}px`, fontWeight: 600,
+                }}>
+                  {showLabel ? new Date(week[0].date).toLocaleString("en", { month: "short" }) : ""}
+                </Typography>
+                {week.map((day) => (
+                  <Tooltip key={day.date} placement="top"
+                    title={`${day.date}: ${day.count} submission${day.count !== 1 ? "s" : ""}, ${day.accepted} accepted`}>
+                    <Box sx={{
+                      width: cellSize, height: cellSize, borderRadius: "3px",
+                      bgcolor: cellColor(day.count), cursor: "default",
+                      transition: "transform 0.1s",
+                      "&:hover": { transform: "scale(1.3)" },
+                    }} />
+                  </Tooltip>
+                ))}
+              </Stack>
+            );
+          });
+        })()}
       </Stack>
 
       {/* Legend */}
@@ -167,36 +336,32 @@ export function ActivityHeatmap({ dailyActivity, cellSize = 13 }) {
 
 // ── SVG arc for language score ────────────────────────────────────────────────
 function ScoreArc({ score, color, size = 88 }) {
-  const r    = (size - 14) / 2;
-  const cx   = size / 2;
-  const cy   = size / 2;
-  // Arc spans 240° (from 150° to 390°, i.e. bottom-left to bottom-right)
+  const r        = (size - 14) / 2;
+  const cx       = size / 2;
+  const cy       = size / 2;
   const startDeg = 150;
   const totalDeg = 240;
-  const pct   = Math.min(Math.max(score, 0), 100) / 100;
-  const angle = startDeg + totalDeg * pct;
-  const toRad = (d) => (d * Math.PI) / 180;
+  const pct      = Math.min(Math.max(score, 0), 100) / 100;
+  const angle    = startDeg + totalDeg * pct;
+  const toRad    = (d) => (d * Math.PI) / 180;
 
   function arcPath(fromDeg, toDeg) {
-    const x1 = cx + r * Math.cos(toRad(fromDeg));
-    const y1 = cy + r * Math.sin(toRad(fromDeg));
-    const x2 = cx + r * Math.cos(toRad(toDeg));
-    const y2 = cy + r * Math.sin(toRad(toDeg));
+    const x1    = cx + r * Math.cos(toRad(fromDeg));
+    const y1    = cy + r * Math.sin(toRad(fromDeg));
+    const x2    = cx + r * Math.cos(toRad(toDeg));
+    const y2    = cy + r * Math.sin(toRad(toDeg));
     const large = toDeg - fromDeg > 180 ? 1 : 0;
     return `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`;
   }
 
   return (
     <svg width={size} height={size} style={{ display: "block" }}>
-      {/* track */}
       <path d={arcPath(startDeg, startDeg + totalDeg)} fill="none"
         stroke="#1e293b" strokeWidth={7} strokeLinecap="round" />
-      {/* filled arc */}
       {score > 0 && (
         <path d={arcPath(startDeg, angle)} fill="none"
           stroke={color} strokeWidth={7} strokeLinecap="round" />
       )}
-      {/* score text */}
       <text x={cx} y={cy - 2} textAnchor="middle" dominantBaseline="central"
         fill="#e2e8f0" fontSize={size * 0.22} fontWeight="700">{score}</text>
       <text x={cx} y={cy + size * 0.16} textAnchor="middle"
@@ -207,6 +372,14 @@ function ScoreArc({ score, color, size = 88 }) {
 
 // ── Main content ──────────────────────────────────────────────────────────────
 export default function StudentAnalyticsContent({ data, loading, error }) {
+  const [selectedError,    setSelectedError]    = useState(null);
+  const [errorModalOpen,   setErrorModalOpen]   = useState(false);
+
+  function openError(key) {
+    setSelectedError(key);
+    setErrorModalOpen(true);
+  }
+
   if (loading) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
@@ -217,12 +390,12 @@ export default function StudentAnalyticsContent({ data, loading, error }) {
   if (error) return <Alert severity="error">{error}</Alert>;
   if (!data)  return null;
 
-  const summary  = data.summary          ?? {};
-  const perProb  = data.perProblem       ?? [];
-  const errProf  = data.errorProfile     ?? {};
-  const langUse  = data.languageUsage    ?? {};
+  const summary  = data.summary           ?? {};
+  const perProb  = data.perProblem        ?? [];
+  const errProf  = data.errorProfile      ?? {};
+  const langUse  = data.languageUsage     ?? {};
   const timeline = data.submissionTimeline ?? [];
-  const trend    = data.learningTrend    ?? "stable";
+  const trend    = data.learningTrend     ?? "stable";
 
   const errorData = Object.entries(errProf)
     .map(([name, value]) => ({ name: errorLabel(name), rawName: name, value }))
@@ -245,7 +418,28 @@ export default function StudentAnalyticsContent({ data, loading, error }) {
     .sort((a, b) => b.attempts - a.attempts)
     .slice(0, 12);
 
-  // ── Language performance computation ──────────────────────────────────────
+  // ── Inverted index: errorType → [{ problemId, title, difficulty, solved, count }] ──
+  const errorToProblems = useMemo(() => {
+    const map = {};
+    for (const p of perProb) {
+      for (const [errKey, cnt] of Object.entries(p.errorProfile ?? {})) {
+        if (!map[errKey]) map[errKey] = [];
+        map[errKey].push({
+          problemId:  p.problemId,
+          title:      p.title,
+          difficulty: p.difficulty,
+          solved:     p.solved,
+          count:      cnt,
+        });
+      }
+    }
+    for (const key of Object.keys(map)) {
+      map[key].sort((a, b) => b.count - a.count);
+    }
+    return map;
+  }, [perProb]);
+
+  // ── Language performance ──────────────────────────────────────────────────
   const langStatsMap = perProb.reduce((acc, p) => {
     const lang = p.language ?? "unknown";
     if (!acc[lang]) acc[lang] = { language: lang, solved: 0, attempted: 0, totalAttempts: 0, hints: 0, errors: {} };
@@ -260,14 +454,13 @@ export default function StudentAnalyticsContent({ data, loading, error }) {
   }, {});
 
   const langStats = Object.values(langStatsMap).map((ls) => {
-    const solveRate  = ls.attempted > 0 ? ls.solved / ls.attempted : 0;
+    const solveRate   = ls.attempted > 0 ? ls.solved / ls.attempted : 0;
     const avgAttempts = ls.solved > 0 ? ls.totalAttempts / ls.solved : ls.totalAttempts;
-    // efficiency: fewer avg attempts = better; cap at 10 attempts for scale
-    const efficiency = Math.max(0, 1 - (avgAttempts - 1) / 9);
-    const score = Math.round(solveRate * 60 + efficiency * 40);
-    const topError = Object.entries(ls.errors).sort(([, a], [, b]) => b - a)[0]?.[0] ?? null;
-    const band = score >= 80 ? "Strong" : score >= 50 ? "Average" : "Needs Work";
-    const bandColor = score >= 80 ? "#22c55e" : score >= 50 ? "#f59e0b" : "#ef4444";
+    const efficiency  = Math.max(0, 1 - (avgAttempts - 1) / 9);
+    const score       = Math.round(solveRate * 60 + efficiency * 40);
+    const topError    = Object.entries(ls.errors).sort(([, a], [, b]) => b - a)[0]?.[0] ?? null;
+    const band        = score >= 80 ? "Strong" : score >= 50 ? "Average" : "Needs Work";
+    const bandColor   = score >= 80 ? "#22c55e" : score >= 50 ? "#f59e0b" : "#ef4444";
     return { ...ls, score, avgAttempts: Math.round(avgAttempts * 10) / 10, topError, band, bandColor };
   }).sort((a, b) => b.score - a.score);
 
@@ -282,17 +475,16 @@ export default function StudentAnalyticsContent({ data, loading, error }) {
       <Box>
         <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap
           sx={{ justifyContent: "center" }}>
-          <StatBox label="Submissions"   value={summary.totalAttempts ?? 0} />
-          <StatBox label="Accepted"      value={summary.acceptedAttempts ?? 0}  color="#22c55e" />
-          <StatBox label="Success Rate"  value={`${summary.successRate ?? 0}%`} color="#6366f1" />
-          <StatBox label="Solved"        value={summary.problemsSolved ?? 0}
+          <StatBox label="Submissions"  value={summary.totalAttempts ?? 0} />
+          <StatBox label="Accepted"     value={summary.acceptedAttempts ?? 0}  color="#22c55e" />
+          <StatBox label="Success Rate" value={`${summary.successRate ?? 0}%`} color="#6366f1" />
+          <StatBox label="Solved"       value={summary.problemsSolved ?? 0}
             sub={`of ${summary.totalProblemsAttempted ?? 0} tried`}            color="#f59e0b" />
-          <StatBox label="AI Hints"      value={summary.totalHints ?? 0}        color="#06b6d4" />
-          <StatBox label="Day Streak"    value={summary.streak ?? 0}
-            sub="consecutive days"                                               color="#ec4899" />
+          <StatBox label="AI Hints"     value={summary.totalHints ?? 0}        color="#06b6d4" />
+          <StatBox label="Day Streak"   value={summary.streak ?? 0}
+            sub="consecutive days"                                              color="#ec4899" />
         </Stack>
 
-        {/* Trend + progress bar */}
         <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mt: 2, justifyContent: "center" }}>
           <Typography variant="body2" color="text.secondary">Learning trend:</Typography>
           <Chip label={trendLabel} size="small"
@@ -315,7 +507,7 @@ export default function StudentAnalyticsContent({ data, loading, error }) {
         )}
       </Box>
 
-      {/* ── Activity heatmap (full-width, centred) ────────────────────── */}
+      {/* ── Activity heatmap ──────────────────────────────────────────────── */}
       {data.dailyActivity?.length > 0 && (
         <Box sx={{
           p: 3, borderRadius: 3,
@@ -329,7 +521,7 @@ export default function StudentAnalyticsContent({ data, loading, error }) {
         </Box>
       )}
 
-      {/* ── Timeline + Error donut ─────────────────────────────────────── */}
+      {/* ── Timeline + Error donut ─────────────────────────────────────────── */}
       {(timeline.length > 0 || errorData.length > 0) && (
         <Stack direction={{ xs: "column", md: "row" }} spacing={3}>
 
@@ -370,19 +562,36 @@ export default function StudentAnalyticsContent({ data, loading, error }) {
             </Box>
           )}
 
+          {/* ── Error donut — interactive ──────────────────────────────── */}
           {errorData.length > 0 && (
             <Box sx={{ flex: 1, minWidth: 220, p: 2.5, borderRadius: 3,
               border: "1px solid", borderColor: "divider",
               bgcolor: "rgba(148,163,184,0.04)" }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1.5 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>
                 Error Breakdown
               </Typography>
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                Hover for details · click to drill in
+              </Typography>
+
               <ResponsiveContainer width="100%" height={160}>
                 <PieChart>
-                  <Pie data={errorData} cx="50%" cy="50%"
-                    innerRadius={45} outerRadius={72} paddingAngle={2} dataKey="value">
+                  <Pie
+                    data={errorData}
+                    cx="50%" cy="50%"
+                    innerRadius={45} outerRadius={72}
+                    paddingAngle={2}
+                    dataKey="value"
+                    onClick={(d) => openError(d.rawName)}
+                    style={{ cursor: "pointer" }}
+                  >
                     {errorData.map((e) => (
-                      <Cell key={e.rawName} fill={ERROR_COLORS[e.rawName] ?? "#6b7280"} />
+                      <Cell
+                        key={e.rawName}
+                        fill={ERROR_COLORS[e.rawName] ?? "#6b7280"}
+                        stroke="transparent"
+                        style={{ outline: "none" }}
+                      />
                     ))}
                   </Pie>
                   <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central" fill="#e2e8f0">
@@ -390,26 +599,68 @@ export default function StudentAnalyticsContent({ data, loading, error }) {
                     <tspan x="50%" dy="1.4em" fontSize="10" fill="#94a3b8">errors</tspan>
                   </text>
                   <RechartTooltip
-                    contentStyle={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 8 }}
-                    formatter={(v, n) => [`${v} times`, n]} />
+                    content={(props) => (
+                      <ErrorPieTooltip {...props} errorToProblems={errorToProblems} />
+                    )}
+                  />
                 </PieChart>
               </ResponsiveContainer>
+
+              {/* Legend rows — hoverable + clickable */}
               <Stack spacing={0.4} sx={{ mt: 1 }}>
-                {errorData.map((e) => (
-                  <Stack key={e.rawName} direction="row" alignItems="center" spacing={1}>
-                    <Box sx={{ width: 9, height: 9, borderRadius: "50%", flexShrink: 0,
-                      bgcolor: ERROR_COLORS[e.rawName] ?? "#6b7280" }} />
-                    <Typography variant="caption" color="text.secondary" sx={{ flex: 1 }}>{e.name}</Typography>
-                    <Typography variant="caption" sx={{ fontWeight: 700 }}>{e.value}</Typography>
-                  </Stack>
-                ))}
+                {errorData.map((e) => {
+                  const problems = errorToProblems[e.rawName] ?? [];
+                  const tipLines = problems.slice(0, 3)
+                    .map((p) => `${p.title}: ×${p.count}`)
+                    .join("\n") + (problems.length > 3 ? `\n+${problems.length - 3} more` : "");
+
+                  return (
+                    <Tooltip
+                      key={e.rawName}
+                      placement="left"
+                      title={
+                        problems.length > 0 ? (
+                          <Box sx={{ whiteSpace: "pre-line", fontSize: 12 }}>
+                            {tipLines}
+                          </Box>
+                        ) : ""
+                      }
+                    >
+                      <Stack
+                        direction="row"
+                        alignItems="center"
+                        spacing={1}
+                        onClick={() => openError(e.rawName)}
+                        sx={{
+                          cursor: "pointer",
+                          borderRadius: 1,
+                          px: 0.5,
+                          py: 0.25,
+                          transition: "background 0.15s",
+                          "&:hover": { bgcolor: "rgba(148,163,184,0.08)" },
+                        }}
+                      >
+                        <Box sx={{
+                          width: 9, height: 9, borderRadius: "50%", flexShrink: 0,
+                          bgcolor: ERROR_COLORS[e.rawName] ?? "#6b7280",
+                        }} />
+                        <Typography variant="caption" color="text.secondary" sx={{ flex: 1 }}>
+                          {e.name}
+                        </Typography>
+                        <Typography variant="caption" sx={{ fontWeight: 700 }}>
+                          {e.value}
+                        </Typography>
+                      </Stack>
+                    </Tooltip>
+                  );
+                })}
               </Stack>
             </Box>
           )}
         </Stack>
       )}
 
-      {/* ── Attempts bar + Language pie ────────────────────────────────── */}
+      {/* ── Attempts bar + Language pie ────────────────────────────────────── */}
       {(attemptsBar.length > 0 || langData.length > 0) && (
         <Stack direction={{ xs: "column", md: "row" }} spacing={3}>
 
@@ -486,7 +737,7 @@ export default function StudentAnalyticsContent({ data, loading, error }) {
         </Stack>
       )}
 
-      {/* ── Language Performance ──────────────────────────────────────── */}
+      {/* ── Language Performance ──────────────────────────────────────────── */}
       {langStats.length > 0 && (
         <Box sx={{ p: 2.5, borderRadius: 3, border: "1px solid", borderColor: "divider",
           bgcolor: "rgba(148,163,184,0.04)" }}>
@@ -505,16 +756,11 @@ export default function StudentAnalyticsContent({ data, loading, error }) {
                 bgcolor: ls.bandColor + "0d",
                 display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
               }}>
-                {/* Language name */}
                 <Typography variant="subtitle2" sx={{ fontWeight: 700, textTransform: "capitalize",
                   letterSpacing: 0.5 }}>
                   {ls.language}
                 </Typography>
-
-                {/* Arc */}
                 <ScoreArc score={ls.score} color={ls.bandColor} size={90} />
-
-                {/* Band badge */}
                 <Chip
                   label={ls.band === "Strong" ? "💚 Strong" : ls.band === "Average" ? "🟡 Average" : "🔴 Needs Work"}
                   size="small"
@@ -525,8 +771,6 @@ export default function StudentAnalyticsContent({ data, loading, error }) {
                     border: `1px solid ${ls.bandColor}55`,
                   }}
                 />
-
-                {/* Stats */}
                 <Stack spacing={0.3} sx={{ width: "100%", mt: 0.5 }}>
                   <Stack direction="row" justifyContent="space-between">
                     <Typography variant="caption" color="text.secondary">Solved</Typography>
@@ -545,14 +789,17 @@ export default function StudentAnalyticsContent({ data, loading, error }) {
                   {ls.topError && (
                     <Stack direction="row" justifyContent="space-between" alignItems="center">
                       <Typography variant="caption" color="text.secondary">Top error</Typography>
-                      <Chip size="small"
+                      <Chip
+                        size="small"
                         label={errorLabel(ls.topError)}
+                        onClick={() => openError(ls.topError)}
                         sx={{
-                          fontSize: 9, height: 18,
+                          fontSize: 9, height: 18, cursor: "pointer",
                           bgcolor: (ERROR_COLORS[ls.topError] ?? "#6b7280") + "22",
                           color:   ERROR_COLORS[ls.topError] ?? "text.secondary",
                           border: `1px solid ${(ERROR_COLORS[ls.topError] ?? "#6b7280")}44`,
-                        }} />
+                        }}
+                      />
                     </Stack>
                   )}
                 </Stack>
@@ -562,7 +809,7 @@ export default function StudentAnalyticsContent({ data, loading, error }) {
         </Box>
       )}
 
-      {/* ── Per-problem table ──────────────────────────────────────────── */}
+      {/* ── Per-problem table ──────────────────────────────────────────────── */}
       {perProb.length > 0 && (
         <Box sx={{ p: 2.5, borderRadius: 3, border: "1px solid", borderColor: "divider",
           bgcolor: "rgba(148,163,184,0.04)" }}>
@@ -576,13 +823,13 @@ export default function StudentAnalyticsContent({ data, loading, error }) {
                   <TableCell sx={{ fontWeight: 700 }} align="center">Status</TableCell>
                   <TableCell sx={{ fontWeight: 700 }} align="center">Attempts</TableCell>
                   <TableCell sx={{ fontWeight: 700 }} align="center">Hints</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Top Errors</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Errors</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {perProb.map((p) => {
                   const topErrors = Object.entries(p.errorProfile ?? {})
-                    .sort(([, a], [, b]) => b - a).slice(0, 2);
+                    .sort(([, a], [, b]) => b - a).slice(0, 3);
                   return (
                     <TableRow key={p.problemId} hover>
                       <TableCell sx={{ fontWeight: 600, maxWidth: 180 }}>
@@ -609,12 +856,22 @@ export default function StudentAnalyticsContent({ data, loading, error }) {
                           {topErrors.length === 0
                             ? <Typography variant="caption" color="text.disabled">—</Typography>
                             : topErrors.map(([key, cnt]) => (
-                                <Chip key={key} size="small"
-                                  label={`${errorLabel(key)} \xd7${cnt}`}
-                                  sx={{ fontSize: 9,
-                                    bgcolor: (ERROR_COLORS[key] ?? "#6b7280") + "22",
-                                    color:   ERROR_COLORS[key] ?? "text.secondary",
-                                    border: `1px solid ${(ERROR_COLORS[key] ?? "#6b7280")}44` }} />
+                                <Tooltip
+                                  key={key}
+                                  title={`Click to see all problems with "${errorLabel(key)}"`}
+                                >
+                                  <Chip
+                                    size="small"
+                                    label={`${errorLabel(key)} ×${cnt}`}
+                                    onClick={() => openError(key)}
+                                    sx={{
+                                      fontSize: 9, cursor: "pointer",
+                                      bgcolor: (ERROR_COLORS[key] ?? "#6b7280") + "22",
+                                      color:   ERROR_COLORS[key] ?? "text.secondary",
+                                      border: `1px solid ${(ERROR_COLORS[key] ?? "#6b7280")}44`,
+                                    }}
+                                  />
+                                </Tooltip>
                               ))}
                         </Stack>
                       </TableCell>
@@ -632,6 +889,14 @@ export default function StudentAnalyticsContent({ data, loading, error }) {
           <Typography color="text.secondary">No submission data yet.</Typography>
         </Box>
       )}
+
+      {/* ── Error detail modal ─────────────────────────────────────────────── */}
+      <ErrorDetailModal
+        open={errorModalOpen}
+        onClose={() => setErrorModalOpen(false)}
+        errorKey={selectedError}
+        errorToProblems={errorToProblems}
+      />
 
     </Stack>
   );

@@ -37,6 +37,7 @@ router.get("/students", async (_req, res) => {
         id: student.id,
         name: student.name,
         email: student.email,
+        classYear: student.classYear,
         totalAttempts: student.submissionAttempts.length,
         totalHints: student.hintEvents.length,
         acceptedAttempts: accepted.length,
@@ -142,37 +143,114 @@ router.get("/problems/:id/analytics", async (req, res) => {
     return;
   }
 
-  const problem = await prisma.problem.findUnique({
-    where: { id: problemId },
-    include: {
-      submissionAttempts: true,
-      hintEvents: true,
-    },
-  });
+  const [problem, students] = await Promise.all([
+    prisma.problem.findUnique({
+      where: { id: problemId },
+      include: {
+        submissionAttempts: { orderBy: { createdAt: "asc" } },
+        hintEvents: true,
+      },
+    }),
+    prisma.user.findMany({
+      where: { role: { is: { name: "student" } } },
+      select: { id: true, name: true, email: true },
+    }),
+  ]);
 
   if (!problem) {
     res.status(404).json({ error: "Problem not found" });
     return;
   }
 
-  const attempts = problem.submissionAttempts;
-  const acceptedAttempts = attempts.filter((attempt) => attempt.normalizedStatus === "accepted");
-  const distinctStudents = new Set(attempts.map((attempt) => attempt.userId));
+  const attempts        = problem.submissionAttempts;
+  const acceptedAttempts = attempts.filter((a) => a.normalizedStatus === "accepted");
+  const distinctStudentIds = new Set(attempts.map((a) => a.userId));
+
+  // ── Error profile (all non-accepted attempts) ──────────────────────────
+  const errorProfile: Record<string, number> = {};
+  for (const a of attempts) {
+    if (a.normalizedStatus !== "accepted") {
+      errorProfile[a.normalizedStatus] = (errorProfile[a.normalizedStatus] ?? 0) + 1;
+    }
+  }
+
+  // ── Per-student breakdown ──────────────────────────────────────────────
+  const studentMap = new Map(students.map((s) => [s.id, s]));
+  const perStudentMap = new Map<number, {
+    studentId: number; name: string; email: string;
+    totalAttempts: number; accepted: boolean;
+    lastStatus: string; errorCounts: Record<string, number>;
+    hintsUsed: number;
+  }>();
+
+  for (const a of attempts) {
+    if (!perStudentMap.has(a.userId)) {
+      const s = studentMap.get(a.userId);
+      perStudentMap.set(a.userId, {
+        studentId: a.userId,
+        name:  s?.name  ?? `Student #${a.userId}`,
+        email: s?.email ?? "",
+        totalAttempts: 0, accepted: false, lastStatus: a.normalizedStatus,
+        errorCounts: {}, hintsUsed: 0,
+      });
+    }
+    const entry = perStudentMap.get(a.userId)!;
+    entry.totalAttempts += 1;
+    entry.lastStatus = a.normalizedStatus; // ordered asc → last is most recent
+    if (a.normalizedStatus === "accepted") {
+      entry.accepted = true;
+    } else {
+      entry.errorCounts[a.normalizedStatus] = (entry.errorCounts[a.normalizedStatus] ?? 0) + 1;
+    }
+  }
+
+  // Attach hint counts
+  for (const h of problem.hintEvents) {
+    if (perStudentMap.has(h.userId)) {
+      perStudentMap.get(h.userId)!.hintsUsed += 1;
+    }
+  }
+
+  const perStudent = [...perStudentMap.values()]
+    .sort((a, b) => {
+      // Struggling (never accepted, most attempts) first
+      if (a.accepted !== b.accepted) return a.accepted ? 1 : -1;
+      return b.totalAttempts - a.totalAttempts;
+    });
+
+  // ── Submission volume over time (daily) ───────────────────────────────
+  const dayMap = new Map<string, { total: number; accepted: number }>();
+  for (const a of attempts) {
+    const day = a.createdAt.toISOString().slice(0, 10);
+    if (!dayMap.has(day)) dayMap.set(day, { total: 0, accepted: 0 });
+    const d = dayMap.get(day)!;
+    d.total += 1;
+    if (a.normalizedStatus === "accepted") d.accepted += 1;
+  }
+  const dailyVolume = [...dayMap.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, v]) => ({ date, ...v }));
 
   res.json({
     data: {
       problem: {
-        id: problem.id,
-        title: problem.title,
+        id:         problem.id,
+        title:      problem.title,
         difficulty: problem.difficulty,
-        language: problem.language,
-        tags: problem.tags,
+        language:   problem.language,
+        tags:       problem.tags,
       },
       analytics: {
-        totalAttempts: attempts.length,
+        totalAttempts:    attempts.length,
         acceptedAttempts: acceptedAttempts.length,
-        distinctStudents: distinctStudents.size,
+        distinctStudents: distinctStudentIds.size,
+        solvedStudents:   perStudent.filter((s) => s.accepted).length,
+        acceptRate: attempts.length > 0
+          ? Math.round((acceptedAttempts.length / attempts.length) * 100) : 0,
         totalHints: problem.hintEvents.length,
+        errorProfile,
+        perStudent,
+        dailyVolume,
       },
     },
   });
@@ -205,7 +283,7 @@ router.get("/groups", async (req, res) => {
     where: { createdById: req.auth!.userId },
     include: {
       members: {
-        include: { user: { select: { id: true, name: true, email: true } } },
+        include: { user: { select: { id: true, name: true, email: true, classYear: true } } },
       },
     },
     orderBy: { createdAt: "asc" },

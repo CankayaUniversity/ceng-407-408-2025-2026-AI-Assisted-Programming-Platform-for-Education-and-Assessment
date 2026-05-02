@@ -11,8 +11,9 @@
  */
 
 import { Router, type Request, type Response } from "express";
-import { prisma }      from "../lib/prisma";
-import { requireAuth } from "../middleware/requireAuth";
+import { prisma }                       from "../lib/prisma";
+import { requireAuth }                  from "../middleware/requireAuth";
+import { triggerTutorialGeneration }    from "../services/tutorialService";
 
 const router = Router();
 router.use(requireAuth);
@@ -47,12 +48,13 @@ router.get("/", async (req: Request, res: Response) => {
             id:               true,
             title:            true,
             description:      true,
+            mode:             true,
             dueDate:          true,
             isPublished:      true,
             allowedLanguages: true,
             lateDeadline:     true,
             lateDeduction:    true,
-            problem: { select: { id: true, title: true, language: true, difficulty: true, description: true } },
+            problem: { select: { id: true, title: true, language: true, difficulty: true, description: true, tags: true } },
           },
         },
       },
@@ -66,7 +68,7 @@ router.post("/", async (req: Request, res: Response) => {
   const { userId, role } = req.auth!;
   if (role !== "teacher") { res.status(403).json({ error: "Teachers only" }); return; }
 
-  const { title, description, problemId, dueDate, isPublished, allowedLanguages, lateDeadline, lateDeduction } = req.body as {
+  const { title, description, problemId, dueDate, isPublished, allowedLanguages, lateDeadline, lateDeduction, mode } = req.body as {
     title:             string;
     description?:      string;
     problemId:         number;
@@ -75,6 +77,7 @@ router.post("/", async (req: Request, res: Response) => {
     allowedLanguages?: string[];
     lateDeadline?:     string | null;
     lateDeduction?:    number;
+    mode?:             string;
   };
 
   if (!title?.trim() || !problemId) {
@@ -82,12 +85,16 @@ router.post("/", async (req: Request, res: Response) => {
     return;
   }
 
+  const validModes = ["practice", "homework", "exam"];
+  const resolvedMode = validModes.includes(mode ?? "") ? mode! : "homework";
+
   const assignment = await prisma.assignment.create({
     data: {
       title:            title.trim(),
       description:      description ?? null,
       problemId,
       createdById:      userId,
+      mode:             resolvedMode,
       dueDate:          dueDate ? new Date(dueDate) : null,
       isPublished:      isPublished ?? false,
       allowedLanguages: allowedLanguages ?? [],
@@ -96,6 +103,17 @@ router.post("/", async (req: Request, res: Response) => {
     },
     include: { problem: { select: { id: true, title: true, language: true } } },
   });
+
+  // Fire-and-forget tutorial generation for each tag when published
+  if (isPublished) {
+    const prob = await prisma.problem.findUnique({
+      where:  { id: problemId },
+      select: { tags: true, language: true, difficulty: true, description: true },
+    });
+    if (prob && prob.tags.length > 0) {
+      triggerTutorialGeneration(prob.tags, prob.language, prob.difficulty ?? "Medium", prob.description);
+    }
+  }
 
   res.status(201).json({ success: true, data: assignment });
 });
@@ -125,7 +143,7 @@ router.put("/:id", async (req: Request, res: Response) => {
   const id = parseId(req.params.id);
   if (!id) { res.status(400).json({ error: "Invalid ID" }); return; }
 
-  const { title, description, dueDate, isPublished, allowedLanguages, lateDeadline, lateDeduction } = req.body as {
+  const { title, description, dueDate, isPublished, allowedLanguages, lateDeadline, lateDeduction, mode } = req.body as {
     title?:             string;
     description?:       string;
     dueDate?:           string | null;
@@ -133,20 +151,35 @@ router.put("/:id", async (req: Request, res: Response) => {
     allowedLanguages?:  string[];
     lateDeadline?:      string | null;
     lateDeduction?:     number;
+    mode?:              string;
   };
+
+  const validModes = ["practice", "homework", "exam"];
 
   const assignment = await prisma.assignment.update({
     where: { id },
     data:  {
-      ...(title            !== undefined ? { title: title.trim() }                          : {}),
-      ...(description      !== undefined ? { description }                                  : {}),
-      ...(dueDate          !== undefined ? { dueDate: dueDate ? new Date(dueDate) : null }  : {}),
-      ...(isPublished      !== undefined ? { isPublished }                                  : {}),
-      ...(allowedLanguages !== undefined ? { allowedLanguages }                             : {}),
-      ...(lateDeadline     !== undefined ? { lateDeadline: lateDeadline ? new Date(lateDeadline) : null } : {}),
-      ...(lateDeduction    !== undefined ? { lateDeduction }                                : {}),
+      ...(title            !== undefined ? { title: title.trim() }                                                : {}),
+      ...(description      !== undefined ? { description }                                                        : {}),
+      ...(dueDate          !== undefined ? { dueDate: dueDate ? new Date(dueDate) : null }                       : {}),
+      ...(isPublished      !== undefined ? { isPublished }                                                        : {}),
+      ...(allowedLanguages !== undefined ? { allowedLanguages }                                                   : {}),
+      ...(lateDeadline     !== undefined ? { lateDeadline: lateDeadline ? new Date(lateDeadline) : null }        : {}),
+      ...(lateDeduction    !== undefined ? { lateDeduction }                                                      : {}),
+      ...(mode !== undefined && validModes.includes(mode) ? { mode }                                             : {}),
     },
   });
+
+  // Fire-and-forget tutorial generation when assignment is being published
+  if (isPublished === true) {
+    const prob = await prisma.problem.findUnique({
+      where:  { id: assignment.problemId },
+      select: { tags: true, language: true, difficulty: true, description: true },
+    });
+    if (prob && prob.tags.length > 0) {
+      triggerTutorialGeneration(prob.tags, prob.language, prob.difficulty ?? "Medium", prob.description);
+    }
+  }
 
   res.json({ success: true, data: assignment });
 });

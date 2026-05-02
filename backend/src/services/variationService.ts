@@ -1,7 +1,14 @@
 /**
  * AI-powered problem variation generator.
  * Calls Ollama to produce a harder / easier / similar variant of an existing problem.
+ *
+ * When a reference solution is provided, codeAnalyzer.ts performs a lightweight
+ * structural scan (loops, recursion, data structures, algorithm patterns, Big-O)
+ * and appends a plain-English narrative to the prompt so the model understands
+ * the *algorithmic intent* of the original — not just its surface description.
  */
+
+import { analyzeCode } from "./codeAnalyzer";
 
 export type VariationType = "harder" | "easier" | "similar";
 
@@ -11,6 +18,7 @@ export type VariationInput = {
   difficulty: string | null;
   language: string;
   starterCode: string | null;
+  referenceSolution?: string | null;
 };
 
 export type GeneratedVariation = {
@@ -56,6 +64,50 @@ function difficultyTarget(type: VariationType, current: string | null): string {
 function buildVariationPrompt(input: VariationInput, type: VariationType): string {
   const targetDifficulty = difficultyTarget(type, input.difficulty);
 
+  // ── Structural analysis block (only when a reference solution is available) ──
+  let structuralContext = "";
+  if (input.referenceSolution && input.referenceSolution.trim().length > 10) {
+    try {
+      const analysis = analyzeCode(input.referenceSolution, input.language);
+
+      const loopParts: string[] = [];
+      if (analysis.loops.forCount > 0)   loopParts.push(`${analysis.loops.forCount} for-loop(s)`);
+      if (analysis.loops.whileCount > 0) loopParts.push(`${analysis.loops.whileCount} while-loop(s)`);
+      if (analysis.loops.doWhile)        loopParts.push("a do-while loop");
+      const loopSummary = loopParts.length > 0
+        ? loopParts.join(", ") + (analysis.loops.maxNesting >= 2 ? ` (nested ${analysis.loops.maxNesting} levels)` : "")
+        : "no loops";
+
+      const lines: string[] = [
+        "",
+        "REFERENCE SOLUTION ANALYSIS (structural, not the code itself)",
+        "=============================================================",
+        `Loops          : ${loopSummary}`,
+        `Recursion      : ${analysis.recursion ? "yes" : "no"}`,
+      ];
+
+      if (analysis.dataStructures.length > 0) {
+        lines.push(`Data structures: ${analysis.dataStructures.join(", ")}`);
+      }
+      if (analysis.algorithmHints.length > 0) {
+        lines.push(`Algorithm      : ${analysis.algorithmHints.join(", ")}`);
+      }
+      lines.push(`Complexity     : ${analysis.complexity}`);
+      lines.push(`Summary        : ${analysis.narrative}`);
+      lines.push("");
+      lines.push(
+        "Use this structural profile when deciding what to change for the variation.\n" +
+        "For 'harder': the variation must require a genuinely more complex algorithm.\n" +
+        "For 'easier': the variation must be solvable with fewer/simpler structures.\n" +
+        "For 'similar': preserve the same algorithmic shape but change the scenario.",
+      );
+
+      structuralContext = lines.join("\n");
+    } catch {
+      // If analysis fails for any reason, silently omit the block
+    }
+  }
+
   const typeInstructions: Record<VariationType, string> = {
     harder: `Create a HARDER version of this problem at difficulty "${targetDifficulty}".
 
@@ -96,7 +148,7 @@ Language: ${input.language}
 Description:
 ${input.description}
 ${input.starterCode ? `\nStarter Code:\n${input.starterCode}` : ""}
-
+${structuralContext}
 YOUR TASK
 =========
 ${typeInstructions[type]}

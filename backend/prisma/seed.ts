@@ -657,14 +657,14 @@ async function main() {
   // ── Users (upsert — never deleted) ────────────────────────────────────────
   const teacher = await prisma.user.upsert({
     where:  { email: "teacher1@demo.com" },
-    update: { name: "Teacher Demo", passwordHash: pw, roleId: teacherRole.id },
-    create: { name: "Teacher Demo", email: "teacher1@demo.com", passwordHash: pw, roleId: teacherRole.id },
+    update: { name: "Teacher Demo", passwordHash: pw, roleId: teacherRole.id, isAdmin: true, status: "active" },
+    create: { name: "Teacher Demo", email: "teacher1@demo.com", passwordHash: pw, roleId: teacherRole.id, isAdmin: true, status: "active" },
   });
 
   await prisma.user.upsert({
     where:  { email: "admin1@demo.com" },
-    update: { name: "Admin Demo", passwordHash: pw, roleId: adminRole.id },
-    create: { name: "Admin Demo", email: "admin1@demo.com", passwordHash: pw, roleId: adminRole.id },
+    update: { name: "Admin Demo", passwordHash: pw, roleId: adminRole.id, status: "active" },
+    create: { name: "Admin Demo", email: "admin1@demo.com", passwordHash: pw, roleId: adminRole.id, status: "active" },
   });
 
   const studentDefs = [
@@ -684,8 +684,8 @@ async function main() {
     studentDefs.map((s) =>
       prisma.user.upsert({
         where:  { email: s.email },
-        update: { name: s.name, passwordHash: pw, roleId: studentRole.id },
-        create: { name: s.name, email: s.email, passwordHash: pw, roleId: studentRole.id },
+        update: { name: s.name, passwordHash: pw, roleId: studentRole.id, status: "active" },
+        create: { name: s.name, email: s.email, passwordHash: pw, roleId: studentRole.id, status: "active" },
       }),
     ),
   );

@@ -159,7 +159,7 @@ export function AuthProvider({ children }) {
         setAuthError(
           `This account is a ${actualLabel} account. Please use the ${actualLabel} portal instead of the ${expectedLabel} portal.`,
         );
-        return;
+        return null;
       }
 
       localStorage.setItem("accessToken",  nextToken);
@@ -168,8 +168,15 @@ export function AuthProvider({ children }) {
       setCurrentUser(user);
       await loadSession(nextToken, user);
       navigate("/");
+      return null;
     } catch (err) {
+      // If the account has an unverified email, return special signal
+      const body = err.responseBody;
+      if (body?.status === "pending_email" && body?.userId) {
+        return { requiresVerification: true, userId: body.userId };
+      }
       setAuthError(err.message || "Login failed.");
+      return null;
     } finally {
       setAuthLoading(false);
     }
@@ -183,6 +190,12 @@ export function AuthProvider({ children }) {
         method: "POST",
         body: JSON.stringify({ name, email, password, role }),
       });
+
+      // Two-step registration: backend returns requiresVerification instead of tokens
+      if (registered.requiresVerification) {
+        return { requiresVerification: true, userId: registered.userId };
+      }
+
       const nextToken  = registered.accessToken;
       const refreshTok = registered.refreshToken;
       const user       = registered.user ?? null;
@@ -192,11 +205,55 @@ export function AuthProvider({ children }) {
       setCurrentUser(user);
       await loadSession(nextToken, user);
       navigate("/");
+      return null;
     } catch (err) {
       setAuthError(err.message || "Registration failed.");
+      return null;
     } finally {
       setAuthLoading(false);
     }
+  }
+
+  async function handleVerifyEmail({ userId, code }) {
+    setAuthLoading(true);
+    setAuthError("");
+    try {
+      const result = await api("/api/auth/verify-email", {
+        method: "POST",
+        body: JSON.stringify({ userId, code }),
+      });
+
+      // Teacher: still needs admin approval
+      if (result.requiresApproval) {
+        return { requiresApproval: true };
+      }
+
+      // Student: immediately gets tokens
+      const nextToken  = result.accessToken;
+      const refreshTok = result.refreshToken;
+      const user       = result.user ?? null;
+      localStorage.setItem("accessToken",  nextToken);
+      if (refreshTok) localStorage.setItem("refreshToken", refreshTok);
+      setToken(nextToken);
+      setCurrentUser(user);
+      await loadSession(nextToken, user);
+      navigate("/");
+      return null;
+    } catch (err) {
+      setAuthError(err.message || "Verification failed.");
+      return null;
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  async function handleResendOtp(userId) {
+    try {
+      await api("/api/auth/resend-otp", {
+        method: "POST",
+        body: JSON.stringify({ userId }),
+      });
+    } catch { /* ignore */ }
   }
 
   function handleLogout() {
@@ -220,6 +277,8 @@ export function AuthProvider({ children }) {
     setAuthError,
     handleSignIn,
     handleRegister,
+    handleVerifyEmail,
+    handleResendOtp,
     handleLogout,
     refreshProblems,
   };

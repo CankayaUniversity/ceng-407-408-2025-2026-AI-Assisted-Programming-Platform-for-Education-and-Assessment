@@ -17,18 +17,22 @@ import LoginForm    from "./components/auth/LoginForm";
 import SectionCard  from "./components/common/SectionCard";
 import StatusMessage from "./components/common/StatusMessage";
 import PageShell    from "./components/layout/PageShell";
+import AppLayout    from "./components/layout/AppLayout";
 
 import ProblemPage              from "./pages/student/ProblemPage";
 import AssignmentsPage          from "./pages/student/AssignmentsPage";
 import AnalyticsPage            from "./pages/student/AnalyticsPage";
+import FlashcardsPage           from "./pages/student/FlashcardsPage";
 import ClassAnalyticsPage       from "./pages/teacher/ClassAnalyticsPage";
 import TeacherDashboardPage     from "./pages/teacher/TeacherDashboardPage";
 import StudentsPage             from "./pages/teacher/StudentsPage";
 import QuestionsPage            from "./pages/teacher/QuestionsPage";
 import GradingPage              from "./pages/teacher/GradingPage";
 import TeacherAssignmentsPage   from "./pages/teacher/AssignmentsPage";
+import PendingApprovalsPage     from "./pages/teacher/PendingApprovalsPage";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { api } from "./lib/api";
 
 const DEMO_EMAIL    = import.meta.env.VITE_DEMO_EMAIL    ?? "student1@demo.com";
 const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD ?? "123456";
@@ -37,15 +41,7 @@ const STUDENT_NAV = [
   { label: "Dashboard",   path: "/", matchPaths: ["/problem/"] },
   { label: "Assignments", path: "/assignments" },
   { label: "Analytics",   path: "/analytics" },
-];
-
-const TEACHER_NAV = [
-  { label: "Dashboard",     path: "/" },
-  { label: "Assignments",   path: "/assignments" },
-  { label: "Students",      path: "/students" },
-  { label: "Question Bank", path: "/questions" },
-  { label: "Grading",       path: "/grading" },
-  { label: "Analytics",     path: "/class-analytics" },
+  { label: "Flashcards",  path: "/flashcards" },
 ];
 
 // ── Role-selection landing screen ─────────────────────────────────────────────
@@ -203,6 +199,27 @@ export default function App() {
     setAuthError("");
   }
 
+  // ── Pending teacher count (admin only) ─────────────────────────────────────
+
+  const [pendingCount, setPendingCount] = useState(0);
+
+  const loadPendingCount = useCallback(async () => {
+    if (!token || !currentUser?.isAdmin) return;
+    try {
+      const res = await api("/api/admin/pending-teachers", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setPendingCount((res.data ?? []).length);
+    } catch { /* ignore */ }
+  }, [token, currentUser?.isAdmin]);
+
+  useEffect(() => {
+    loadPendingCount();
+    if (!currentUser?.isAdmin) return;
+    const id = setInterval(loadPendingCount, 60_000); // refresh every minute
+    return () => clearInterval(id);
+  }, [loadPendingCount, currentUser?.isAdmin]);
+
   // ── Loading splash ──────────────────────────────────────────────────────────
 
   if (bootstrapping) {
@@ -261,6 +278,7 @@ export default function App() {
               password={password}
               setPassword={setPassword}
               handleSignIn={() => handleSignIn({ email, password, expectedRole: portalRole })}
+
               handleRegister={() => handleRegister({ name, email, password, role: portalRole })}
               demoEmail={portalRole === "student" ? DEMO_EMAIL    : null}
               demoPassword={portalRole === "student" ? DEMO_PASSWORD : null}
@@ -276,23 +294,52 @@ export default function App() {
   const commonProps = { currentUser, token, handleLogout, problems };
 
   if (currentUser?.role === "teacher") {
+    // Build nav dynamically — admins get an "Approvals" item with badge
+    const teacherNav = [
+      { label: "Dashboard",     path: "/" },
+      { label: "Assignments",   path: "/assignments" },
+      { label: "Students",      path: "/students" },
+      { label: "Question Bank", path: "/questions" },
+      { label: "Grading",       path: "/grading" },
+      { label: "Analytics",     path: "/class-analytics" },
+      ...(currentUser?.isAdmin
+        ? [{ label: pendingCount > 0 ? `Approvals (${pendingCount})` : "Approvals", path: "/approvals" }]
+        : []),
+    ];
+
     return (
       <Routes>
-        <Route path="/"           element={<TeacherDashboardPage {...commonProps} navItems={TEACHER_NAV} />} />
-        <Route path="/students"   element={<StudentsPage         {...commonProps} navItems={TEACHER_NAV} />} />
+        <Route path="/"           element={<TeacherDashboardPage {...commonProps} navItems={teacherNav} />} />
+        <Route path="/students"   element={<StudentsPage         {...commonProps} navItems={teacherNav} />} />
         <Route
           path="/questions"
           element={
             <QuestionsPage
               {...commonProps}
-              navItems={TEACHER_NAV}
+              navItems={teacherNav}
               onProblemsChanged={refreshProblems}
             />
           }
         />
-        <Route path="/assignments" element={<TeacherAssignmentsPage {...commonProps} navItems={TEACHER_NAV} />} />
-        <Route path="/grading"         element={<GradingPage            {...commonProps} navItems={TEACHER_NAV} />} />
-        <Route path="/class-analytics" element={<ClassAnalyticsPage     {...commonProps} navItems={TEACHER_NAV} />} />
+        <Route path="/assignments"    element={<TeacherAssignmentsPage {...commonProps} navItems={teacherNav} onProblemsChanged={refreshProblems} />} />
+        <Route path="/grading"        element={<GradingPage            {...commonProps} navItems={teacherNav} />} />
+        <Route path="/class-analytics" element={<ClassAnalyticsPage    {...commonProps} navItems={teacherNav} />} />
+        {currentUser?.isAdmin && (
+          <Route
+            path="/approvals"
+            element={
+              <AppLayout
+                title="AI Platform"
+                roleLabel="Admin"
+                userLabel={currentUser?.name}
+                onLogout={handleLogout}
+                navItems={teacherNav}
+              >
+                <PendingApprovalsPage />
+              </AppLayout>
+            }
+          />
+        )}
         <Route path="*"            element={<Navigate to="/" replace />} />
       </Routes>
     );
@@ -308,10 +355,11 @@ export default function App() {
             : <AssignmentsPage {...commonProps} navItems={STUDENT_NAV} />
         }
       />
-      <Route path="/problem/:id" element={<ProblemPage />} />
-      <Route path="/assignments" element={<AssignmentsPage {...commonProps} navItems={STUDENT_NAV} />} />
-      <Route path="/analytics"   element={<AnalyticsPage  {...commonProps} navItems={STUDENT_NAV} />} />
-      <Route path="*"            element={<Navigate to="/" replace />} />
+      <Route path="/problem/:id"  element={<ProblemPage />} />
+      <Route path="/assignments"  element={<AssignmentsPage  {...commonProps} navItems={STUDENT_NAV} />} />
+      <Route path="/analytics"    element={<AnalyticsPage    {...commonProps} navItems={STUDENT_NAV} />} />
+      <Route path="/flashcards"   element={<FlashcardsPage   {...commonProps} navItems={STUDENT_NAV} />} />
+      <Route path="*"             element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

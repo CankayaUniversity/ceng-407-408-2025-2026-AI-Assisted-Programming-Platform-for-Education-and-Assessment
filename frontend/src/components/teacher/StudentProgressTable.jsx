@@ -20,7 +20,8 @@ import {
 import SearchIcon from "@mui/icons-material/Search";
 import GroupIcon  from "@mui/icons-material/Group";
 
-import SectionCard from "../common/SectionCard";
+import SectionCard        from "../common/SectionCard";
+import { YEAR_OPTIONS, yearLabel } from "../../lib/classYear";
 
 function progressColor(progress) {
   if (progress >= 80) return '#22C55E';
@@ -37,12 +38,17 @@ function initials(name = '') {
     .join('');
 }
 
+// Colour per year so it's easy to scan the table
+const YEAR_COLORS = { 1: "primary", 2: "secondary", 3: "success", 4: "warning", 5: "info" };
+
 export default function StudentProgressTable({ students, loading, onStudentClick, studentGroupMap = {} }) {
   const [search,      setSearch]      = useState("");
+  const [filterYear,  setFilterYear]  = useState(0);   // 0 = all
   const [filterRange, setFilterRange] = useState("all");
 
   const visibleStudents = useMemo(() => {
     let result = [...students];
+
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       result = result.filter(
@@ -52,11 +58,17 @@ export default function StudentProgressTable({ students, loading, onStudentClick
           (studentGroupMap[s.id] ?? []).some((g) => g.toLowerCase().includes(q)),
       );
     }
+
+    if (filterYear !== 0) {
+      result = result.filter((s) => s.classYear === filterYear);
+    }
+
     if (filterRange === "high")   result = result.filter((s) => s.progress >= 80);
     if (filterRange === "medium") result = result.filter((s) => s.progress >= 65 && s.progress < 80);
     if (filterRange === "low")    result = result.filter((s) => s.progress < 65);
+
     return result;
-  }, [students, search, filterRange]);
+  }, [students, search, filterYear, filterRange, studentGroupMap]);
 
   return (
     <SectionCard title="Student Progress">
@@ -80,12 +92,25 @@ export default function StudentProgressTable({ students, loading, onStudentClick
             ),
           }}
         />
+
+        {/* Year filter */}
+        <TextField
+          select size="small" label="Year" value={filterYear}
+          onChange={(e) => setFilterYear(Number(e.target.value))}
+          sx={{ minWidth: 140 }}
+        >
+          {YEAR_OPTIONS.map((opt) => (
+            <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+          ))}
+        </TextField>
+
+        {/* Progress filter */}
         <TextField
           select size="small" label="Progress" value={filterRange}
           onChange={(e) => setFilterRange(e.target.value)}
           sx={{ minWidth: 160 }}
         >
-          <MenuItem value="all">All students</MenuItem>
+          <MenuItem value="all">All progress</MenuItem>
           <MenuItem value="high">High (&ge;80%)</MenuItem>
           <MenuItem value="medium">Medium (65–79%)</MenuItem>
           <MenuItem value="low">Low (&lt;65%)</MenuItem>
@@ -111,8 +136,9 @@ export default function StudentProgressTable({ students, loading, onStudentClick
               <TableRow sx={{ bgcolor: 'rgba(148, 163, 184, 0.08)' }}>
                 <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>STUDENT</TableCell>
                 <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>EMAIL</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>YEAR</TableCell>
                 <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>GROUPS</TableCell>
-                <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>PROBLEMS COMPLETED</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>COMPLETED</TableCell>
                 <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>PROGRESS</TableCell>
               </TableRow>
             </TableHead>
@@ -133,7 +159,22 @@ export default function StudentProgressTable({ students, loading, onStudentClick
                       <Typography sx={{ fontWeight: 600 }}>{student.name}</Typography>
                     </Box>
                   </TableCell>
+
                   <TableCell sx={{ color: 'text.secondary' }}>{student.email}</TableCell>
+
+                  <TableCell>
+                    {student.classYear ? (
+                      <Chip
+                        label={yearLabel(student.classYear)}
+                        size="small"
+                        color={YEAR_COLORS[student.classYear] ?? "default"}
+                        sx={{ fontWeight: 600 }}
+                      />
+                    ) : (
+                      <Typography variant="caption" color="text.disabled">—</Typography>
+                    )}
+                  </TableCell>
+
                   <TableCell>
                     {(studentGroupMap[student.id] ?? []).length === 0 ? (
                       <Typography variant="caption" color="text.disabled">—</Typography>
@@ -153,7 +194,9 @@ export default function StudentProgressTable({ students, loading, onStudentClick
                       </Stack>
                     )}
                   </TableCell>
+
                   <TableCell>{student.completed} / {student.total}</TableCell>
+
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 160 }}>
                       <LinearProgress

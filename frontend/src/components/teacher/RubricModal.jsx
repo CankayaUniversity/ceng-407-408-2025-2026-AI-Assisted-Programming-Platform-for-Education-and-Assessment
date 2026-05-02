@@ -10,7 +10,6 @@ import {
   DialogTitle,
   Divider,
   IconButton,
-  InputAdornment,
   Stack,
   Table,
   TableBody,
@@ -227,10 +226,7 @@ export default function RubricModal({ open, onClose, problem, token }) {
                           size="small"
                           type="number"
                           inputProps={{ min: 1, max: 100, style: { textAlign: "center" } }}
-                          sx={{ width: 72 }}
-                          InputProps={{
-                            endAdornment: <InputAdornment position="end">pt</InputAdornment>,
-                          }}
+                          sx={{ width: 80 }}
                         />
                       </TableCell>
                       <TableCell>

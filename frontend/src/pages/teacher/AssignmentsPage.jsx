@@ -44,7 +44,7 @@ function formatDue(dateStr) {
   );
 }
 
-export default function AssignmentsPage({ currentUser, problems, token, handleLogout, navItems }) {
+export default function AssignmentsPage({ currentUser, problems, token, handleLogout, navItems, onProblemsChanged }) {
   const [assignments, setAssignments] = useState([]);
   const [loading,     setLoading]     = useState(true);
 
@@ -246,6 +246,7 @@ export default function AssignmentsPage({ currentUser, problems, token, handleLo
         assignment={editTarget}
         problems={problems}
         token={token}
+        onProblemsChanged={onProblemsChanged}
       />
 
       <EnrollModal

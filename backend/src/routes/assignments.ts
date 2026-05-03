@@ -39,9 +39,9 @@ router.get("/", async (req: Request, res: Response) => {
     });
     res.json({ success: true, data: assignments });
   } else {
-    // Student: only enrolled assignments
+    // Student: only enrolled AND published assignments
     const enrollments = await prisma.assignmentEnrollment.findMany({
-      where:   { userId },
+      where:   { userId, assignment: { isPublished: true } },
       include: {
         assignment: {
           select: {

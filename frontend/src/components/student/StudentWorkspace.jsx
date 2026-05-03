@@ -152,6 +152,15 @@ export default function StudentWorkspace({
           title={selectedProblem?.title || "Code Editor"}
           action={
             <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
+              {flashcards.length > 0 && (
+                <Chip
+                  label={`💡 Feedback Cards (${flashcards.length})`}
+                  color="primary"
+                  variant="outlined"
+                  onClick={onViewFlashcards}
+                  sx={{ cursor: "pointer", fontWeight: 600 }}
+                />
+              )}
               <FormControl size="small" sx={{ minWidth: 160 }}>
                 <InputLabel id="language-select-label">Language</InputLabel>
                 <Select
@@ -258,17 +267,6 @@ export default function StudentWorkspace({
 
           <Box sx={{ mt: 2 }}>
             <SubmissionHistory submissions={submissions} loading={submissionsLoading} />
-            {flashcards.length > 0 && (
-              <Box sx={{ mt: 1.5, display: "flex", justifyContent: "flex-end" }}>
-                <Chip
-                  label={`View Feedback Cards (${flashcards.length})`}
-                  color="primary"
-                  variant="outlined"
-                  onClick={onViewFlashcards}
-                  sx={{ cursor: "pointer", fontWeight: 600 }}
-                />
-              </Box>
-            )}
           </Box>
         </SectionCard>
 

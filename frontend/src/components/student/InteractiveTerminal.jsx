@@ -36,7 +36,7 @@ export default function InteractiveTerminal({ wsUrl, onReady }) {
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
     term.open(containerRef.current);
-    fitAddon.fit();
+    try { fitAddon.fit(); } catch { /* ignore if container has zero dimensions at mount */ }
     termRef.current = term;
 
     // ── WebSocket ─────────────────────────────────────────────────────────

@@ -232,6 +232,17 @@ export default function App() {
     );
   }
 
+  // Token is set but currentUser hasn't loaded yet — brief transition during login
+  if (token && !currentUser) {
+    return (
+      <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center", bgcolor: "background.default", px: 2 }}>
+        <SectionCard title="Loading">
+          <StatusMessage loading loadingText="Signing in..." />
+        </SectionCard>
+      </Box>
+    );
+  }
+
   // ── Auth screens ────────────────────────────────────────────────────────────
 
   if (!token) {

@@ -388,7 +388,14 @@ export default function StudentAnalyticsContent({ data, loading, error }) {
     );
   }
   if (error) return <Alert severity="error">{error}</Alert>;
-  if (!data)  return null;
+  if (!data)  return (
+    <Box sx={{ py: 8, textAlign: "center" }}>
+      <Typography color="text.secondary" gutterBottom>No analytics data yet.</Typography>
+      <Typography variant="caption" color="text.disabled">
+        Submit solutions to problems to start seeing progress here.
+      </Typography>
+    </Box>
+  );
 
   const summary  = data.summary           ?? {};
   const perProb  = data.perProblem        ?? [];

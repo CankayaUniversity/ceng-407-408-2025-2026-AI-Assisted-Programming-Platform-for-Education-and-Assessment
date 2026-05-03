@@ -10,6 +10,7 @@ const STUDENT_NAV = [
   { label: "Dashboard",   path: "/", matchPaths: ["/problem/"] },
   { label: "Assignments", path: "/assignments" },
   { label: "Analytics",   path: "/analytics" },
+  { label: "Flashcards",  path: "/flashcards" },
 ];
 
 const LANGUAGE_OPTIONS = [

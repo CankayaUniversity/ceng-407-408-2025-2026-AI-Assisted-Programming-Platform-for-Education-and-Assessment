@@ -180,7 +180,7 @@ router.post("/generate", async (req, res) => {
         data: {
           userId,
           problemId,
-          submissionId: acceptedAttempt.submissionId ?? undefined,
+          submissionId: acceptedAttempt.submissionId ?? null,
           cards,
         },
       });

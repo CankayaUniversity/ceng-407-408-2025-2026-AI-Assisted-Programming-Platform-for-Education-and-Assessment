@@ -391,7 +391,7 @@ model Flashcard {
   id           Int      @id @default(autoincrement())
   userId       Int
   problemId    Int
-  submissionId Int
+  submissionId Int?
   cards        Json     // FlashcardItem[]
   createdAt    DateTime @default(now())
 

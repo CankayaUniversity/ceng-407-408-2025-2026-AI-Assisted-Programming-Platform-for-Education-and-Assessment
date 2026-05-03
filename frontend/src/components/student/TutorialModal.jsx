@@ -73,7 +73,7 @@ export default function TutorialModal({ open, onClose, tag, language, token }) {
         <Stack direction="row" spacing={1.5} alignItems="center">
           <Typography variant="h6" fontWeight={700}>{tag}</Typography>
           <Chip
-            label={language.toUpperCase()}
+            label={(language ?? "").toUpperCase()}
             size="small"
             variant="outlined"
             sx={{ fontSize: 11 }}

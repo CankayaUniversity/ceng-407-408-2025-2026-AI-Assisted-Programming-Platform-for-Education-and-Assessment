@@ -380,6 +380,31 @@ export default function StudentAnalyticsContent({ data, loading, error }) {
     setErrorModalOpen(true);
   }
 
+  // ── Derive perProb early so useMemo can always run (Rules of Hooks) ──────────
+  const perProb = data?.perProblem ?? [];
+
+  // ── Inverted index: errorType → [{ problemId, title, difficulty, solved, count }] ──
+  const errorToProblems = useMemo(() => {
+    const map = {};
+    for (const p of perProb) {
+      for (const [errKey, cnt] of Object.entries(p.errorProfile ?? {})) {
+        if (!map[errKey]) map[errKey] = [];
+        map[errKey].push({
+          problemId:  p.problemId,
+          title:      p.title,
+          difficulty: p.difficulty,
+          solved:     p.solved,
+          count:      cnt,
+        });
+      }
+    }
+    for (const key of Object.keys(map)) {
+      map[key].sort((a, b) => b.count - a.count);
+    }
+    return map;
+  }, [perProb]);
+
+  // ── Early returns AFTER all hooks ────────────────────────────────────────────
   if (loading) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
@@ -398,7 +423,6 @@ export default function StudentAnalyticsContent({ data, loading, error }) {
   );
 
   const summary  = data.summary           ?? {};
-  const perProb  = data.perProblem        ?? [];
   const errProf  = data.errorProfile      ?? {};
   const langUse  = data.languageUsage     ?? {};
   const timeline = data.submissionTimeline ?? [];
@@ -424,27 +448,6 @@ export default function StudentAnalyticsContent({ data, loading, error }) {
     }))
     .sort((a, b) => b.attempts - a.attempts)
     .slice(0, 12);
-
-  // ── Inverted index: errorType → [{ problemId, title, difficulty, solved, count }] ──
-  const errorToProblems = useMemo(() => {
-    const map = {};
-    for (const p of perProb) {
-      for (const [errKey, cnt] of Object.entries(p.errorProfile ?? {})) {
-        if (!map[errKey]) map[errKey] = [];
-        map[errKey].push({
-          problemId:  p.problemId,
-          title:      p.title,
-          difficulty: p.difficulty,
-          solved:     p.solved,
-          count:      cnt,
-        });
-      }
-    }
-    for (const key of Object.keys(map)) {
-      map[key].sort((a, b) => b.count - a.count);
-    }
-    return map;
-  }, [perProb]);
 
   // ── Language performance ──────────────────────────────────────────────────
   const langStatsMap = perProb.reduce((acc, p) => {

@@ -2,22 +2,14 @@
   "tag": "comments",
   "language": "c",
   "title": "C Comments",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
   "order": 5,
   "sections": [
     {
-      "heading": "Comments in C",
-      "body": "Comments are notes for humans. They help explain code and make it easier to read. They can also be used to temporarily \"disable\" code while testing. Comments can be single-line or multi-line. Remember: Comments are ignored by the compiler, so they do not affect your program's output.",
-      "code": ""
-    },
-    {
-      "heading": "Single-line Comments",
-      "body": "Single-line comments start with two forward slashes (//). Any text between // and the end of the line is ignored by the compiler. This example uses a single-line comment before a line of code:",
-      "code": ""
-    },
-    {
-      "heading": "Multi-line Comments",
-      "body": "Multi-line comments start with /* and end with */. Any text between /* and */ will be ignored by the compiler:",
-      "code": ""
+      "heading": "Comments",
+      "body": "Comments in C\n\nComments are notes for humans. They help explain code and make it easier to read.\nThey can also be used to temporarily \"disable\" code while testing.\nComments can be single-line or multi-line.\nRemember: Comments are ignored by the compiler, so they do not affect your program's output.\nRemember: Comments are ignored by the compiler, so they do not affect your program's output.\n\nSingle-line Comments\n\nSingle-line comments start with two forward slashes (//).\nAny text between // and the end of the line is ignored by the compiler.\nThis example uses a single-line comment before a line of code:\n\nExample\n\nThis example uses a single-line comment at the end of a line of code:\n\nExample\n\nYou can also use // to disable a single line of code:\n\nExample\n\nMulti-line Comments\n\nMulti-line comments start with /* and end with */.\nAny text between /* and */ will be ignored by the compiler:\n\nExample\n\nSingle or multi-line comments?\nIt is up to you which you want to use. Normally, we use // for short comments and /* */ for longer comments.\nGood to know: Before C99 (released in 1999), you could only use multi-line comments in C.\nIt is up to you which you want to use. Normally, we use // for short comments and /* */ for longer comments.\nGood to know: Before C99 (released in 1999), you could only use multi-line comments in C.",
+      "code": "// This is a commentprintf(\"Hello World!\");\n\nprintf(\"Hello World!\"); // This is a comment\n\nprintf(\"This will run\");// printf(\"This will NOT run\");\n\n/* The code below will print the words Hello World!to the screen, and it is\n amazing */printf(\"Hello World!\");"
     }
   ]
 }

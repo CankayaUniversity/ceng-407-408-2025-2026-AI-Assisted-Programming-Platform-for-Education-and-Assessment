@@ -1,0 +1,15 @@
+{
+  "tag": "input-validation",
+  "language": "c",
+  "title": "C Input Validation",
+  "category": "C Errors",
+  "categoryOrder": 7,
+  "order": 5,
+  "sections": [
+    {
+      "heading": "Input Validation",
+      "body": "Input Validation\n\nWhen users enter data into a C program, they might type something unexpected. Input validation makes sure the input is correct before the program continues.\nWithout validation, your program might crash or give the wrong result!\nThe examples below show simple ways to check if the user's input is valid in C.\n\nValidate Number Range\n\nCheck if the number is within an allowed range (for example, 1 to 5):\n\nExample\n\nExample Result:\n\nValidate Text Input\n\nCheck that a name is not empty. Use fgets() and check the first character:\n\nExample\n\nExample Result:\n\nValidate Integer Input\n\nMake sure the user enters a number. If they enter something else (like a letter), ask again using fgets() and sscanf():\n\nExample\n\nExample Result:\nTip: You can read more about fgets() and sscanf() in our\n<stdio.h> library reference.",
+      "code": "#include <stdio.h>\n\n int main() {\n int number; // Variable to store the user's number\n\n do {\n printf(\"Choose a number between 1 and 5: \");\n scanf(\"%d\", &number); // Read number input\n while (getchar() != '\\n'); // Clear leftover characters from input buffer\n } while (number < 1 || number > 5); // Keep asking until number is between 1 and 5\n\n printf(\"You chose: %d\\n\", number); // Print the valid number\n return 0;\n }\n\n#include <stdio.h>\n #include <string.h>\n\n int main() {\n char name[100]; // Buffer to store the user's name\n\n do {\n printf(\"Enter your name: \");\n fgets(name, sizeof(name), stdin); // Read input as a string\n name[strcspn(name, \"\\n\")] = 0; // Remove the newline character if present\n } while (strlen(name) == 0); // Repeat if the input is empty\n\n printf(\"Hello, %s\\n\", name); // Greet the user\n return 0;\n }\n\n#include <stdio.h>\n\n int main() {\n int number; // Variable to store the user's number\n char input[100]; // Buffer to hold user input as a string\n\n printf(\"Enter a number: \");\n\n // Keep reading input until the user enters a valid integer\n while (fgets(input, sizeof(input), stdin)) {\n // Try to read an integer from the input string\n if (sscanf(input, \"%d\", &number) == 1) {\n break; // Success: break out of the loop\n } else {\n printf(\"Invalid input. Try again: \"); //\n If not an integer, ask again\n }\n } // Print the valid number entered by\n the user\n\n printf(\"You entered: %d\\n\", number);\n return 0;\n }"
+    }
+  ]
+}

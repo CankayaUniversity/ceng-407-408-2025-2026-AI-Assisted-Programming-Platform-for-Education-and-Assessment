@@ -2,77 +2,39 @@
   "tag": "operators",
   "language": "c",
   "title": "C Operators",
-  "order": 9,
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "order": 10,
   "sections": [
     {
       "heading": "Operators",
-      "body": "Operators are used to perform operations on variables and values. In the example below, we use the + operator to add together two values:",
-      "code": ""
+      "body": "Operators\n\nOperators are used to perform operations on variables and values.\nIn the example below, we use the\n+ operator to add together two values:\n\nExample\n\nAlthough the + operator is often used to add together two values, like in the example above, it can also be used to add together a variable and a value, or a variable and another variable:\n\nExample\n\nC divides the operators into the following groups:\nArithmetic operators\n\tAssignment operators\n\tComparison operators\n\tLogical operators\n\tBitwise operators (advanced)",
+      "code": "int myNum = 100 + 50;\n\nint sum1 = 100 + 50;\n // 150 (100 + 50)\n int sum2 = sum1 + 250; // 400 (150 + 250)\n int sum3 = sum2 + sum2; // 800 (400 + 400)"
     },
     {
       "heading": "Arithmetic Operators",
-      "body": "Arithmetic operators are used to perform common mathematical operations. Operator | Name | Description | Example | Try it + | Addition | Adds together two values | x + y | Try it » - | Subtraction | Subtracts one value from another | x - y | Try it » * | Multiplication | Multiplies two values | x * y | Try it » / | Division | Divides one value by another | x / y | Try it » % | Modulus | Returns the division remainder | x % y | Try it » ++ | Increment | Increases the value of a variable by 1 | ++x | Try it » -- | Decrement | Decreases the value of a variable by 1 | --x | Try it » Here is an example using different arithmetic operators in one example:",
-      "code": ""
-    },
-    {
-      "heading": "Incrementing and Decrementing",
-      "body": "The ++ operator increases a value by 1, while the -- operator decreases a value by 1:",
-      "code": ""
+      "body": "Arithmetic Operators\n\nArithmetic operators are used to perform common mathematical operations.\nHere is an example using different arithmetic operators in one example:\n\nExample\n\nTry it Yourself »\nNote: When dividing two integers in C, the result will also be an integer.\nFor example, 10 / 3 gives 3.\nIf you want a decimal result, use float or double values, like 10.0 / 3.\n\nExample\n\nTry it Yourself »\n\nIncrementing and Decrementing\n\nIncrementing and decrementing are very common in programming, especially when working with counters, loops, and arrays (which you will learn more about in later chapters).\nThe ++ operator increases a value by 1, while the -- operator decreases a value by 1:\n\nExample\n\nTry it Yourself »\n\nExample\n\nTry it Yourself »\nSometimes, you might both increment and decrement the same variable. Remember that if you increase a value and later decrease it, it will go up by one and then back down by one - ending up where it started:\n\nExample\n\nTry it Yourself »\nImagine you are building a program to count how many people enter and leave a room.\nYou can use ++ to increase the counter when someone enters,\nand -- to decrease it when someone leaves:\n\nExample\n\nTry it Yourself »",
+      "code": "int x = 10;\nint y = 3;\n\nprintf(\"%d\\n\", x + y); // 13\nprintf(\"%d\\n\", x - y); // 7\nprintf(\"%d\\n\", x * y); // 30\nprintf(\"%d\\n\", x / y); // 3\nprintf(\"%d\\n\", x % y); // 1\n\nint z = 5;\n++z;\nprintf(\"%d\\n\", z); // 6\n--z;\nprintf(\"%d\\n\", z); // 5\n\nint a = 10;\nint b = 3;\nprintf(\"%d\\n\", a / b); // Integer division, result is 3\n\ndouble c = 10.0;\ndouble d = 3.0;\nprintf(\"%f\\n\", c / d); // Decimal division, result is 3.333...\n\nint x = 5;\n\n++x; // Increment x by 1\nprintf(\"%d\\n\", x); // 6\n\nint x = 5;\n\n--x; // Decrement x by 1\nprintf(\"%d\\n\", x); // 4\n\nint x = 5;\n\n++x; // Increment x by 1 (x becomes 6)\n--x; // Decrement x by 1 (x becomes 5 again)\n\nprintf(\"%d\\n\", x); // 5\n\nint peopleInRoom = 0;\n\n// 3 people enter\npeopleInRoom++;\npeopleInRoom++;\npeopleInRoom++;\n\nprintf(\"%d\\n\", peopleInRoom); // 3\n\n// 1 person leaves\npeopleInRoom--;\n\nprintf(\"%d\\n\", peopleInRoom); // 2"
     },
     {
       "heading": "Assignment Operators",
-      "body": "Assignment operators are used to assign values to variables. In the example below, we use the assignment operator (=) to assign the value 10 to a variable called x:",
-      "code": ""
-    },
-    {
-      "heading": "Real-Life Example: Tracking Savings",
-      "body": "Assignment operators can also be used in real-life scenarios. For example, you can use the += operator to keep track of savings when you add money to an account:",
-      "code": ""
+      "body": "Assignment Operators\n\nAssignment operators are used to assign values to variables.\nIn the example below, we use the assignment operator (=)\nto assign the value 10 to a variable called x:\n\nExample\n\nThe addition assignment operator (+=) adds a value to a variable:\n\nExample\n\nA list of all assignment operators:\nNote: Most assignment operators are just shorter ways of writing code.\nFor example, x += 5 is the same as x = x + 5, but shorter and often easier to read.\n\nReal-Life Example: Tracking Savings\n\nAssignment operators can also be used in real-life scenarios.\nFor example, you can use the += operator to keep track of savings when you add money to an account:\n\nExample",
+      "code": "int x = 10;\n\nint x = 10;x += 5;\n\nint savings = 100;\nsavings += 50; // add 50 to savings\n\nprintf(\"Total savings: %d\\n\", savings);"
     },
     {
       "heading": "Comparison Operators",
-      "body": "Comparison operators are used to compare two values (or variables). This is important in programming, because it helps us to find answers and make decisions. In the following example, we use the greater than operator (>) to find out if 5 is greater than 3:",
-      "code": ""
-    },
-    {
-      "heading": "Real-Life Examples",
-      "body": "Comparison operators are often used in real-world conditions, such as checking if a person is old enough to vote:",
-      "code": ""
+      "body": "Comparison Operators\n\nComparison operators are used to compare two values (or variables). This is important in programming, because it helps us to find answers and make decisions.\nThe return value of a comparison is either 1 or 0, which means true (1) or false (0). These values are known as\nBoolean values, and you will learn more about them in the Booleans and If..Else chapter.\nIn the following example, we use the greater than operator (>) to find out if 5 is greater than 3:\n\nExample\n\nA list of all comparison operators:\n\nReal-Life Examples\n\nComparison operators are often used in real-world conditions, such as checking if a person is old enough to vote:\n\nExample\n\nTry it Yourself »\nAnother common use is checking if a password is long enough:\n\nExample\n\nTry it Yourself »",
+      "code": "int x = 5;int y = 3;printf(\"%d\", x > y); // returns 1 (true) because 5 is greater than 3\n\nint age = 18;\n\nprintf(\"%d\\n\", age >= 18); // 1 (true), old enough to vote\nprintf(\"%d\\n\", age < 18); // 0 (false)\n\nint passwordLength = 5;\n\nprintf(\"%d\\n\", passwordLength >= 8); // 0 (false), too short\nprintf(\"%d\\n\", passwordLength < 8); // 1 (true), needs more characters"
     },
     {
       "heading": "Logical Operators",
-      "body": "As with comparison operators, you can also test for true or false values with logical operators. Logical operators are used to determine the logic between variables or values, by combining multiple conditions: Operator | Name | Example | Description | Try it && | AND | x < 5 && x < 10 | Returns 1 if both statements are true | Try it » || | OR | x < 5 || x < 4 | Returns 1 if one of the statements is true | Try it » ! | NOT | !(x < 5 && x < 10) | Reverse the result, returns 0 if the result is 1 | Try it »",
-      "code": ""
-    },
-    {
-      "heading": "Real-Life Example: Login Check",
-      "body": "The example below shows how logical operators can be used in a real situation, e.g. when checking login status and access rights:",
-      "code": ""
+      "body": "Logical Operators\n\nAs with comparison operators, you can also test for true or false values with logical operators.\nLogical operators are used to determine the logic between variables or\nvalues, by combining multiple conditions:\n\nReal-Life Example: Login Check\n\nThe example below shows how logical operators can be used in a real situation, e.g. when checking login status and access rights:\n\nExample\n\nResult:\nTry it Yourself »\nRemember: in C, 1 means true and 0 means false. Logical operators often become easier to understand once you start using them inside if statements, which you will learn about in the upcoming chapters.",
+      "code": "int isLoggedIn = 1;\nint isAdmin = 0;\n\nprintf(\"Regular user: %d\\n\", isLoggedIn && !isAdmin);\nprintf(\"Has access: %d\\n\", isLoggedIn || isAdmin);\nprintf(\"Not logged in: %d\\n\", !isLoggedIn);"
     },
     {
       "heading": "Operator Precedence",
-      "body": "When a calculation contains more than one operator, C follows order of operations rules to decide which part to calculate first. For example, multiplication happens before addition:",
-      "code": ""
-    },
-    {
-      "heading": "Why Does This Happen?",
-      "body": "In 2 + 3 * 4, the multiplication is done first, so the answer is 14. If you want the addition to happen first, you must use parentheses: (2 + 3) * 4, which gives 20. Tip: Always use parentheses ( ) if you want to make sure the calculation is done in the order you expect. It also makes your code easier to read.",
-      "code": ""
-    },
-    {
-      "heading": "Order of Operations",
-      "body": "Here are some common operators in C, from highest to lowest priority: • () - Parentheses • *, /, % - Multiplication, Division, Modulus • +, - - Addition, Subtraction • >, <, >=, <= - Comparison • ==, != - Equality • && - Logical AND • || - Logical OR • = - Assignment",
-      "code": ""
-    },
-    {
-      "heading": "Another Example",
-      "body": "Subtraction and addition are done from left to right, unless you add parentheses:",
-      "code": ""
-    },
-    {
-      "heading": "Challenge: Calculate the Total Cost of an Item",
-      "body": "Test your understanding of C operators by completing a small coding challenge.",
-      "code": ""
+      "body": "Operator Precedence\n\nWhen a calculation contains more than one operator, C follows order of operations rules to decide which part to calculate first.\nFor example, multiplication happens before addition:\n\nExample\n\nTry it Yourself »\n\nWhy Does This Happen?\n\nIn 2 + 3 * 4, the multiplication is done first, so the answer is 14.\nIf you want the addition to happen first, you must use parentheses: (2 + 3) * 4, which gives 20.\nTip: Always use parentheses ( ) if you want to make sure the calculation is done in the order you expect. It also makes your code easier to read.\n\nOrder of Operations\n\nHere are some common operators in C, from highest to lowest priority:\n() - Parentheses\n *, /, % - Multiplication, Division, Modulus\n +, - - Addition, Subtraction\n >, <, >=, <= - Comparison\n ==, != - Equality\n && - Logical AND\n || - Logical OR\n = - Assignment\n\nAnother Example\n\nSubtraction and addition are done from left to right, unless you add parentheses:\n\nExample\n\nTry it Yourself »\nRemember: Parentheses always come first. Use them to control the order of your calculations.",
+      "code": "int result1 = 2 + 3 * 4; // 2 + 12 = 14\nint result2 = (2 + 3) * 4; // 5 * 4 = 20\n\nprintf(\"%d\\n\", result1);\nprintf(\"%d\\n\", result2);\n\nint result1 = 10 - 2 + 5; // (10 - 2) + 5 = 13\nint result2 = 10 - (2 + 5); // 10 - 7 = 3\n\nprintf(\"%d\\n\", result1);\nprintf(\"%d\\n\", result2);"
     }
   ]
 }

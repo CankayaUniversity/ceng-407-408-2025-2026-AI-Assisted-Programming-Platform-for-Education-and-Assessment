@@ -2,107 +2,44 @@
   "tag": "data-types",
   "language": "c",
   "title": "C Data Types",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
   "order": 7,
   "sections": [
     {
       "heading": "Data Types",
-      "body": "As explained in the Variables chapter, a variable in C must be a specified data type, and you must use a format specifier inside the printf() function to display it:",
-      "code": ""
+      "body": "Data Types\n\nAs explained in the Variables chapter, a variable in C must be a specified\ndata type,\nand you must use a format specifier inside the printf() function to display it:\n\nExample\n\nBasic Data Types\n\nThe data type specifies the size and type of information the variable will store.\nIn this tutorial, we will focus on the most basic ones:\n\nBasic Format Specifiers\n\nThere are different format specifiers for each data type. Here are some of\nthem:\nNote: It is important that you use the correct format specifier for the specified data type.\nIf not, the program may produce errors or even crash.",
+      "code": "// Create variablesint myNum = 5; // Integer (whole number)float\n myFloatNum = 5.99; // Floating point numberchar myLetter = 'D'; //\n Character// Print variablesprintf(\"%d\\n\", myNum);\n printf(\"%f\\n\", myFloatNum);printf(\"%c\\n\", myLetter);"
     },
     {
-      "heading": "Basic Data Types",
-      "body": "The data type specifies the size and type of information the variable will store. In this tutorial, we will focus on the most basic ones: Data Type | Size | Description | Example int | 2 or 4 bytes | Stores whole numbers, without decimals | 1 float | 4 bytes | Stores fractional numbers, containing one or more decimals. Sufficient for storing 6-7 decimal digits | 1.99 double | 8 bytes | Stores fractional numbers, containing one or more decimals. Sufficient for storing 15 decimal digits | 1.99 char | 1 byte | Stores a single character/letter/number, or ASCII values | 'A'",
-      "code": ""
+      "heading": "Character Data Types",
+      "body": "The char Type\n\nThe char data type is used to store a\nsingle character.\nThe character must be surrounded by single quotes, like 'A' or 'c', and we use the %c format specifier to print it:\n\nExample\n\nAlternatively, if you are familiar with ASCII, you can use ASCII values to display certain characters. Note that these values are not surrounded by quotes (''),\nas they are numbers:\n\nExample\n\nTip: A list of all ASCII values can be found in our ASCII Table Reference.\n\nNotes on Characters\n\nIf you try to store more than a single character, it will only print the last\ncharacter:\n\nExample\n\nNote: Don't use the char type for storing multiple\ncharacters, as it may produce errors.\nNote: Don't use the char type for storing multiple\ncharacters, as it may produce errors.\nTo store multiple characters (or whole words), use strings (which you will learn more about in a later chapter):\n\nExample\n\nFor now, just know that we use strings for storing multiple characters/text, and the char type for single characters.\nFor now, just know that we use strings for storing multiple characters/text, and the char type for single characters.",
+      "code": "char myGrade = 'A';\n printf(\"%c\", myGrade);\n\nchar a = 65, b = 66, c = 67;\n printf(\"%c\", a);printf(\"%c\", b);printf(\"%c\", c);\n\nchar myText = 'Hello';\n printf(\"%c\", myText);\n\nchar myText[] = \"Hello\";printf(\"%s\", myText);"
     },
     {
-      "heading": "Basic Format Specifiers",
-      "body": "There are different format specifiers for each data type. Here are some of them: Format Specifier | Data Type | Try it %d or %i | int | Try it » %f or %F | float | Try it » %lf | double | Try it » %c | char | Try it » %s | Used for strings (text), which you will learn more about in a later chapter | Try it »",
-      "code": ""
+      "heading": "Numeric Data Types",
+      "body": "Numeric Types\n\nUse int when you need to store a whole number without decimals, like 35 or 1000, and float or double when you need a floating point number (with decimals), like 9.99 or 3.14515.\n\nint\n\nfloat\n\ndouble\n\nfloat vs. double\nThe precision of a floating point value indicates how many digits the value can have\nafter the decimal point.\nThe precision of float is six or seven\ndecimal digits, while double variables have a precision\nof about 15 digits. Therefore, it is often safer to use double for most calculations - but note that it takes up twice as much memory as float (8\nbytes vs. 4 bytes).\nfloat vs. double\nThe precision of a floating point value indicates how many digits the value can have\nafter the decimal point.\nThe precision of float is six or seven\ndecimal digits, while double variables have a precision\nof about 15 digits. Therefore, it is often safer to use double for most calculations - but note that it takes up twice as much memory as float (8\nbytes vs. 4 bytes).\n\nScientific Numbers\n\nIn C, you can write very large or very small floating-point numbers using scientific notation.\nThis is done using the letter e (or E), which stands for \"times 10 to the power of\".\nFor example, 35e3 means 35 × 10³ =\n35000.\nThis is useful for writing numbers in a shorter way. Especially when working with scientific values or large-scale data.\n\nExample",
+      "code": "int myNum = 1000;\n printf(\"%d\", myNum);\n\nfloat myNum = 5.75;\n printf(\"%f\", myNum);\n\ndouble myNum = 19.99;\n printf(\"%lf\", myNum);\n\nfloat f1 = 35e3; // 35 * 10^3 = 35000double d1 = 12E4; // 12 * 10^4 = 120000printf(\"%f\\n\", f1);\n printf(\"%lf\", d1);"
     },
     {
-      "heading": "The char Type",
-      "body": "The char data type is used to store a single character. The character must be surrounded by single quotes, like 'A' or 'c', and we use the %c format specifier to print it:",
-      "code": ""
+      "heading": "Decimal Precision",
+      "body": "Set Decimal Precision\n\nYou have probably already noticed that if you print a floating point number,\nthe output will show many digits after the decimal point:\n\nExample\n\nIf you want to remove the extra zeros (set decimal precision), you can use a\ndot (.) followed by a number that specifies how many digits that should be shown\nafter the decimal point:\n\nExample",
+      "code": "float myFloatNum = 3.5;double myDoubleNum = 19.99;\n printf(\"%f\\n\", myFloatNum);\n // Outputs 3.500000printf(\"%lf\", myDoubleNum); // Outputs\n 19.990000\n\nfloat myFloatNum = 3.5;printf(\"%f\\n\", myFloatNum); // Default will show 6 digits after the decimal pointprintf(\"%.1f\\n\",\n myFloatNum); // Only show 1 digitprintf(\"%.2f\\n\", myFloatNum); // Only\n show 2 digitsprintf(\"%.4f\", myFloatNum); // Only show 4 digits"
     },
     {
-      "heading": "Notes on Characters",
-      "body": "If you try to store more than a single character, it will only print the last character:",
-      "code": ""
+      "heading": "The sizeof Operator",
+      "body": "Get the Memory Size\n\nWe introduced in the data types chapter that the memory size of a variable varies depending on the type:\nThe memory size refers to how much space a type occupies in the computer's memory.\nTo actually get the size (in bytes) of a data type or variable, use the sizeof operator:\n\nExample\n\nNote that we use the %zu format specifier to print the result, instead of %d. This is because the compiler expects the sizeof operator to return a value of type size_t, which is an unsigned integer type. On some computers it might work with %d, but it is safer and more portable to use %zu, which is specifically designed for printing size_t values.\n\nWhy Should I Know the Size of Data Types?\nKnowing the size of data types helps you understand how much memory your program uses.\nThis is important when writing larger programs or working with limited memory, because it can affect both performance and efficiency.\n\nFor example, the size of a char type is 1 byte. Which means if you have an array of 1000 char values, it will occupy 1000 bytes (1 KB) of memory.\nUsing the right data type for the right purpose will save memory and improve the performance of your program.\nYou will learn more about the sizeof operator later in this tutorial, and how to use it in different scenarios.\nNote that we use the %zu format specifier to print the result, instead of %d. This is because the compiler expects the sizeof operator to return a value of type size_t, which is an unsigned integer type. On some computers it might work with %d, but it is safer and more portable to use %zu, which is specifically designed for printing size_t values.\nKnowing the size of data types helps you understand how much memory your program uses.\nThis is important when writing larger programs or working with limited memory, because it can affect both performance and efficiency.\nFor example, the size of a char type is 1 byte. Which means if you have an array of 1000 char values, it will occupy 1000 bytes (1 KB) of memory.\nUsing the right data type for the right purpose will save memory and improve the performance of your program.\nYou will learn more about the sizeof operator later in this tutorial, and how to use it in different scenarios.",
+      "code": "int myInt;float myFloat;double myDouble;char myChar;\n printf(\"%zu\\n\", sizeof(myInt));printf(\"%zu\\n\", sizeof(myFloat));\n printf(\"%zu\\n\", sizeof(myDouble));printf(\"%zu\\n\", sizeof(myChar));"
     },
     {
-      "heading": "Numeric Types",
-      "body": "Use int when you need to store a whole number without decimals, like 35 or 1000, and float or double when you need a floating point number (with decimals), like 9.99 or 3.14515.",
-      "code": ""
+      "heading": "Data Types Examples",
+      "body": "Real-Life Example\n\nHere's a real-life example of using different data types, to calculate and\noutput the total cost of a number of items:\n\nExample",
+      "code": "// Create variables of different data typesint items = 50;float\n cost_per_item = 9.99;float total_cost = items * cost_per_item;char\n currency = '$';// Print variablesprintf(\"Number of items: %d\\n\",\n items);printf(\"Cost per item: %.2f %c\\n\", cost_per_item, currency);\n printf(\"Total cost = %.2f %c\\n\", total_cost, currency);"
     },
     {
-      "heading": "int",
-      "body": "",
-      "code": "int myNum = 1000;\n\n  printf(\"%d\", myNum);"
-    },
-    {
-      "heading": "float",
-      "body": "",
-      "code": "float myNum = 5.75;\n\n  printf(\"%f\", myNum);"
-    },
-    {
-      "heading": "double",
-      "body": "float vs. double The precision of a floating point value indicates how many digits the value can have after the decimal point. The precision of float is six or seven decimal digits, while double variables have a precision of about 15 digits. Therefore, it is often safer to use double for most calculations - but note that it takes up twice as much memory as float (8 bytes vs. 4 bytes).",
-      "code": "double myNum = 19.99;\n\n  printf(\"%lf\", myNum);"
-    },
-    {
-      "heading": "Scientific Numbers",
-      "body": "In C, you can write very large or very small floating-point numbers using scientific notation. This is done using the letter e (or E), which stands for \"times 10 to the power of\". For example, 35e3 means 35 × 10³ = 35000. This is useful for writing numbers in a shorter way. Especially when working with scientific values or large-scale data.",
-      "code": ""
-    },
-    {
-      "heading": "Set Decimal Precision",
-      "body": "You have probably already noticed that if you print a floating point number, the output will show many digits after the decimal point:",
-      "code": ""
-    },
-    {
-      "heading": "Get the Memory Size",
-      "body": "We introduced in the data types chapter that the memory size of a variable varies depending on the type: Data Type | Size int | 2 or 4 bytes float | 4 bytes double | 8 bytes char | 1 byte The memory size refers to how much space a type occupies in the computer's memory. To actually get the size (in bytes) of a data type or variable, use the sizeof operator:",
-      "code": ""
-    },
-    {
-      "heading": "Real-Life Example",
-      "body": "Here's a real-life example of using different data types, to calculate and output the total cost of a number of items:",
-      "code": ""
-    },
-    {
-      "heading": "More Data Types",
-      "body": "Besides the basic types (int, float, double, char), C also gives you extended keywords (short, long, unsigned) to control how large the number is, or whether it can be negative: Type | Size* | Range (commonly) | Format Specifier short int | 2 bytes | -32,768 to 32,767 | %hd unsigned int | 2 or 4 bytes | 0 to 65,535 (2 bytes) 0 to 4,294,967,295 (4 bytes) | %u long int | 4 or 8 bytes | -2,147,483,648 to 2,147,483,647 (4 bytes) -9,223,372,036,854,775,808 to 9,223,372,036,854,775,807 (8 bytes) | %ld long long int | 8 bytes | -9,223,372,036,854,775,808 to 9,223,372,036,854,775,807 | %lld unsigned long int | 4 or 8 bytes | 0 to 4,294,967,295 (4 bytes) 0 to 18,446,744,073,709,551,615 (8 bytes) | %lu unsigned long long int | 8 bytes | 0 to 18,446,744,073,709,551,615 | %llu long double | 8, 12, or 16 bytes | Implementation-dependent, but more precision than double | %Lf unsigned means the type can only store non-negative values (0 and up). Here is an example of how you can create and print these extended types:",
-      "code": ""
-    },
-    {
-      "heading": "Check Size",
-      "body": "*The exact sizes depend on your system and compiler. Remember that you can check them with the sizeof operator:",
-      "code": ""
-    },
-    {
-      "heading": "Challenge: Create a Student Report Card",
-      "body": "Test your understanding of C data types by completing a small coding challenge.",
-      "code": ""
-    },
-    {
-      "heading": "Type Conversion",
-      "body": "Sometimes, you have to convert the value of one data type to another type. This is known as type conversion. For example, if you try to divide two integers, 5 by 2, you would expect the result to be 2.5. But since we are working with integers (and not floating-point values), the following example will just output 2:",
-      "code": ""
-    },
-    {
-      "heading": "Implicit Conversion",
-      "body": "Implicit conversion is done automatically by the compiler when you assign a value of one type to another. For example, if you assign an int value to a float type:",
-      "code": ""
-    },
-    {
-      "heading": "Explicit Conversion",
-      "body": "Explicit conversion is done manually by placing the type in parentheses () in front of the value. Considering our problem from the example above, we can now get the right result:",
-      "code": ""
-    },
-    {
-      "heading": "Real-Life Example",
-      "body": "Here's a real-life example of data types and type conversion where we create a program to calculate the percentage of a user's score in relation to the maximum score in a game:",
-      "code": ""
+      "heading": "Extended Types",
+      "body": "More Data Types\n\nBesides the basic types (int,\nfloat, double,\nchar), C also gives you\nextended keywords (short,\nlong, unsigned)\nto control how large the number is, or whether it can be negative:\nunsigned means the type can only store non-negative values (0 and up).\n*Note: The size of these types can differ between systems (for example, 2 or 4 bytes, or 4 or 8 bytes), depending on whether the computer is older or newer, 32-bit or 64-bit, and which compiler is used.\nHere is an example of how you can create and print these extended types:\n\nExample\n\nTry it Yourself »\nNote: These extended types are mostly used when you need very specific control over memory usage or number ranges.\n Note: For everyday programming, int, float, double, and char are usually enough.\nNote: These extended types are mostly used when you need very specific control over memory usage or number ranges.\nNote: For everyday programming, int, float, double, and char are usually enough.\n\nCheck Size\n\n*The exact sizes depend on your system and compiler. Remember that you can check them with the sizeof operator:\n\nExample\n\nTry it Yourself »\nTip: When you really need exact control over the size of your numbers, you can use the fixed-width types, which you will learn about later.\nNote: This page is just to show you that C has other extended types, but for now\nwe will keep focusing on the basic types (int, float, double, char) in this tutorial.",
+      "code": "int normalInt = 1000; // standard int\ndouble normalDouble = 3.14; // standard double\n\nshort int small = -100; // smaller int\nunsigned int count = 25; // only positive int\nlong int big = 1234567890; // larger int\nlong long int veryBig = 9223372036854775807; // very large int\nunsigned long long int huge = 18446744073709551615U; // very large, only positive\nlong double precise = 3.141592653589793238L; // extended precision\n\nprintf(\"Normal int: %d\\n\", normalInt);\nprintf(\"Normal double: %lf\\n\", normalDouble);\nprintf(\"Small: %hd\\n\", small);\nprintf(\"Count: %u\\n\", count);\nprintf(\"Big: %ld\\n\", big);\nprintf(\"Very Big: %lld\\n\", veryBig);\nprintf(\"Huge: %llu\\n\", huge);\nprintf(\"Precise: %Lf\\n\", precise);\n\nprintf(\"Size of int: %zu bytes\\n\", sizeof(int));\nprintf(\"Size of double: %zu bytes\\n\", sizeof(double));\nprintf(\"Size of short int: %zu bytes\\n\", sizeof(short int));\nprintf(\"Size of unsigned int: %zu bytes\\n\", sizeof(unsigned int));\nprintf(\"Size of long int: %zu bytes\\n\", sizeof(long int));\nprintf(\"Size of long long int: %zu bytes\\n\", sizeof(long long int));\nprintf(\"Size of unsigned long long int: %zu bytes\\n\", sizeof(unsigned long long int));\nprintf(\"Size of long double: %zu bytes\\n\", sizeof(long double));"
     }
   ]
 }

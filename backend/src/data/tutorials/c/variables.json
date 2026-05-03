@@ -2,72 +2,39 @@
   "tag": "variables",
   "language": "c",
   "title": "C Variables",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
   "order": 6,
   "sections": [
     {
       "heading": "Variables",
-      "body": "Variables are containers for storing data values, like numbers and characters. You can think of a variable as a named box where you keep a value that can be used later. In C, variables must have a specific type, which tells the program what kind of data the variable can store. • int - stores whole numbers (integers), such as 123 or -123 • float - stores numbers with decimals, such as 19.99 or -19.99 • char - stores a single character, such as 'a' or 'B'. Characters are surrounded by single quotes",
-      "code": ""
-    },
-    {
-      "heading": "Declaring (Creating) Variables",
-      "body": "To create a variable, you must specify the type and give the variable a name. You can also assign a value at the same time:",
-      "code": ""
-    },
-    {
-      "heading": "Syntax",
-      "body": "Where type is one of the C data types (such as int), and variableName is the name you choose (for example x or myNum). The equal sign = is used to assign a value to the variable. So, to create a variable that should store a number, look at the following example:",
-      "code": "type variableName = value;"
-    },
-    {
-      "heading": "Output Variables",
-      "body": "You learned from the output chapter that you can print text using the printf() function:",
-      "code": ""
+      "body": "Variables\n\nVariables are containers for storing data values, like numbers and characters.\nYou can think of a variable as a named box where you keep a value that can be used later.\nIn C, variables must have a specific type, which tells the program what kind of data the variable can store.\nint - stores whole numbers (integers), such as 123 or -123\n float - stores numbers with decimals, such as 19.99 or -19.99\n char - stores a single character, such as 'a' or 'B'.\n Characters are surrounded by single quotes\n\nDeclaring (Creating) Variables\n\nTo create a variable, you must specify the type and give the variable a name.\nYou can also assign a value at the same time:\n\nSyntax\n\nWhere type is one of the C data types (such as int),\nand variableName is the name you choose (for example x or myNum).\nThe equal sign = is used to assign a value to the variable.\nSo, to create a variable that should store a number, look at the following example:\n\nExample\n\nCreate a variable named myNum of type int and assign the value 15:\nYou can also declare a variable first and assign a value later:\n\nExample\n\nTip: Variable names should be meaningful, so your code is easier to understand.\nTip: Variable names should be meaningful, so your code is easier to understand.\n\nOutput Variables\n\nYou learned from the output chapter that you can print text using the printf() function:\n\nExample\n\nIn many other programming languages (like Python, Java, and C++), you would normally use a\nprint function to display the value of a variable. However, this is not possible in C:\n\nExample\n\nTo print variables in C, you must use something called format specifiers.\nDon't worry - this will be explained clearly in the next chapter.",
+      "code": "type variableName = value;\n\nint myNum = 15;\n\n// Declare a variable\n int myNum;\n // Assign a value later\n myNum = 15;\n\nprintf(\"Hello World!\");\n\nint myNum = 15;\n printf(myNum); // This will cause an error"
     },
     {
       "heading": "Format Specifiers",
-      "body": "Format specifiers are used together with the printf() function to print variables. You can think of a format specifier as a placeholder that tells C what kind of value will be printed. A format specifier always starts with a percentage sign %, followed by a letter. For example, to output the value of an int variable, use the format specifier %d surrounded by double quotes (\"\"), inside the printf() function:",
-      "code": ""
+      "body": "Format Specifiers\n\nFormat specifiers are used together with the printf() function to print variables.\nYou can think of a format specifier as a placeholder that tells C what kind of value will be printed.\nA format specifier always starts with a percentage sign %, followed by a letter.\nFor example, to output the value of an int variable,\nuse the format\nspecifier %d surrounded by double quotes (\"\"),\ninside the printf() function:\n\nExample\n\nHow it works: %d tells C to expect an integer value, and myNum provides that value.\nHow it works: %d tells C to expect an integer value, and myNum provides that value.\nDifferent data types use different format specifiers:\n\nExample\n\nTo combine both text and a variable, separate them with a comma inside the\nprintf() function:\n\nExample\n\nTo print different types in a single printf() function, you can use the\nfollowing:\n\nExample\n\nTip: Each format specifier must match the correct type of value.\nYou will learn more about data types later in this tutorial.\nTip: Each format specifier must match the correct type of value.\nYou will learn more about data types later in this tutorial.\n\nPrint Values Without Variables\n\nYou can also print values directly without storing them in variables, as long as you use the correct format specifier:\n\nExample\n\nNote: Using variables is usually better, because the value can be reused and changed later.\nNote: Using variables is usually better, because the value can be reused and changed later.",
+      "code": "int myNum = 15;\n printf(\"%d\", myNum); // Outputs 15\n\n// Create variables\n int myNum = 15; // Integer (whole number)\n float myFloatNum = 5.99; // Floating point number\n char myLetter = 'D'; // Character\n // Print variables\n printf(\"%d\\n\", myNum);\n printf(\"%f\\n\", myFloatNum);\n printf(\"%c\\n\", myLetter);\n\nint myNum = 15;\n printf(\"My favorite number is: %d\", myNum);\n\nint myNum = 15;\n char myLetter = 'D';\n printf(\"My number is %d and my letter is %c\", myNum, myLetter);\n\nprintf(\"My favorite number is: %d\", 15);\n printf(\"My favorite letter is: %c\", 'D');"
     },
     {
-      "heading": "Print Values Without Variables",
-      "body": "You can also print values directly without storing them in variables, as long as you use the correct format specifier:",
-      "code": ""
-    },
-    {
-      "heading": "Change Variable Values",
-      "body": "If you assign a new value to an existing variable, the new value will replace the old one:",
-      "code": ""
-    },
-    {
-      "heading": "Add Variables Together",
-      "body": "You can use mathematical operators to work with variables. For example, to add one variable to another, use the + operator:",
-      "code": ""
+      "heading": "Variable Values",
+      "body": "Change Variable Values\n\nIf you assign a new value to an existing variable, the new value will replace the old one:\n\nExample\n\nNote: This is normal and expected. Variables are meant to change while a program runs.\nNote: This is normal and expected. Variables are meant to change while a program runs.\nYou can also assign the value of one variable to another:\n\nExample\n\nYou can even copy values into variables that were declared earlier without a value:\n\nExample\n\nAdd Variables Together\n\nYou can use mathematical operators to work with variables.\nFor example, to add one variable to another, use the + operator:\n\nExample\n\nYou can also update a variable using its current value:\n\nExample\n\nTip: Writing x = x + 1 means \"take the current value of x and add 1 to it\".\nNote: You will learn much more about operators in a later chapter.\nTip: Writing x = x + 1 means \"take the current value of x and add 1 to it\".\nNote: You will learn much more about operators in a later chapter.",
+      "code": "int myNum = 15; // myNum is 15\n myNum = 10; // Now myNum is 10\n\nint myNum = 15;\n int myOtherNum = 23;\n // Assign the value of myOtherNum (23) to myNum\n myNum = myOtherNum;\n // myNum is now 23 (was 15)\n printf(\"%d\", myNum);\n\n// Create a variable and assign a value\n int myNum = 15;\n // Declare a variable without assigning a value\n int myOtherNum;\n // Copy the value from myNum\n myOtherNum = myNum;\n // myOtherNum is now 15\n printf(\"%d\", myOtherNum);\n\nint x = 5;\n int y = 6;\n int sum = x + y;\n printf(\"%d\", sum);\n\nint x = 5;\n x = x + 1;\n printf(\"%d\", x);"
     },
     {
       "heading": "Declare Multiple Variables",
-      "body": "To declare more than one variable of the same type, use a comma-separated list:",
-      "code": ""
+      "body": "Declare Multiple Variables\n\nTo declare more than one variable of the same type, use a comma-separated list:\n\nExample\n\nNote: All variables must be of the same type. You cannot mix types in the same declaration.\nNote: All variables must be of the same type. You cannot mix types in the same declaration.\nYou can also assign the same value to multiple variables at once:\n\nExample\n\nTip: Declaring multiple variables on one line is convenient, but declaring them on separate lines can make your code easier to read.\nTip: Declaring multiple variables on one line is convenient, but declaring them on separate lines can make your code easier to read.",
+      "code": "int x = 5, y = 6, z = 50;\n printf(\"%d\", x + y + z);\n\nint x, y, z;\n x = y = z = 50;\n printf(\"%d\", x + y + z);"
     },
     {
-      "heading": "C Variable Names",
-      "body": "All C variables must be identified with unique names. These unique names are called identifiers. Identifiers can be short names (like x and y) or more descriptive names (age, sum, totalVolume).",
-      "code": ""
+      "heading": "Variable Names (Identifiers)",
+      "body": "C Variable Names\n\nAll C variables must be\nidentified with unique names.\nThese unique names are called identifiers.\nIdentifiers can be short names (like x and y) or more descriptive names (age, sum, totalVolume).\nNote: It is recommended to use descriptive names in order to\ncreate understandable and maintainable code:\n\nExample\n\nThe general rules for naming variables are:\nNames can contain letters, digits and underscores\n Names must begin with a letter or an underscore (_)\n Names are case-sensitive (myVar and myvar are different variables)\n Names cannot contain whitespaces or special characters like !, #, %, etc.\n Reserved words (such as int) cannot be used as names\nValid and Invalid Names\nHere are some examples to help you remember the rules:\n\n Valid: age, _count, totalSum\n Invalid: 1age (starts with a number), my-age (contains -), int (reserved word)\n\nNaming style: Many C programmers use camelCase (like totalScore) or underscores\n(like total_score). Choose one style and use it consistently.\nHere are some examples to help you remember the rules:\nValid: age, _count, totalSum\n Invalid: 1age (starts with a number), my-age (contains -), int (reserved word)\nNaming style: Many C programmers use camelCase (like totalScore) or underscores\n(like total_score). Choose one style and use it consistently.",
+      "code": "// Good variable nameint minutesPerHour = 60;// OK, but not so easy to\n understand what m actually isint\n m = 60;"
     },
     {
-      "heading": "Real-Life Example",
-      "body": "Often in our examples, we simplify variable names to match their data type (myInt or myNum for int types, myChar for char types, and so on). This is done to avoid confusion. In real programs, variables often represent real-world data. The following example stores information about a college student:",
-      "code": ""
-    },
-    {
-      "heading": "Calculate the Area of a Rectangle",
-      "body": "Variables are often used to store values, perform calculations, and then show the result. In this example, we calculate the area of a rectangle:",
-      "code": ""
-    },
-    {
-      "heading": "Challenge: Calculate the Area of a Rectangle",
-      "body": "Test your understanding of C variables by completing a small coding challenge.",
-      "code": ""
+      "heading": "Variables - Examples",
+      "body": "Real-Life Example\n\nOften in our examples, we simplify variable names to match their data type (myInt\nor myNum for int types, myChar for char types,\nand so on). This is done to avoid confusion.\nIn real programs, variables often represent real-world data.\nThe following example stores information about a college student:\n\nExample\n\nNotice: Each variable stores a different type of information, but they are all used together in one program.\nNotice: Each variable stores a different type of information, but they are all used together in one program.\n\nCalculate the Area of a Rectangle\n\nVariables are often used to store values, perform calculations, and then show the result.\nIn this example, we calculate the area of a rectangle:\n\nExample\n\nTip: Calculations are usually done first, and the result is stored in a variable before being printed.\nTip: Calculations are usually done first, and the result is stored in a variable before being printed.",
+      "code": "// Student data\n int studentID = 15;\n int studentAge = 23;\n float studentFee = 75.25;\n char studentGrade = 'B';\n // Print variables\n printf(\"Student ID: %d\\n\", studentID);\n printf(\"Student age: %d\\n\", studentAge);\n printf(\"Student fee: %f\\n\", studentFee);\n printf(\"Student grade: %c\", studentGrade);\n\n// Create variables\n int length = 4;\n int width = 6;\n int area;\n // Calculate the area\n area = length * width;\n // Print the result\n printf(\"Length is: %d\\n\", length);\n printf(\"Width is: %d\\n\", width);\n printf(\"Area of the rectangle is: %d\", area);"
     }
   ]
 }

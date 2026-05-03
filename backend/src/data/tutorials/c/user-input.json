@@ -2,22 +2,14 @@
   "tag": "user-input",
   "language": "c",
   "title": "C User Input",
-  "order": 18,
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "order": 19,
   "sections": [
     {
       "heading": "User Input",
-      "body": "You have already learned that printf() is used to output values in C. To get user input, you can use the scanf() function:",
-      "code": ""
-    },
-    {
-      "heading": "Multiple Inputs",
-      "body": "The scanf() function also allow multiple inputs (an integer and a character in the following example):",
-      "code": ""
-    },
-    {
-      "heading": "Take String Input",
-      "body": "You can also get a string entered by the user:",
-      "code": ""
+      "body": "User Input\n\nYou have already learned that printf() is used to output values in C.\nTo get user input, you can use the scanf() function:\n\nExample\n\nOutput a number entered by the user:\nThe scanf() function takes two arguments: the format specifier of the variable (%d in the example above) and the\nreference operator (&myNum), which stores the memory address of the variable.\nTip: You will learn more about memory addresses and functions in the next chapter.\nThe scanf() function takes two arguments: the format specifier of the variable (%d in the example above) and the\nreference operator (&myNum), which stores the memory address of the variable.\nTip: You will learn more about memory addresses and functions in the next chapter.\n\nMultiple Inputs\n\nThe scanf() function also allow multiple\ninputs (an integer and a character in the following example):\n\nExample\n\nTake String Input\n\nYou can also get a string entered by the user:\n\nExample\n\nOutput the name of a user:\nNote: When working with strings in scanf(), you must specify the size of\nthe string/array (we used a very high number, 30 in our example, but at least then we are\ncertain it will store enough characters for the first name), and you don't have\nto use the reference operator (&).\nNote: When working with strings in scanf(), you must specify the size of\nthe string/array (we used a very high number, 30 in our example, but at least then we are\ncertain it will store enough characters for the first name), and you don't have\nto use the reference operator (&).\nHowever, the scanf() function has some limitations: it considers space (whitespace,\ntabs, etc) as a terminating character, which means that it can only display a\nsingle word (even if you type many words). For example:\n\nExample\n\nFrom the example above, you would expect the program to print \"John Doe\", but it only prints \"John\".\nThat's why, when working with strings, we often use the fgets() function to\nread a line of text. Note that you must include the following\narguments: the name of the string variable, sizeof(string_name), and stdin:\n\nExample\n\nUse the scanf() function to get a single word as input, and use fgets() for multiple words.\nUse the scanf() function to get a single word as input, and use fgets() for multiple words.",
+      "code": "// Create an integer variable that will store the number we get from the userint myNum;// Ask the user to type a numberprintf(\"Type a number:\n \\n\");// Get and save the number the user typesscanf(\"%d\", &myNum);\n // Output the number the user typedprintf(\"Your number is: %d\", myNum);\n\n// Create an int and a char variableint myNum;char myChar;\n // Ask the user to type a number AND a characterprintf(\"Type a number AND\n a character and press enter: \\n\"); // Get and save the number AND\n character the user typesscanf(\"%d %c\", &myNum, &myChar);// Print\n the numberprintf(\"Your number is: %d\\n\", myNum);// Print the\n characterprintf(\"Your character is: %c\\n\", myChar);\n\n// Create a stringchar firstName[30];// Ask the user to input some\n textprintf(\"Enter your first name: \\n\");// Get and save the text\n scanf(\"%s\", firstName);// Output the textprintf(\"Hello %s\",\n firstName);\n\nchar fullName[30];printf(\"Type your full name: \\n\");\n scanf(\"%s\", &fullName);printf(\"Hello %s\",\n fullName);// Type your full name: John Doe// Hello John\n\nchar fullName[30];printf(\"Type your full name: \\n\");\n fgets(fullName, sizeof(fullName), stdin);printf(\"Hello %s\",\n fullName);// Type your full name: John Doe// Hello John Doe"
     }
   ]
 }

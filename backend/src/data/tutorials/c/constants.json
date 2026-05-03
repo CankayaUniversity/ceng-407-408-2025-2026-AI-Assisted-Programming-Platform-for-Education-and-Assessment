@@ -2,22 +2,14 @@
   "tag": "constants",
   "language": "c",
   "title": "C Constants",
-  "order": 8,
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "order": 9,
   "sections": [
     {
       "heading": "Constants",
-      "body": "Now that you have seen different types of variables in C, you should also know that sometimes you need variables that should not change. This can be done with the const keyword, which makes a variable unchangeable and read-only:",
-      "code": ""
-    },
-    {
-      "heading": "Notes On Constants",
-      "body": "When you declare a constant variable, it must be assigned with a value:",
-      "code": ""
-    },
-    {
-      "heading": "Good Practice",
-      "body": "Another thing about constant variables, is that it is considered good practice to declare them with uppercase. It is not required, but useful for code readability and common for C programmers:",
-      "code": ""
+      "body": "Constants\n\nNow that you have seen different types of variables in C, you should also know that sometimes you need variables that should not change.\nThis can be done with the const keyword, which makes a variable unchangeable and read-only:\n\nExample\n\nYou should always declare a variable as const when you have values that are unlikely to change:\n\nExample\n\nNotes On Constants\n\nWhen you declare a constant variable, it must be assigned with a value:\n\nExample\n\nLike this:\nThis however, will not work:\n\nGood Practice\n\nAnother thing about constant variables, is that it is considered good practice to declare them with uppercase.\nIt is not required, but useful for code readability and common for C programmers:\n\nExample",
+      "code": "const int myNum = 15; // myNum will always be 15myNum = 10; // error:\n assignment of read-only variable 'myNum'\n\nconst int minutesPerHour = 60;const int\n monthsInYear = 12;\n\nconst int minutesPerHour = 60;\n\nconst int minutesPerHour;minutesPerHour = 60; // error\n\nconst int BIRTHYEAR = 1980;"
     }
   ]
 }

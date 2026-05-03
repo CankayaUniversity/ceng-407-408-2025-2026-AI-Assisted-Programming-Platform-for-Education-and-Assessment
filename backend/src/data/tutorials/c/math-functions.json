@@ -2,52 +2,14 @@
   "tag": "math-functions",
   "language": "c",
   "title": "C Math Functions",
-  "order": 23,
+  "category": "C Functions",
+  "categoryOrder": 2,
+  "order": 5,
   "sections": [
     {
       "heading": "Math Functions",
-      "body": "There is also a list of math functions available, that allows you to perform mathematical tasks on numbers. To use them, you must include the math.h header file in your program:",
-      "code": "#include <math.h>"
-    },
-    {
-      "heading": "Square Root",
-      "body": "To find the square root of a number, use the sqrt() function:",
-      "code": ""
-    },
-    {
-      "heading": "Round a Number",
-      "body": "The ceil() function rounds a number upwards to its nearest integer, and the floor() method rounds a number downwards to its nearest integer, and returns the result:",
-      "code": ""
-    },
-    {
-      "heading": "Power",
-      "body": "The pow() function returns the value of x to the power of y (xy):",
-      "code": ""
-    },
-    {
-      "heading": "Inline Function",
-      "body": "You might sometimes see the inline keyword used in other people's functions. It's not something you need to use often as a beginner, but it's good to know what it means. An inline function is a small function that asks the compiler to insert its code directly where it is called, instead of jumping to it. This can make short, frequently used functions a little faster, because it removes the small delay of a normal function call. Let's compare a regular function with an inline function: Both functions work the same way. The only difference is that the inline version suggests to the compiler to copy the function's code directly where it is used.",
-      "code": "int square(int x) {\n\n        return x * x;\n\n      }\n\ninline int square(int x) {\n\n        return x * x;\n\n      }"
-    },
-    {
-      "heading": "Inline Function Example",
-      "body": "Here is a simple example that uses an inline function:",
-      "code": ""
-    },
-    {
-      "heading": "When Not to Use Inline",
-      "body": "Inline functions are best for small, simple functions. Avoid using them for: • Large functions (they make your program bigger) • Recursive functions • Functions that are rarely called Too many inline functions can make your program slower and larger, a problem known as code bloat.",
-      "code": ""
-    },
-    {
-      "heading": "Inline vs Regular Function",
-      "body": "Regular Function | Inline Function Code jumps to the function each time it's called | Code is inserted directly where it's called Slightly slower (small delay) | Slightly faster Good for large functions | Good for small functions In this tutorial, we will continue to use regular functions.",
-      "code": ""
-    },
-    {
-      "heading": "Summary",
-      "body": "• Inline functions are defined with the inline keyword. • They can make small, often-used functions faster. • The compiler decides whether to inline a function or not. • Mostly used for short, simple functions.",
-      "code": ""
+      "body": "Math Functions\n\nThere is also a list of math functions available, that allows you to perform mathematical tasks on numbers.\nTo use them, you must include the math.h\nheader file in your program:\n\nSquare Root\n\nTo find the square root of a number, use the sqrt()\nfunction:\n\nExample\n\nRound a Number\n\nThe ceil() function rounds a number upwards to its nearest integer, and the floor() method rounds a number downwards to its nearest integer, and returns the result:\n\nExample\n\nPower\n\nThe pow() function returns the value of x to the power of\ny (xy):\n\nExample\n\nComplete Math Reference\n\nFor a complete reference of math functions, go to our C\n<math.h> Library Reference.",
+      "code": "#include <math.h>\n\nprintf(\"%f\", sqrt(16));\n\nprintf(\"%f\", ceil(1.4));printf(\"%f\",\n floor(1.4));\n\nprintf(\"%f\", pow(4, 3));"
     }
   ]
 }

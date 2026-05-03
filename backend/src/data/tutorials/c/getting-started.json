@@ -1,28 +1,15 @@
 {
   "tag": "getting-started",
   "language": "c",
-  "title": "C Getting Started",
+  "title": "C Get Started",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
   "order": 2,
   "sections": [
     {
-      "heading": "Get Started With C",
-      "body": "Our Online C Editor runs directly in your browser and shows both the code and the result: Code: Result: This editor will be used in the entire tutorial to demonstrate the different aspects of C.",
-      "code": "#include <stdio.h>\n\nint main() {\n  printf(\"Hello World!\");\n\n  return 0;\n}"
-    },
-    {
-      "heading": "Install C",
-      "body": "If you want to run C programs on your own computer, you need two things: • A text editor to write C code • A compiler to turn the C code into a program the computer can run The compiler reads your C code and translates it into machine code. There are many editors and compilers available. To make things easier, most people use an IDE, which includes both.",
-      "code": ""
-    },
-    {
-      "heading": "Install IDE",
-      "body": "An IDE (Integrated Development Environment) is a program that helps you write, compile, and run code. Popular IDEs include Code::Blocks, Eclipse, and Visual Studio. These are free tools that can also help you find errors in your code. In this tutorial, we will use Code::Blocks, which is a good and simple choice for beginners. You can download Code::Blocks from https://www.codeblocks.org. Choose the mingw-setup.exe file, which includes both the editor and a compiler.",
-      "code": ""
-    },
-    {
-      "heading": "C Quickstart",
-      "body": "Let's create our first C file. Open Codeblocks and go to File > New > Empty File. Write the following C code and save the file as myfirstprogram.c (File > Save File as): Don't worry if you don't understand the code above - we will discuss it in detail in later chapters. For now, focus on how to run the code. In Codeblocks, it should look like this: Then, go to Build > Build and Run to run (execute) the program. The result will look something to this: If you see the message above, your setup is working correctly. Congratulations! You have now written and executed your first C program. What just happened? You wrote C code, the compiler turned it into a program, and the computer ran it. This is the basic workflow you will use throughout this tutorial.",
-      "code": "#include <stdio.h>\n\nint main() {\n  printf(\"Hello World!\");\n\n  return 0;\n}"
+      "heading": "Get Started",
+      "body": "Get Started With C\n\nAt W3Schools, you can start learning C without installing anything.\nOur Online C Editor runs directly in your browser and shows both the code and the result:\nCode:\nResult:\nThis editor will be used in the entire tutorial to demonstrate the different aspects of C.\n\nInstall C\n\nIf you want to run C programs on your own computer, you need two things:\nA text editor to write C code\n A compiler to turn the C code into a program the computer can run\nThe compiler reads your C code and translates it into machine code.\nThere are many editors and compilers available. To make things easier, most people use an IDE, which includes both.\n\nInstall IDE\n\nAn IDE (Integrated Development Environment) is a program that helps you write, compile, and run code.\nPopular IDEs include Code::Blocks, Eclipse, and Visual Studio. These are free tools that can also help you find errors in your code.\nNote: Web-based IDEs can also work, but they often have limited features.\nIn this tutorial, we will use Code::Blocks, which is a good and simple choice for beginners.\nYou can download Code::Blocks from https://www.codeblocks.org.\nChoose the mingw-setup.exe file, which includes both the editor and a compiler.\n\nC Quickstart\n\nLet's create our first C file.\nOpen Codeblocks and go to File > New > Empty File.\nWrite the following C code and save the file as\nmyfirstprogram.c (File > Save File as):\nNote: C source files always end with .c.\nDon't worry if you don't understand the code above - we will discuss it in detail in later chapters. For now, focus on how to run the code.\nIn Codeblocks, it should look like this:\nThen, go to Build > Build and Run to run (execute) the program. The result will look something to this:\nIf you see the message above, your setup is working correctly.\nCongratulations! You have now written and executed your first C program.\nWhat just happened? You wrote C code, the compiler turned it into a program, and the computer ran it. This is the basic workflow you will use throughout this tutorial.\nWhat just happened? You wrote C code, the compiler turned it into a program, and the computer ran it. This is the basic workflow you will use throughout this tutorial.",
+      "code": "#include <stdio.h>int main() { printf(\"Hello World!\");\n return 0;}\n\n#include <stdio.h>int main() { printf(\"Hello World!\");\n return 0;}"
     }
   ]
 }

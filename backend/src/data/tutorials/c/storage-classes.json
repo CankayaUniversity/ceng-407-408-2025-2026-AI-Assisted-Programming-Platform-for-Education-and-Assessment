@@ -1,0 +1,15 @@
+{
+  "tag": "storage-classes",
+  "language": "c",
+  "title": "C Storage Classes",
+  "category": "C More",
+  "categoryOrder": 8,
+  "order": 5,
+  "sections": [
+    {
+      "heading": "Storage Classes",
+      "body": "C Storage Classes\n\nStorage classes define the lifetime, visibility, and memory location of variables.\nThere are four main storage class specifiers in C:\nauto\n static\n register\n extern\nScope defines where a variable can be used, and\nstorage classes define how long it lasts and where it's stored. This chapter continues from the C Scope chapter.\n\nauto\n\nThe auto keyword is used for local variables. It is default for variables declared inside functions, so it's rarely used explicitly.\n\nExample\n\nTry it Yourself »\n\nstatic\n\nThe static keyword changes how a variable or function behaves in terms of lifetime and visibility:\nStatic local variables keep their value between function calls.\n Static global variables/functions are not visible outside their file.\n\nExample\n\nResult:\nTry it Yourself »\nTry to remove the static keyword from the example to see the difference.\n\nregister\n\nThe register keyword suggests that the variable should be stored in a CPU register (for faster access).\nYou cannot take the address of a register variable using &.\nNote: The register keyword is mostly obsolete - modern compilers automatically choose the best variables to keep in registers, so you usually don't need to use it.\n\nExample\n\nTry it Yourself »\n\nextern\n\nThe extern keyword tells the compiler that a variable or function is defined in another file.\nIt is commonly used when working with multiple source files.\nFile 1: main.c\nFile 2: data.c\nCompile both files together:",
+      "code": "int main() {\n auto int x = 50; // Same as just: int x = 50;\n printf(\"%d\\n\", x);\n return 0;\n}\n\nvoid count() {\n static int myNum = 0; // Keeps its value between calls\n myNum++;\n printf(\"num = %d\\n\", myNum);\n}\n\nint main() {\n count();\n count();\n count();\n return 0;\n}\n\nnum = 1\nnum = 2\nnum = 3\n\nint main() {\n register int counter = 0;\n printf(\"Counter: %d\\n\", counter);\n return 0;\n}\n\n#include <stdio.h>\n\nextern int shared; // Declared here, defined in another file\n\nint main() {\n printf(\"shared = %d\\n\", shared);\n return 0;\n}\n\nint shared = 50; // Definition of the variable\n\ngcc main.c data.c -o program"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "tag": "structs-pointers",
+  "language": "c",
+  "title": "C Structs & Pointers",
+  "category": "C Structures",
+  "categoryOrder": 4,
+  "order": 3,
+  "sections": [
+    {
+      "heading": "Structs and Pointers",
+      "body": "Structures and Pointers\n\nYou can use pointers with structs to make your code more efficient, especially when passing structs to functions or changing their values.\nTo use a pointer to a struct, just add the * symbol, like you would with other data types.\nTo access its members, you must use the -> operator instead of the dot . syntax:\n\nExample\n\nTry it Yourself »\n\nPassing Struct Pointers to Functions\n\nHere's how you can pass a struct pointer to a function and change its values:\n\nExample\n\nTry it Yourself »\n\nWhy Use Struct Pointers?\n\nUsing pointers with structs is helpful when:\nYou want to avoid copying large amounts of data.\n Instead of copying a whole struct, you can just pass a pointer. This makes your program faster and uses less memory.\n\n You want to change values inside a function.\n If you pass a pointer to a struct into a function, the function can change the original values.\n\n You want to create structs dynamically using memory allocation.\n With pointers, you can use malloc() to create structs while the program is running.\n You will learn more about memory management in a later chapter.\nTip: If you're working with big programs or many values, struct pointers can help make your code cleaner and more efficient.",
+      "code": "// Define a struct\nstruct Car {\n char brand[30];\n int year;\n};\n\nint main() {\n struct Car car = {\"Toyota\", 2020};\n\n // Declare a pointer to the struct\n struct Car *ptr = &car;\n\n // Access members using the -> operator\n printf(\"Brand: %s\\n\", ptr->brand);\n printf(\"Year: %d\\n\", ptr->year);\n\n return 0;\n}\n\nstruct Car {\n char brand[30];\n int year;\n};\n\n// Function that takes a pointer to a Car struct and updates the year\nvoid updateYear(struct Car *c) {\n c->year = 2025; // Change the year\n}\n\nint main() {\n struct Car myCar = {\"Toyota\", 2020};\n\n updateYear(&myCar); // Pass a pointer so the function can change the year\n\n printf(\"Brand: %s\\n\", myCar.brand);\n printf(\"Year: %d\\n\", myCar.year);\n\n return 0;\n}"
+    }
+  ]
+}

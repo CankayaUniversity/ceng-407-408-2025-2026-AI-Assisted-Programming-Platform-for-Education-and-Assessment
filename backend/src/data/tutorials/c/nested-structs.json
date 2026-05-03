@@ -1,0 +1,15 @@
+{
+  "tag": "nested-structs",
+  "language": "c",
+  "title": "C Nested Structures",
+  "category": "C Structures",
+  "categoryOrder": 4,
+  "order": 2,
+  "sections": [
+    {
+      "heading": "Nested Structures",
+      "body": "Nested Structs\n\nA structure can also contain another structure as a member.\nThis is called a nested structure, and it is useful when you want to group related data together in layers:\n\nExample\n\nHere, the Car structure contains another structure (Owner) inside it.\nThis makes it easy to organize complex data, for example, a car and its owner.",
+      "code": "struct Owner {\n char firstName[30];\n char lastName[30];\n};\n\nstruct Car {\n char brand[30];\n int year;\n struct Owner owner; // Nested structure\n};\n\nint main() {\n struct Owner person = {\"John\", \"Doe\"};\n struct Car car1 = {\"Toyota\", 2010, person};\n\n printf(\"Car: %s (%d)\\n\", car1.brand, car1.year);\n printf(\"Owner: %s %s\\n\", car1.owner.firstName, car1.owner.lastName);\n\n return 0;\n}"
+    }
+  ]
+}

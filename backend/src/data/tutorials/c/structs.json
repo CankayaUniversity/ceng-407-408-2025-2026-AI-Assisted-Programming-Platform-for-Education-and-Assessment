@@ -1,143 +1,15 @@
 {
   "tag": "structs",
   "language": "c",
-  "title": "C Structs",
-  "order": 24,
+  "title": "C Structures",
+  "category": "C Structures",
+  "categoryOrder": 4,
+  "order": 1,
   "sections": [
     {
-      "heading": "Structures",
-      "body": "Structures (also called structs) are a way to group several related variables into one place. Each variable in the structure is known as a member of the structure. Unlike an array, a structure can contain many different data types (int, float, char, etc.).",
-      "code": ""
-    },
-    {
-      "heading": "Create a Structure",
-      "body": "You can create a structure by using the struct keyword and declare each of its members inside curly braces: To access the structure, you must create a variable of it. Use the struct keyword inside the main() method, followed by the name of the structure and then the name of the structure variable: Create a struct variable with the name \"s1\":",
-      "code": "struct MyStructure {   // Structure declaration\n  int myNum;           // Member (int\n  variable)\n  char myLetter;       // Member (char variable)\n};\n  // End the structure with a semicolon\n\nstruct myStructure {\n  int myNum;\n  char myLetter;\n};\n\nint main()\n  {\n  struct myStructure s1;\n  return 0;\n}"
-    },
-    {
-      "heading": "Access Structure Members",
-      "body": "To access members of a structure, use the dot syntax (.):",
-      "code": ""
-    },
-    {
-      "heading": "What About Strings in Structures?",
-      "body": "Remember that strings in C are actually an array of characters, and unfortunately, you can't assign a value to an array like this:",
-      "code": ""
-    },
-    {
-      "heading": "Simpler Syntax",
-      "body": "You can also assign values to members of a structure variable at declaration time, in a single line. Just insert the values in a comma-separated list inside curly braces {}. Note that you don't have to use the strcpy() function for string values with this technique:",
-      "code": ""
-    },
-    {
-      "heading": "Copy Structures",
-      "body": "You can also assign one structure to another. In the following example, the values of s1 are copied to s2:",
-      "code": ""
-    },
-    {
-      "heading": "Modify Values",
-      "body": "If you want to change/modify a value, you can use the dot syntax (.). And to modify a string value, the strcpy() function is useful again:",
-      "code": ""
-    },
-    {
-      "heading": "Real-Life Example",
-      "body": "Use a structure to store different information about Cars:",
-      "code": ""
-    },
-    {
-      "heading": "Challenge: Store a Person's Age",
-      "body": "Test your understanding of C structures by completing a small coding challenge.",
-      "code": ""
-    },
-    {
-      "heading": "Nested Structs",
-      "body": "A structure can also contain another structure as a member. This is called a nested structure, and it is useful when you want to group related data together in layers:",
-      "code": ""
-    },
-    {
-      "heading": "Structures and Pointers",
-      "body": "You can use pointers with structs to make your code more efficient, especially when passing structs to functions or changing their values. To use a pointer to a struct, just add the * symbol, like you would with other data types. To access its members, you must use the -> operator instead of the dot . syntax:",
-      "code": ""
-    },
-    {
-      "heading": "Passing Struct Pointers to Functions",
-      "body": "Here's how you can pass a struct pointer to a function and change its values:",
-      "code": ""
-    },
-    {
-      "heading": "Why Use Struct Pointers?",
-      "body": "Using pointers with structs is helpful when: • You want to avoid copying large amounts of data. Instead of copying a whole struct, you can just pass a pointer. This makes your program faster and uses less memory. • You want to change values inside a function. If you pass a pointer to a struct into a function, the function can change the original values. Tip: If you're working with big programs or many values, struct pointers can help make your code cleaner and more efficient.",
-      "code": ""
-    },
-    {
-      "heading": "C Unions",
-      "body": "A union is similar to a struct in that it can store members of different data types. However, there are some differences: • In a struct, each member has its own memory. • In a union, all members share the same memory, which means you can only use one of the values at a time. Most of the time, you will use structs instead of unions, as it can store and access multiple values at the same time, which is more common in everyday programs. However, unions are useful when you only need to store one of several possible types at a time, and you want to save memory.",
-      "code": ""
-    },
-    {
-      "heading": "Declare a Union",
-      "body": "To create a union, use the union keyword, and then create a variable from it (just like with structs):",
-      "code": ""
-    },
-    {
-      "heading": "Access Union Members",
-      "body": "And just like with structs, to access members of a Union, use the dot . syntax. Important: Since all members share the same memory, changing one will affect the others. Only the last assigned member holds a valid value:",
-      "code": ""
-    },
-    {
-      "heading": "Size of a Union",
-      "body": "The size of a union will always be the same as the size of its largest member:",
-      "code": ""
-    },
-    {
-      "heading": "When to Use Unions",
-      "body": "Use unions when: • You need to store different types in the same location • You only use one type at a time • Saving memory is very important",
-      "code": ""
-    },
-    {
-      "heading": "C typedef",
-      "body": "The typedef keyword lets you create a new name (an alias) for an existing type. This can make complex declarations easier to read, and your code easier to maintain. For example, instead of always writing float, we can create a new type called Temperature to make the code clearer:",
-      "code": ""
-    },
-    {
-      "heading": "Why Use typedef?",
-      "body": "• Simplifies code: Shorter, easier-to-read type names. • Improves clarity: Expresses intent better (for example, AGE instead of just int). Also helps avoid confusion when many variables share the same base type (like float or double). Good To Know: In modern C, typedef is often used together with struct, enum, and function pointers to keep code clean and easier to read.",
-      "code": ""
-    },
-    {
-      "heading": "typedef with struct",
-      "body": "typedef can be useful with struct, because it lets you avoid writing struct every time:",
-      "code": ""
-    },
-    {
-      "heading": "Struct Padding",
-      "body": "When you create a struct in C, the compiler may add some extra bytes of padding between members. This is done to make the program run faster on your computer, because most CPUs read data more efficiently when it's properly aligned in memory. You rarely need to worry about this unless you work with low-level memory or file formats. In short: Padding means the compiler sometimes adds empty spaces inside a struct to keep things fast and properly aligned in memory. Let's look at a simple struct:",
-      "code": ""
-    },
-    {
-      "heading": "Why?",
-      "body": "The compiler adds padding bytes so that the int member (b) starts at a memory address that's a multiple of 4. This helps the CPU read it faster. Here's how memory is actually arranged: Member | Bytes | Notes a | 1 | Stored first padding | 3 | Added so b starts at a multiple of 4 b | 4 | Aligned to 4-byte boundary c | 1 | Stored next padding | 3 | Added to make total size a multiple of 4 Total = 1 + 3 + 4 + 1 + 3 = 12 bytes.",
-      "code": ""
-    },
-    {
-      "heading": "How to Reduce Padding",
-      "body": "Padding depends on the order of members in the struct. If you group larger types first, you can make the struct smaller:",
-      "code": ""
-    },
-    {
-      "heading": "Why It Matters",
-      "body": "• Padding helps programs run faster by keeping data aligned in memory. • It can make structs bigger than expected. • Reordering members can reduce the total size.",
-      "code": ""
-    },
-    {
-      "heading": "Structs vs Unions",
-      "body": "So far, we've talked about padding inside structs. But what about unions? Unions store all members in the same memory location, so there is no padding between members. However, both structs and unions still follow alignment rules - the data must start at memory addresses that match their type size.",
-      "code": ""
-    },
-    {
-      "heading": "Summary",
-      "body": "• Struct members are aligned based on their data type size. • The compiler may add padding bytes to align data properly. • The total struct size is often larger than the sum of its members. • Reordering members can reduce padding and save memory.",
-      "code": ""
+      "heading": "Structures (structs)",
+      "body": "Structures\n\nStructures (also called structs) are a way to group several related variables into one place.\nEach variable in the structure is\nknown as a member of the structure.\nUnlike an array, a structure can contain many\ndifferent data types (int, float, char, etc.).\n\nCreate a Structure\n\nYou can create a structure by using the struct\nkeyword and declare each of its members inside curly braces:\nTo access the structure, you must create a variable of it.\nUse the struct keyword\ninside the main() method, followed by the name\nof the structure and then the name of the structure variable:\nCreate a struct variable with the name \"s1\":\n\nAccess Structure Members\n\nTo access members of a structure, use the dot syntax (.):\n\nExample\n\nNow you can easily create multiple structure variables with different values, using just one structure:\n\nExample\n\nWhat About Strings in Structures?\n\nRemember that strings in C are actually an array of characters, and\nunfortunately, you can't assign a value to an array like this:\n\nExample\n\nAn error will occur:\nHowever, there is a solution for this! You can use the strcpy()\nfunction and assign the value to s1.myString, like this:\n\nExample\n\nResult:\n\nSimpler Syntax\n\nYou can also assign values to members of a structure variable at declaration time,\nin a single line.\nJust insert the values in a comma-separated list\ninside curly braces {}. Note that you don't\nhave to use the strcpy() function for string\nvalues with this\ntechnique:\n\nExample\n\nNote: The order of the inserted values must match the order of\n the variable types declared in the structure (13 for int, 'B' for char, etc).\nNote: The order of the inserted values must match the order of\n the variable types declared in the structure (13 for int, 'B' for char, etc).\n\nCopy Structures\n\nYou can also assign one structure to another.\nIn the following example, the values of s1 are copied to s2:\n\nExample\n\nModify Values\n\nIf you want to change/modify a value, you can use the dot syntax (.).\nAnd to modify a\nstring value, the strcpy() function is useful again:\n\nExample\n\nModifying values are especially useful when you copy structure values:\n\nExample\n\nOk, so, how are structures useful?\nImagine you have to write a program to store different information about Cars, such as brand, model,\nand year. What's great about structures is that you can create a\nsingle \"Car template\" and use it for every cars you make. See below for a real life example.\nImagine you have to write a program to store different information about Cars, such as brand, model,\nand year. What's great about structures is that you can create a\nsingle \"Car template\" and use it for every cars you make. See below for a real life example.\n\nReal-Life Example\n\nUse a structure to store different information about Cars:\n\nExample",
+      "code": "struct MyStructure { // Structure declaration int myNum; // Member (int\n variable) char myLetter; // Member (char variable)};\n // End the structure with a semicolon\n\nstruct myStructure { int myNum; char myLetter;};int main()\n { struct myStructure s1; return 0;}\n\n// Create a structure called myStructurestruct myStructure {\n int myNum; char myLetter;};int main() { // Create a structure variable\n of myStructure called s1 struct myStructure s1;\n // Assign values to members of s1 s1.myNum = 13;\n s1.myLetter = 'B'; // Print values printf(\"My\n number: %d\\n\", s1.myNum); printf(\"My letter: %c\\n\", s1.myLetter);\n return 0;}\n\n// Create different struct variablesstruct myStructure s1;struct myStructure s2;\n // Assign values to different struct variabless1.myNum = 13;s1.myLetter = 'B';\n s2.myNum = 20;s2.myLetter = 'C';\n\nstruct myStructure {\n int myNum; char myLetter; char myString[30]; //\n String};int main() { struct myStructure s1;\n // Trying to assign a value to the string s1.myString = \"Some text\"; // Trying to print the value printf(\"My string: %s\",\n s1.myString); return 0;}\n\nstruct myStructure { int myNum; char myLetter;\n char myString[30]; // String};int main() {\n struct myStructure s1; // Assign a value to the string using\n the strcpy function strcpy(s1.myString, \"Some text\");\n // Print the value printf(\"My string: %s\", s1.myString);\n return 0;}\n\n// Create a structurestruct myStructure {\n int myNum; char myLetter; char myString[30];};int main() {\n // Create a structure variable and assign values to it struct myStructure s1 = {13,\n 'B', \"Some text\"}; // Print values printf(\"%d %c %s\", s1.myNum, s1.myLetter,\n s1.myString);\n return 0;}\n\nstruct myStructure s1 = {13, 'B', \"Some text\"};struct myStructure s2;\n s2 = s1;\n\nstruct myStructure { int myNum;\n char myLetter; char myString[30];};int main() {\n // Create a structure variable and assign values to it struct\n myStructure s1 = {13, 'B', \"Some text\"}; // Modify values\n s1.myNum = 30; s1.myLetter = 'C'; strcpy(s1.myString,\n \"Something else\"); // Print values printf(\"%d %c\n %s\", s1.myNum, s1.myLetter, s1.myString); return 0;}\n\n// Create a structure variable and assign values to itstruct\n myStructure s1 = {13, 'B', \"Some text\"};// Create another structure\n variablestruct myStructure s2;// Copy s1 values to s2s2 =\n s1;// Change s2 valuess2.myNum = 30;s2.myLetter = 'C';strcpy(s2.myString,\n \"Something else\");// Print valuesprintf(\"%d %c\n %s\\n\", s1.myNum, s1.myLetter, s1.myString);printf(\"%d %c\n %s\\n\", s2.myNum, s2.myLetter, s2.myString);\n\nstruct Car { char brand[30]; char model[30]; int\n year;};int main() { struct Car car1 = {\"BMW\", \"X5\",\n 1999}; struct Car car2 = {\"Ford\", \"Mustang\", 1969}; struct\n Car car3 = {\"Toyota\", \"Corolla\", 2011}; printf(\"%s %s %d\\n\",\n car1.brand, car1.model, car1.year); printf(\"%s %s %d\\n\", car2.brand,\n car2.model, car2.year); printf(\"%s %s %d\\n\", car3.brand, car3.model,\n car3.year); return 0;}"
     }
   ]
 }

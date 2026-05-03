@@ -211,6 +211,7 @@ export default function AssignmentsPage({ currentUser, token, handleLogout, navI
                     const problem    = a.problem ?? {};
                     const solved     = solvedSet.has(problem.id);
                     const langs      = a.allowedLanguages ?? [];
+                    const published  = a.isPublished ?? false;
                     const isLate     = (() => {
                       if (!a.dueDate) return false;
                       const now = Date.now();
@@ -221,17 +222,18 @@ export default function AssignmentsPage({ currentUser, token, handleLogout, navI
                     return (
                       <TableRow
                         key={a.id}
-                        hover
-                        onClick={() =>
+                        hover={published}
+                        onClick={() => {
+                          if (!published) return;
                           navigate(`/problem/${problem.id}`, {
                             state: {
                               assignmentId:     a.id,
                               allowedLanguages: langs,
                               lateDeduction:    isLate ? (a.lateDeduction ?? 0) : 0,
                             },
-                          })
-                        }
-                        sx={{ cursor: "pointer" }}
+                          });
+                        }}
+                        sx={{ cursor: published ? "pointer" : "default", opacity: published ? 1 : 0.65 }}
                       >
                         <TableCell>{idx + 1}</TableCell>
 
@@ -298,7 +300,10 @@ export default function AssignmentsPage({ currentUser, token, handleLogout, navI
                         </TableCell>
 
                         <TableCell>
-                          {isLate ? (
+                          {!published ? (
+                            <Chip label="Coming soon" size="small" color="default" variant="outlined"
+                              sx={{ fontSize: 10 }} />
+                          ) : isLate ? (
                             <Tooltip title={a.lateDeduction > 0 ? `${a.lateDeduction}% deduction` : "No deduction"}>
                               <Chip label="Late" size="small" color="warning" variant="filled" />
                             </Tooltip>

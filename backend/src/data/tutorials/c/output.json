@@ -1,0 +1,37 @@
+{
+  "tag": "output",
+  "language": "c",
+  "title": "C Output (Print Text)",
+  "sections": [
+    {
+      "heading": "Output (Print Text)",
+      "body": "To output values or print text in C, you can use the printf() function:",
+      "code": ""
+    },
+    {
+      "heading": "Example",
+      "body": "",
+      "code": "#include <stdio.h>\n\nint main() {\n  printf(\"Hello World!\");\n \n  return 0;\n}"
+    },
+    {
+      "heading": "Double Quotes",
+      "body": "When you want to print text, the text must be wrapped in double quotes \"\". If you forget the double quotes, an error occurs:",
+      "code": ""
+    },
+    {
+      "heading": "Example",
+      "body": "Tip: If you see strange error messages, check that your text starts and ends with double quotes.",
+      "code": "printf(\"This sentence will work!\");\n\nprintf(This sentence will produce an error.);"
+    },
+    {
+      "heading": "Many printf() Functions",
+      "body": "You can use as many printf() functions as you want. However, note that it does not insert a new line at the end of the output:",
+      "code": ""
+    },
+    {
+      "heading": "Example",
+      "body": "Notice: All the text appears on the same line. In the next chapter, you will learn how to add new lines to make the output easier to read.",
+      "code": "#include <stdio.h>\n\nint main() {\n  printf(\"Hello World!\");\n \n  printf(\"I am learning C.\");\n \n  printf(\"And it is awesome!\");\n \n  return 0;\n}"
+    }
+  ]
+}

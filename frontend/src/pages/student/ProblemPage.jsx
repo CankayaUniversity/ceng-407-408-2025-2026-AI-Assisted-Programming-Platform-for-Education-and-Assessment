@@ -500,6 +500,8 @@ export default function ProblemPage() {
       examMode={examMode}
       flashcards={flashcards}
       onViewFlashcards={() => setFlashcardModalOpen(true)}
+      token={token}
+      tutorialLanguage={selectedProblem?.language ?? "c"}
     />
 
     <FlashcardModal

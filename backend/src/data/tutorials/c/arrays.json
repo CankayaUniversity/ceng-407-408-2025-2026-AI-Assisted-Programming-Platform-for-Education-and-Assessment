@@ -1,0 +1,57 @@
+{
+  "tag": "arrays",
+  "language": "c",
+  "title": "C Arrays",
+  "sections": [
+    {
+      "heading": "Arrays",
+      "body": "Arrays are used to store multiple values in a single variable, instead of declaring separate variables for each value. To create an array, define the data type (like int) and specify the name of the array followed by square brackets []. To insert values to it, use a comma-separated list inside curly braces, and make sure all values are of the same data type: We have now created a variable that holds an array of four integers.",
+      "code": "int myNumbers[] = {25, \n  50, 75, 100};"
+    },
+    {
+      "heading": "Access the Elements of an Array",
+      "body": "To access an array element, refer to its index number. Array indexes start with 0: [0] is the first element. [1] is the second element, etc. This statement accesses the value of the first element [0] in myNumbers:",
+      "code": ""
+    },
+    {
+      "heading": "Example",
+      "body": "",
+      "code": "int myNumbers[] = {25, 50, 75, 100};\n\n  printf(\"%d\", myNumbers[0]);\n\n// Outputs 25"
+    },
+    {
+      "heading": "Change an Array Element",
+      "body": "To change the value of a specific element, refer to the index number:",
+      "code": ""
+    },
+    {
+      "heading": "Example",
+      "body": "",
+      "code": "myNumbers[0] = 33;"
+    },
+    {
+      "heading": "Example",
+      "body": "",
+      "code": "int myNumbers[] = {25, 50, 75, 100};\nmyNumbers[0] = 33;\n\n\n  printf(\"%d\", myNumbers[0]);\n\n\n  // Now outputs 33 instead of 25"
+    },
+    {
+      "heading": "Set Array Size",
+      "body": "Another common way to create arrays, is to specify the size of the array, and add elements later:",
+      "code": ""
+    },
+    {
+      "heading": "Example",
+      "body": "Using this method, you should know the number of array elements in advance, in order for the program to store enough memory. You are not able to change the size of the array after creation.",
+      "code": "// Declare an array of four integers:\nint myNumbers[4];\n\n// Add \n  elements\nmyNumbers[0] = 25;\nmyNumbers[1] = 50;\nmyNumbers[2] = 75;\n\n  myNumbers[3] = 100;"
+    },
+    {
+      "heading": "Avoid Mixing Data Types",
+      "body": "It is important to note that all elements in an array must be of the same data type. This means you cannot mix different types of values, like integers and floating point numbers, in the same array:",
+      "code": ""
+    },
+    {
+      "heading": "Example",
+      "body": "In the example above, the values 3.15 and 5.99 will be truncated to 3 and 5. In some cases it might also result in an error, so it is important to always make sure that the elements in the array are of the same type.",
+      "code": "int myArray[] = {25, 50, 75, \n  3.15, 5.99};"
+    }
+  ]
+}

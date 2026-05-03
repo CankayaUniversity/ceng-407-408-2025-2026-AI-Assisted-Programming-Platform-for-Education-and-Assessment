@@ -1,0 +1,22 @@
+{
+  "tag": "syntax",
+  "language": "c",
+  "title": "C Syntax",
+  "sections": [
+    {
+      "heading": "Syntax",
+      "body": "You have already seen the following code a couple of times in the first chapters. Let's break it down and understand what each part does:",
+      "code": ""
+    },
+    {
+      "heading": "Example",
+      "body": "",
+      "code": "#include <stdio.h>\n\nint main() {\n  printf(\"Hello World!\");\n \n  return 0;\n}"
+    },
+    {
+      "heading": "Example explained",
+      "body": "Line 1: #include <stdio.h> tells C to include a header file. This header lets us use input/output functions such as printf() (used in line 4). Don't worry if you don't understand how #include <stdio.h> works. Just think of it as something that (almost) always appears in your program. Line 2: A blank line. C ignores extra spaces and blank lines, but we use them to make the code easier to read. Line 3: main() is a special function. Your program starts running here. Any code inside the curly brackets {} will be executed. Line 4: printf() is a function used to output (print) text to the screen. In our example, it prints Hello World!. Note: Every C statement ends with a semicolon ; Note: The body of int main() could also be written as: int main(){printf(\"Hello World!\");return 0;} Remember: The compiler ignores extra spaces and new lines, but using multiple lines makes code easier to read. Line 5: return 0 ends the main() function and sends a value back to the operating system. Returning 0 usually means \"everything worked\". You will learn more about return values later. Line 6: Do not forget the closing curly bracket } to end the main() function.",
+      "code": ""
+    }
+  ]
+}

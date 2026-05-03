@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
 import DOMPurify from "dompurify";
 import { marked } from "marked";
@@ -8,6 +8,7 @@ import {
   Box,
   Button,
   Chip,
+  CircularProgress,
   Divider,
   FormControl,
   InputLabel,
@@ -17,11 +18,16 @@ import {
   MenuItem,
   Select,
   Stack,
+  Tab,
+  Tabs,
   TextField,
   Tooltip,
   Typography,
 } from "@mui/material";
-import LightbulbIcon from "@mui/icons-material/Lightbulb";
+import LightbulbIcon    from "@mui/icons-material/Lightbulb";
+import ArrowBackIcon    from "@mui/icons-material/ArrowBack";
+import MenuBookIcon     from "@mui/icons-material/MenuBook";
+import { API_BASE }     from "../../apiBase";
 
 import SectionCard         from "../common/SectionCard";
 import AppLayout           from "../layout/AppLayout";
@@ -83,8 +89,46 @@ export default function StudentWorkspace({
   lateDeduction = 0,
   flashcards = [],
   onViewFlashcards,
+  token,
+  tutorialLanguage = "c",
 }) {
   const chatBottomRef = useChatScroll(chat);
+
+  // ── Left panel tabs ───────────────────────────────────────────────────────
+  const [leftTab,          setLeftTab]          = useState(0); // 0=assignments 1=tutorials
+  const [tutorialList,     setTutorialList]     = useState(null); // null=not loaded
+  const [selectedTutorial, setSelectedTutorial] = useState(null); // { tag, title }
+  const [tutorialContent,  setTutorialContent]  = useState(null);
+  const [tutorialStatus,   setTutorialStatus]   = useState("idle"); // idle|loading|ready|error
+
+  // Load tutorial index when Tutorials tab is first opened
+  useEffect(() => {
+    if (leftTab !== 1 || tutorialList !== null) return;
+    fetch(`${API_BASE}/api/tutorials/index/${tutorialLanguage}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((body) => setTutorialList(body?.data ?? []))
+      .catch(() => setTutorialList([]));
+  }, [leftTab, tutorialList, token, tutorialLanguage]);
+
+  function openTutorial(tag, title) {
+    setSelectedTutorial({ tag, title });
+    setTutorialContent(null);
+    setTutorialStatus("loading");
+    fetch(`${API_BASE}/api/tutorials/${encodeURIComponent(tag)}/${encodeURIComponent(tutorialLanguage)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.ok ? r.json() : Promise.reject())
+      .then((body) => { setTutorialContent(body?.data?.content ?? null); setTutorialStatus("ready"); })
+      .catch(() => setTutorialStatus("error"));
+  }
+
+  function backToList() {
+    setSelectedTutorial(null);
+    setTutorialContent(null);
+    setTutorialStatus("idle");
+  }
 
   return (
     <AppLayout
@@ -104,49 +148,159 @@ export default function StudentWorkspace({
           alignItems: "start",
         }}
       >
-        <SectionCard title="Assignments">
-          {problems.length === 0 ? (
-            <Typography color="text.secondary">No assignments available.</Typography>
-          ) : (
-            <List disablePadding>
-              {problems.map((p) => {
-                const isSelected = p.id === selectedId;
-                const diffColor =
-                  p.difficulty === "Easy"   ? "#22c55e" :
-                  p.difficulty === "Medium" ? "#f59e0b" :
-                  p.difficulty === "Hard"   ? "#ef4444" : "#64748b";
-                return (
-                  <ListItemButton
-                    key={p.id}
-                    selected={isSelected}
-                    onClick={() => selectProblem(p.id)}
-                    sx={{
-                      mb: 1,
-                      border: 1,
-                      borderColor: isSelected ? "primary.main" : "divider",
-                      borderRadius: 2,
-                      alignItems: "flex-start",
-                      bgcolor: isSelected ? "rgba(99,102,241,0.08)" : "transparent",
-                    }}
-                  >
-                    <ListItemText
-                      primary={p.title}
-                      secondary={`${p.language || "n/a"}`}
-                      primaryTypographyProps={{ fontWeight: 600, fontSize: 14 }}
-                    />
-                    <Box
-                      sx={{
-                        width: 8, height: 8, borderRadius: "50%",
-                        bgcolor: diffColor, flexShrink: 0,
-                        mt: 1.2, ml: 1,
-                      }}
-                    />
-                  </ListItemButton>
-                );
-              })}
-            </List>
-          )}
-        </SectionCard>
+        {/* ── Left panel: Assignments / Tutorials tabs ────────────────── */}
+        <Box sx={{ border: 1, borderColor: "divider", borderRadius: 3, overflow: "hidden", bgcolor: "background.paper" }}>
+          {/* Tab bar */}
+          <Tabs
+            value={leftTab}
+            onChange={(_, v) => setLeftTab(v)}
+            variant="fullWidth"
+            sx={{ borderBottom: 1, borderColor: "divider", minHeight: 40 }}
+          >
+            <Tab label="Assignments" sx={{ fontSize: 12, minHeight: 40, py: 0 }} />
+            <Tab label="Tutorials"   sx={{ fontSize: 12, minHeight: 40, py: 0 }} icon={<MenuBookIcon sx={{ fontSize: 14 }} />} iconPosition="start" />
+          </Tabs>
+
+          <Box sx={{ p: 1.5 }}>
+            {/* ── Assignments tab ──────────────────────────────────────── */}
+            {leftTab === 0 && (
+              problems.length === 0 ? (
+                <Typography color="text.secondary" sx={{ p: 1 }}>No assignments available.</Typography>
+              ) : (
+                <List disablePadding>
+                  {problems.map((p) => {
+                    const isSelected = p.id === selectedId;
+                    const diffColor =
+                      p.difficulty === "Easy"   ? "#22c55e" :
+                      p.difficulty === "Medium" ? "#f59e0b" :
+                      p.difficulty === "Hard"   ? "#ef4444" : "#64748b";
+                    return (
+                      <ListItemButton
+                        key={p.id}
+                        selected={isSelected}
+                        onClick={() => selectProblem(p.id)}
+                        sx={{
+                          mb: 1,
+                          border: 1,
+                          borderColor: isSelected ? "primary.main" : "divider",
+                          borderRadius: 2,
+                          alignItems: "flex-start",
+                          bgcolor: isSelected ? "rgba(99,102,241,0.08)" : "transparent",
+                        }}
+                      >
+                        <ListItemText
+                          primary={p.title}
+                          secondary={p.language || "n/a"}
+                          primaryTypographyProps={{ fontWeight: 600, fontSize: 14 }}
+                        />
+                        <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: diffColor, flexShrink: 0, mt: 1.2, ml: 1 }} />
+                      </ListItemButton>
+                    );
+                  })}
+                </List>
+              )
+            )}
+
+            {/* ── Tutorials tab ────────────────────────────────────────── */}
+            {leftTab === 1 && (
+              <Box>
+                {/* Topic list */}
+                {!selectedTutorial && (
+                  <>
+                    {tutorialList === null && (
+                      <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+                        <CircularProgress size={24} />
+                      </Box>
+                    )}
+                    {tutorialList !== null && tutorialList.length === 0 && (
+                      <Typography color="text.secondary" sx={{ p: 1 }}>No tutorials available.</Typography>
+                    )}
+                    {tutorialList !== null && tutorialList.length > 0 && (
+                      <List disablePadding>
+                        {tutorialList.map((t) => (
+                          <ListItemButton
+                            key={t.tag}
+                            onClick={() => openTutorial(t.tag, t.title)}
+                            sx={{ mb: 0.5, borderRadius: 2, border: 1, borderColor: "divider" }}
+                          >
+                            <ListItemText
+                              primary={t.title}
+                              primaryTypographyProps={{ fontSize: 13, fontWeight: 600 }}
+                            />
+                          </ListItemButton>
+                        ))}
+                      </List>
+                    )}
+                  </>
+                )}
+
+                {/* Tutorial content */}
+                {selectedTutorial && (
+                  <Box>
+                    <Button
+                      startIcon={<ArrowBackIcon />}
+                      size="small"
+                      onClick={backToList}
+                      sx={{ mb: 1.5, fontSize: 12 }}
+                    >
+                      All Topics
+                    </Button>
+
+                    <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>
+                      {selectedTutorial.title}
+                    </Typography>
+
+                    {tutorialStatus === "loading" && (
+                      <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+                        <CircularProgress size={24} />
+                      </Box>
+                    )}
+                    {tutorialStatus === "error" && (
+                      <Alert severity="error" sx={{ borderRadius: 2 }}>Failed to load tutorial.</Alert>
+                    )}
+                    {tutorialStatus === "ready" && tutorialContent && (
+                      <Stack spacing={2} sx={{ maxHeight: 520, overflowY: "auto", pr: 0.5 }}>
+                        {(tutorialContent.sections ?? []).map((section, idx) => (
+                          <Box key={idx}>
+                            {section.heading && (
+                              <Typography variant="body2" fontWeight={700} sx={{ mb: 0.5 }}>
+                                {section.heading}
+                              </Typography>
+                            )}
+                            {section.body && (
+                              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: section.code ? 1 : 0, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+                                {section.body}
+                              </Typography>
+                            )}
+                            {section.code && (
+                              <Box sx={{ borderRadius: 1.5, overflow: "hidden", border: 1, borderColor: "divider" }}>
+                                <Editor
+                                  height={`${Math.min(Math.max(section.code.split("\n").length * 19 + 16, 60), 220)}px`}
+                                  language="c"
+                                  value={section.code}
+                                  theme="vs-dark"
+                                  options={{
+                                    readOnly: true,
+                                    minimap: { enabled: false },
+                                    fontSize: 12,
+                                    lineNumbers: "off",
+                                    scrollBeyondLastLine: false,
+                                    padding: { top: 8, bottom: 8 },
+                                    automaticLayout: true,
+                                  }}
+                                />
+                              </Box>
+                            )}
+                          </Box>
+                        ))}
+                      </Stack>
+                    )}
+                  </Box>
+                )}
+              </Box>
+            )}
+          </Box>
+        </Box>
 
         <SectionCard
           title={selectedProblem?.title || "Code Editor"}

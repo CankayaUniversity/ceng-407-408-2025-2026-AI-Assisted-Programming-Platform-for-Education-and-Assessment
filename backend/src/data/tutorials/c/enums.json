@@ -1,0 +1,37 @@
+{
+  "tag": "enums",
+  "language": "c",
+  "title": "C Enum (Enumeration)",
+  "sections": [
+    {
+      "heading": "C Enums",
+      "body": "An enum is a special type that represents a group of constants (unchangeable values). To create an enum, use the enum keyword, followed by the name of the enum, and separate the enum items with a comma: Note that the last item does not need a comma. It is not required to use uppercase, but often considered as good practice. Enum is short for \"enumerations\", which means \"specifically listed\". To access the enum, you must create a variable of it. Inside the main() method, specify the enum keyword, followed by the name of the enum (Level) and then the name of the enum variable (myVar in this example): Now that you have created an enum variable (myVar), you can assign a value to it. The assigned value must be one of the items inside the enum (LOW, MEDIUM or HIGH): By default, the first item (LOW) has the value 0, the second (MEDIUM) has the value 1, etc. If you now try to print myVar, it will output 1, which represents MEDIUM:",
+      "code": "enum Level {\n  LOW,\n  MEDIUM,\n  HIGH\n};\n\nenum Level myVar;\n\nenum Level myVar = MEDIUM;\n\nint main() {\n  // Create an enum variable and assign a value to it\n  enum Level myVar \n  = MEDIUM;\n\n  \n  // Print the enum variable\n  printf(\"%d\", myVar);\n\n  \n  return 0;\n}"
+    },
+    {
+      "heading": "Change Values",
+      "body": "As you know, the first item of an enum has the value 0. The second has the value 1, and so on. To make more sense of the values, you can easily change them: Note that if you assign a value to one specific item, the next items will update their numbers accordingly:",
+      "code": "enum Level {\n  LOW = 25,\n  MEDIUM = 50,\n  HIGH = 75\n\n  };\n\nprintf(\"%d\", myVar); // Now outputs 50\n\nenum Level {\n  LOW = 5,\n  MEDIUM, // Now 6\n  HIGH // Now 7\n\n  };"
+    },
+    {
+      "heading": "Enum in a Switch Statement",
+      "body": "Enums are often used in switch statements to check for corresponding values:",
+      "code": "enum Level {\n  LOW = 1,\n  MEDIUM,\n  HIGH\n};\n\nint main() {\n  \n  enum Level myVar = MEDIUM;\n\n  switch (myVar) {\n    \n  case 1:\n      printf(\"Low Level\");\n      \n  break;\n    case 2:\n      \n  printf(\"Medium level\");\n      break;\n    \n  case 3:\n      printf(\"High level\");\n      \n  break;\n  }\n  return 0;\n}"
+    },
+    {
+      "heading": "typedef with enum",
+      "body": "You can also use typedef with enum. This makes it easier to declare variables of the enum type, without having to write enum every time:",
+      "code": ""
+    },
+    {
+      "heading": "Example",
+      "body": "Both versions work the same, but the typedef version is shorter and easier to read:",
+      "code": "// Without typedef\n\nenum Day {MON, TUE, WED, THU, FRI, SAT, SUN};\n\nenum Day today = WED;\n\n\n\n// With typedef\n\ntypedef enum {MON, TUE, WED, THU, FRI, SAT, SUN} Day;\n\nDay today = WED;"
+    },
+    {
+      "heading": "Example",
+      "body": "Enums are used to give names to constants, which makes the code easier to read and maintain. Use enums when you have values that you know aren't going to change, like month days, days, colors, deck of cards, etc.",
+      "code": "#include <stdio.h>\n\n\n\ntypedef enum {MON, TUE, WED, THU, FRI, SAT, SUN} Day;\n\n\n\nint main() {\n\n  Day today = WED;\n\n  if (today == WED) {\n\n    printf(\"It is Wednesday!\\n\");\n\n  }\n\n  return 0;\n\n}"
+    }
+  ]
+}

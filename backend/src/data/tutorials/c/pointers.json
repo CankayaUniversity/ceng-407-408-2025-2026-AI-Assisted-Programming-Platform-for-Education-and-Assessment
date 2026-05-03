@@ -1,0 +1,32 @@
+{
+  "tag": "pointers",
+  "language": "c",
+  "title": "C Pointers",
+  "sections": [
+    {
+      "heading": "Creating Pointers",
+      "body": "You learned from the previous chapter, that we can get the memory address of a variable with the reference operator &:",
+      "code": ""
+    },
+    {
+      "heading": "Example",
+      "body": "A pointer is a variable that stores the memory address of another variable as its value. A pointer variable points to a data type (like int) of the same type, and is created with the * operator. The address of the variable you are working with is assigned to the pointer:",
+      "code": "int myAge = 43; // an int variable\n\nprintf(\"%d\", myAge);  // \n    Outputs the value of myAge (43)\nprintf(\"%p\", &myAge); // Outputs the \n    memory address of myAge (0x7ffe5367e044)"
+    },
+    {
+      "heading": "Example",
+      "body": "Create a pointer variable with the name ptr, that points to an int variable (myAge). Note that the type of the pointer has to match the type of the variable you're working with (int in our example). Use the & operator to store the memory address of the myAge variable, and assign it to the pointer. Now, ptr holds the value of myAge's memory address.",
+      "code": "int myAge = 43;     // An int variable\nint* ptr = \n    &myAge;  // A pointer variable, with the name ptr, that \n    stores the address of myAge\n\n// Output the value of myAge (43)\n\n    printf(\"%d\\n\", myAge);\n\n// Output \n    the memory address of myAge (0x7ffe5367e044)\nprintf(\"%p\\n\", &myAge);\n\n// \n    Output the memory address of myAge with the pointer (0x7ffe5367e044)\n\n    printf(\"%p\\n\", ptr);"
+    },
+    {
+      "heading": "Dereference",
+      "body": "In the example above, we used the pointer variable to get the memory address of a variable (used together with the & reference operator). You can also get the value of the variable the pointer points to, by using the * operator (the dereference operator):",
+      "code": ""
+    },
+    {
+      "heading": "Example",
+      "body": "Note that the * sign can be confusing here, as it does two different things in our code: When used in declaration (int* ptr), it creates a pointer variable.; When not used in declaration, it act as a dereference operator. Good To Know: There are two ways to declare pointer variables in C: Notes on Pointers Pointers are one of the things that make C stand out from other programming languages, like Python and Java. They are important in C, because they allow us to manipulate the data in the computer's memory. This can reduce the code and improve the performance. If you are familiar with data structures like lists, trees and graphs, you should know that pointers are especially useful for implementing those. And sometimes you even have to use pointers, for example when working with files and memory management. But be careful; pointers must be handled with care, since it is possible to damage data stored in other memory addresses.",
+      "code": "int myAge = 43;     // Variable declaration\nint* ptr = &myAge;  // Pointer \n    declaration\n\n// Reference: Output the memory address of myAge with the \n    pointer (0x7ffe5367e044)\nprintf(\"%p\\n\", ptr);\n\n// Dereference: \n    Output the value of myAge with the pointer (43)\nprintf(\"%d\\n\", *ptr);\n\nint* myNum;\nint *myNum;"
+    }
+  ]
+}

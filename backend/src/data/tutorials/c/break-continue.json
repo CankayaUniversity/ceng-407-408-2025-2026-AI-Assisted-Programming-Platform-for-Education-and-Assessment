@@ -1,0 +1,62 @@
+{
+  "tag": "break-continue",
+  "language": "c",
+  "title": "C Break and Continue",
+  "sections": [
+    {
+      "heading": "Break",
+      "body": "You have already seen the break statement used in an earlier chapter of this tutorial. It was used to \"jump out\" of a switch statement. The break statement can also be used to jump out of a loop. This example stops the loop when i is equal to 4:",
+      "code": ""
+    },
+    {
+      "heading": "Example",
+      "body": "",
+      "code": "int i;\n\nfor (i = 0; i < 10; i++) {\n  if (i == 4) {\n    break;\n  }\n  printf(\"%d\\n\", i);\n}"
+    },
+    {
+      "heading": "Continue",
+      "body": "The continue statement breaks one iteration (in the loop), if a specified condition occurs, and continues with the next iteration in the loop. This example skips the value of 4:",
+      "code": ""
+    },
+    {
+      "heading": "Example",
+      "body": "Good to Remember: break = stop the loop completely.; continue = skip this round, but keep looping.",
+      "code": "int i;\n\nfor (i = 0; i < 10; i++) {\n  if (i == 4) {\n    continue;\n  }\n  printf(\"%d\\n\", i);\n}"
+    },
+    {
+      "heading": "Combining Break and Continue",
+      "body": "You can also combine break and continue. This example skips printing 2 and stops the loop at 4:",
+      "code": ""
+    },
+    {
+      "heading": "Example",
+      "body": "Try it Yourself »",
+      "code": "int i;\n\nfor (i = 0; i < 6; i++) {\n  if (i == 2) {\n    continue;\n  }\n  if (i == 4) {\n    break;\n  }\n  printf(\"%d\\n\", i);\n}"
+    },
+    {
+      "heading": "Break and Continue in While Loop",
+      "body": "You can also use break and continue in while loops:",
+      "code": ""
+    },
+    {
+      "heading": "Break Example",
+      "body": "",
+      "code": "int i = 0;\n\nwhile (i < 10) {\n  if (i == 4) {\n    break;\n  }\n  printf(\"%d\\n\", i);\n  i++;\n}"
+    },
+    {
+      "heading": "Continue Example",
+      "body": "",
+      "code": "int i = 0;\n\nwhile (i < 10) {\n  if (i == 4) {\n    i++;\n    continue;\n  }\n  printf(\"%d\\n\", i);\n  i++;\n}"
+    },
+    {
+      "heading": "Real-Life Example",
+      "body": "Imagine processing a list of numbers where you want to skip negative values, but stop completely if you find a zero:",
+      "code": ""
+    },
+    {
+      "heading": "Example",
+      "body": "Try it Yourself » Note: Don't worry if you don't fully understand the example above. It uses an array (int numbers[] = {3, -1, 7, 0, 9};) to store the numbers, and you will learn more about arrays in the next chapter.",
+      "code": "int myNumbers[] = {3, -1, 7, 0, 9};\nint length = sizeof(myNumbers) / sizeof(myNumbers[0]);\nint i;\n\nfor (i = 0; i < length; i++) {\n  if (myNumbers[i] < 0) {\n    continue; // skip negative numbers\n  }\n  if (myNumbers[i] == 0) {\n    break; // stop loop when zero is found\n  }\n  printf(\"%d\\n\", myNumbers[i]);\n}"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "tag": "memory-management",
+  "language": "c",
+  "title": "C Memory Management (Memory Allocation)",
+  "sections": [
+    {
+      "heading": "C Memory Management (Memory Allocation)",
+      "body": "Memory management is the process of handling how much memory a program uses through different operations.",
+      "code": ""
+    },
+    {
+      "heading": "Memory in C",
+      "body": "Understanding how memory works in C is important. When you create a basic variable, C will automatically reserve space for that variable. An int variable for example, will typically occupy 4 bytes of memory, while a double variable will occupy 8 bytes of memory. You can use the sizeof operator to find the size of different types:",
+      "code": ""
+    },
+    {
+      "heading": "Example",
+      "body": "Why is it important to know? If you create a program that occupies too much, or unnecessary memory, it can result in slow and poor performance. In C, you have to manage memory yourself. It is a complicated task, but is also quite powerful when used correctly: Properly managing the computer memory optimizes the performance of the program, so it is useful that you know how to release memory when it is no longer required and only use as little as necessary for the task. In previous chapters you learned about memory addresses and pointers. Both have an importance when it comes to memory management, since it is possible to work directly with memory through pointers. But be careful; pointers must be handled with care, since it is possible to damage data stored in other memory addresses.",
+      "code": "int myInt;\nfloat myFloat;\ndouble myDouble;\nchar myChar;\n\n  \nprintf(\"%zu\\n\", sizeof(myInt));      // 4 bytes\nprintf(\"%zu\\n\", sizeof(myFloat));    \n  // 4 bytes\n\n  printf(\"%zu\\n\", sizeof(myDouble));   // 8 bytes\nprintf(\"%zu\\n\", sizeof(myChar));     // 1 byte"
+    },
+    {
+      "heading": "Memory Management",
+      "body": "Memory management is the process of handling how much memory a program uses through allocation, reallocation and deallocation (often referred to as \"freeing\"). We will introduce each of these topics in the following chapters.",
+      "code": ""
+    }
+  ]
+}

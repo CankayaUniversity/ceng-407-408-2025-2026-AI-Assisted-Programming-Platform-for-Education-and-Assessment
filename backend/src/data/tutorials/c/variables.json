@@ -1,0 +1,47 @@
+{
+  "tag": "variables",
+  "language": "c",
+  "title": "C Variables",
+  "sections": [
+    {
+      "heading": "Variables",
+      "body": "Variables are containers for storing data values, like numbers and characters. You can think of a variable as a named box where you keep a value that can be used later. In C, variables must have a specific type, which tells the program what kind of data the variable can store. int - stores whole numbers (integers), such as 123 or -123; float - stores numbers with decimals, such as 19.99 or -19.99; char - stores a single character, such as 'a' or 'B'. Characters are surrounded by single quotes",
+      "code": ""
+    },
+    {
+      "heading": "Declaring (Creating) Variables",
+      "body": "To create a variable, you must specify the type and give the variable a name. You can also assign a value at the same time:",
+      "code": ""
+    },
+    {
+      "heading": "Syntax",
+      "body": "Where type is one of the C data types (such as int), and variableName is the name you choose (for example x or myNum). The equal sign = is used to assign a value to the variable. So, to create a variable that should store a number, look at the following example:",
+      "code": "type variableName = value;"
+    },
+    {
+      "heading": "Example",
+      "body": "Create a variable named myNum of type int and assign the value 15: You can also declare a variable first and assign a value later:",
+      "code": "int myNum = 15;"
+    },
+    {
+      "heading": "Example",
+      "body": "Tip: Variable names should be meaningful, so your code is easier to understand.",
+      "code": "// Declare a variable\n\n  int myNum;\n\n\n  // Assign a value later\n\n  myNum = 15;"
+    },
+    {
+      "heading": "Output Variables",
+      "body": "You learned from the output chapter that you can print text using the printf() function:",
+      "code": ""
+    },
+    {
+      "heading": "Example",
+      "body": "In many other programming languages (like Python, Java, and C++), you would normally use a print function to display the value of a variable. However, this is not possible in C:",
+      "code": "printf(\"Hello World!\");"
+    },
+    {
+      "heading": "Example",
+      "body": "To print variables in C, you must use something called format specifiers. Don't worry - this will be explained clearly in the next chapter.",
+      "code": "int myNum = 15;\n\n  printf(myNum); // This will cause an error"
+    }
+  ]
+}

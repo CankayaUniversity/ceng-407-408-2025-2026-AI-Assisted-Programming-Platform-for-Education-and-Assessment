@@ -1,0 +1,22 @@
+{
+  "tag": "multiple-variables",
+  "language": "c",
+  "title": "C Declare Multiple Variables",
+  "sections": [
+    {
+      "heading": "Declare Multiple Variables",
+      "body": "To declare more than one variable of the same type, use a comma-separated list:",
+      "code": ""
+    },
+    {
+      "heading": "Example",
+      "body": "Note: All variables must be of the same type. You cannot mix types in the same declaration. You can also assign the same value to multiple variables at once:",
+      "code": "int x = 5, y = 6, z = 50;\n\n  printf(\"%d\", x + y + z);"
+    },
+    {
+      "heading": "Example",
+      "body": "Tip: Declaring multiple variables on one line is convenient, but declaring them on separate lines can make your code easier to read.",
+      "code": "int x, y, z;\n\n  x = y = z = 50;\n\n  printf(\"%d\", x + y + z);"
+    }
+  ]
+}

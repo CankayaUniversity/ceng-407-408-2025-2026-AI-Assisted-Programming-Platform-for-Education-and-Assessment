@@ -1,0 +1,47 @@
+{
+  "tag": "while-loop",
+  "language": "c",
+  "title": "C While Loop",
+  "sections": [
+    {
+      "heading": "Loops",
+      "body": "Loops can execute a block of code as long as a specified condition is true. Loops are handy because they save time, reduce errors, and they make code more readable.",
+      "code": ""
+    },
+    {
+      "heading": "While Loop",
+      "body": "The while loop repeats a block of code as long as a specified condition is true:",
+      "code": ""
+    },
+    {
+      "heading": "Syntax",
+      "body": "In the example below, the code in the loop will run, over and over again, as long as a variable (i) is less than 5:",
+      "code": "while (condition) {\n\n      // code block to be executed\n\n }"
+    },
+    {
+      "heading": "Example",
+      "body": "Note: Do not forget to increase the variable used in the condition (i++), otherwise the loop will never end! Do you wonder why we use the letter i as a variable name? It's a counter variable and a common choice in simple loops because it's short, traditional, and stands for 'index' or 'iterator'.",
+      "code": "int i = 0;\n\nwhile (i < 5) {\n\n    printf(\"%d\\n\", i);\n\n  i++;\n}"
+    },
+    {
+      "heading": "Countdown Example",
+      "body": "You can also use a while loop to count down. This example counts from 3 to 1, and then prints \"Happy New Year!!\" at the end:",
+      "code": ""
+    },
+    {
+      "heading": "Example",
+      "body": "",
+      "code": "int countdown = 3;\n\n\n  while (countdown > 0) {\n\n    printf(\"%d\\n\", countdown);\n\n    countdown--;\n\n  }\n\n  printf(\"Happy New Year!!\\n\");"
+    },
+    {
+      "heading": "While Loop With False Condition",
+      "body": "In the previous examples, the condition was true at the start, so the loop ran one or more times. But if the condition is false at the beginning, the code inside the loop will never run:",
+      "code": ""
+    },
+    {
+      "heading": "Example",
+      "body": "Note: A while loop may never run if the condition is false from the start. In the next chapter, you will learn about the do while loop, which always runs the code at least once before checking the condition.",
+      "code": "int i = 10;\n  \nwhile (i < 5) {\n  printf(\"This will never be printed\\n\");\n  i++;\n}"
+    }
+  ]
+}

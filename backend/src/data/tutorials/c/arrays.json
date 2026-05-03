@@ -2,11 +2,12 @@
   "tag": "arrays",
   "language": "c",
   "title": "C Arrays",
+  "order": 16,
   "sections": [
     {
       "heading": "Arrays",
       "body": "Arrays are used to store multiple values in a single variable, instead of declaring separate variables for each value. To create an array, define the data type (like int) and specify the name of the array followed by square brackets []. To insert values to it, use a comma-separated list inside curly braces, and make sure all values are of the same data type: We have now created a variable that holds an array of four integers.",
-      "code": "int myNumbers[] = {25, \n  50, 75, 100};"
+      "code": "int myNumbers[] = {25,\n  50, 75, 100};"
     },
     {
       "heading": "Access the Elements of an Array",
@@ -14,24 +15,9 @@
       "code": ""
     },
     {
-      "heading": "Example",
-      "body": "",
-      "code": "int myNumbers[] = {25, 50, 75, 100};\n\n  printf(\"%d\", myNumbers[0]);\n\n// Outputs 25"
-    },
-    {
       "heading": "Change an Array Element",
       "body": "To change the value of a specific element, refer to the index number:",
       "code": ""
-    },
-    {
-      "heading": "Example",
-      "body": "",
-      "code": "myNumbers[0] = 33;"
-    },
-    {
-      "heading": "Example",
-      "body": "",
-      "code": "int myNumbers[] = {25, 50, 75, 100};\nmyNumbers[0] = 33;\n\n\n  printf(\"%d\", myNumbers[0]);\n\n\n  // Now outputs 33 instead of 25"
     },
     {
       "heading": "Set Array Size",
@@ -39,19 +25,74 @@
       "code": ""
     },
     {
-      "heading": "Example",
-      "body": "Using this method, you should know the number of array elements in advance, in order for the program to store enough memory. You are not able to change the size of the array after creation.",
-      "code": "// Declare an array of four integers:\nint myNumbers[4];\n\n// Add \n  elements\nmyNumbers[0] = 25;\nmyNumbers[1] = 50;\nmyNumbers[2] = 75;\n\n  myNumbers[3] = 100;"
-    },
-    {
       "heading": "Avoid Mixing Data Types",
       "body": "It is important to note that all elements in an array must be of the same data type. This means you cannot mix different types of values, like integers and floating point numbers, in the same array:",
       "code": ""
     },
     {
-      "heading": "Example",
-      "body": "In the example above, the values 3.15 and 5.99 will be truncated to 3 and 5. In some cases it might also result in an error, so it is important to always make sure that the elements in the array are of the same type.",
-      "code": "int myArray[] = {25, 50, 75, \n  3.15, 5.99};"
+      "heading": "Get Array Size",
+      "body": "To get the size of an array, you can use the sizeof operator:",
+      "code": ""
+    },
+    {
+      "heading": "Get the Number of Elements",
+      "body": "If you want to find out how many elements an array has, you can use this formula, which divides the total size of the array by the size of one element:",
+      "code": ""
+    },
+    {
+      "heading": "Loop Through an Array",
+      "body": "You can use a for loop to go through the elements of an array by writing the size of the array in the loop condition (in this example the array has 4 elements, so we use i < 4). However, this is not ideal, since it will only work for arrays of a specified size:",
+      "code": ""
+    },
+    {
+      "heading": "Making Better Loops",
+      "body": "In the previous chapter, you learned how to calculate the number of elements in an array using the sizeof formula. Now we can use that to write loops that work for arrays of any size. This is more flexible and sustainable:",
+      "code": ""
+    },
+    {
+      "heading": "Real-Life Example",
+      "body": "To demonstrate a practical example of using arrays, let's create a program that calculates the average of different ages:",
+      "code": ""
+    },
+    {
+      "heading": "Multidimensional Arrays",
+      "body": "In the previous chapter, you learned about arrays, which is also known as single dimension arrays. These are great, and something you will use a lot while programming in C. However, if you want to store data as a tabular form, like a table with rows and columns, you need to get familiar with multidimensional arrays. A multidimensional array is basically an array of arrays. Arrays can have any number of dimensions. In this chapter, we will introduce the most common; two-dimensional arrays (2D).",
+      "code": ""
+    },
+    {
+      "heading": "Two-Dimensional Arrays",
+      "body": "A 2D array is also known as a matrix (a table of rows and columns). To create a 2D array of integers, take a look at the following example: The first dimension represents the number of rows [2], while the second dimension represents the number of columns [3]. The values are placed in row-order, and can be visualized like this:",
+      "code": "int matrix[2][3] = { {1, 4, 2}, {3, 6, 8} };"
+    },
+    {
+      "heading": "Access the Elements of a 2D Array",
+      "body": "To access an element of a two-dimensional array, you must specify the index number of both the row and column. This statement accesses the value of the element in the first row (0) and third column (2) of the matrix array.",
+      "code": ""
+    },
+    {
+      "heading": "Change Elements in a 2D Array",
+      "body": "To change the value of an element, refer to the index number of the element in each of the dimensions: The following example will change the value of the element in the first row (0) and first column (0):",
+      "code": ""
+    },
+    {
+      "heading": "Loop Through a 2D Array",
+      "body": "To loop through a multi-dimensional array, you need one loop for each of the array's dimensions. The following example outputs all elements in the matrix array:",
+      "code": ""
+    },
+    {
+      "heading": "Three-Dimensional Arrays",
+      "body": "You can also declare arrays with more than two dimensions:",
+      "code": ""
+    },
+    {
+      "heading": "When to Use Multidimensional Arrays",
+      "body": "Multidimensional arrays are useful when your data is arranged in rows and columns, like a table, grid, or matrix. Each extra dimension adds another level of structure: • 2D arrays (like int scores[3][4]) are great for storing things like scores, game boards, or spreadsheets • 3D arrays (like int cube[2][3][4]) can represent more complex structures like a set of tables or levels in a game",
+      "code": ""
+    },
+    {
+      "heading": "Challenge: Create a Simple Array",
+      "body": "Test your understanding of C arrays by completing a small coding challenge.",
+      "code": ""
     }
   ]
 }

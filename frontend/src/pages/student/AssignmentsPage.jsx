@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
   Chip,
@@ -18,10 +18,9 @@ import AccessTimeIcon  from "@mui/icons-material/AccessTime";
 import WarningIcon     from "@mui/icons-material/Warning";
 import { useNavigate } from "react-router-dom";
 
-import AppLayout       from "../../components/layout/AppLayout";
-import SectionCard     from "../../components/common/SectionCard";
-import TutorialModal   from "../../components/student/TutorialModal";
-import { API_BASE }    from "../../apiBase";
+import AppLayout    from "../../components/layout/AppLayout";
+import SectionCard  from "../../components/common/SectionCard";
+import { API_BASE } from "../../apiBase";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -117,18 +116,9 @@ function DeadlineCell({ assignment }) {
 
 export default function AssignmentsPage({ currentUser, token, handleLogout, navItems }) {
   const navigate = useNavigate();
-  const [assignments,      setAssignments]      = useState([]);
-  const [submissions,      setSubmissions]      = useState([]);
-  const [loading,          setLoading]          = useState(true);
-  const [tutorialTag,      setTutorialTag]      = useState(null);
-  const [tutorialLanguage, setTutorialLanguage] = useState(null);
-  const [tutorialOpen,     setTutorialOpen]     = useState(false);
-
-  const openTutorial = useCallback((tag, language) => {
-    setTutorialTag(tag);
-    setTutorialLanguage(language);
-    setTutorialOpen(true);
-  }, []);
+  const [assignments, setAssignments] = useState([]);
+  const [submissions, setSubmissions] = useState([]);
+  const [loading,     setLoading]     = useState(true);
 
   useEffect(() => {
     if (!token) return;
@@ -253,8 +243,8 @@ export default function AssignmentsPage({ currentUser, token, handleLogout, navI
                           )}
                         </TableCell>
 
-                        {/* Topics — clickable tutorial chips */}
-                        <TableCell onClick={(e) => e.stopPropagation()}>
+                        {/* Topics */}
+                        <TableCell>
                           {(problem.tags ?? []).length === 0 ? (
                             <Typography variant="caption" color="text.secondary">—</Typography>
                           ) : (
@@ -266,8 +256,7 @@ export default function AssignmentsPage({ currentUser, token, handleLogout, navI
                                   size="small"
                                   variant="outlined"
                                   color="info"
-                                  sx={{ fontSize: 11, cursor: "pointer" }}
-                                  onClick={() => openTutorial(tag, problem.language ?? "python")}
+                                  sx={{ fontSize: 11, cursor: "default" }}
                                 />
                               ))}
                             </Stack>
@@ -326,13 +315,6 @@ export default function AssignmentsPage({ currentUser, token, handleLogout, navI
         )}
       </SectionCard>
 
-      <TutorialModal
-        open={tutorialOpen}
-        onClose={() => setTutorialOpen(false)}
-        tag={tutorialTag}
-        language={tutorialLanguage}
-        token={token}
-      />
     </AppLayout>
   );
 }

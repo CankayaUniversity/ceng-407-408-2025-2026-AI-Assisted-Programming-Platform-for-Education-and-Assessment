@@ -2,10 +2,11 @@
   "tag": "variables",
   "language": "c",
   "title": "C Variables",
+  "order": 6,
   "sections": [
     {
       "heading": "Variables",
-      "body": "Variables are containers for storing data values, like numbers and characters. You can think of a variable as a named box where you keep a value that can be used later. In C, variables must have a specific type, which tells the program what kind of data the variable can store. int - stores whole numbers (integers), such as 123 or -123; float - stores numbers with decimals, such as 19.99 or -19.99; char - stores a single character, such as 'a' or 'B'. Characters are surrounded by single quotes",
+      "body": "Variables are containers for storing data values, like numbers and characters. You can think of a variable as a named box where you keep a value that can be used later. In C, variables must have a specific type, which tells the program what kind of data the variable can store. • int - stores whole numbers (integers), such as 123 or -123 • float - stores numbers with decimals, such as 19.99 or -19.99 • char - stores a single character, such as 'a' or 'B'. Characters are surrounded by single quotes",
       "code": ""
     },
     {
@@ -19,29 +20,54 @@
       "code": "type variableName = value;"
     },
     {
-      "heading": "Example",
-      "body": "Create a variable named myNum of type int and assign the value 15: You can also declare a variable first and assign a value later:",
-      "code": "int myNum = 15;"
-    },
-    {
-      "heading": "Example",
-      "body": "Tip: Variable names should be meaningful, so your code is easier to understand.",
-      "code": "// Declare a variable\n\n  int myNum;\n\n\n  // Assign a value later\n\n  myNum = 15;"
-    },
-    {
       "heading": "Output Variables",
       "body": "You learned from the output chapter that you can print text using the printf() function:",
       "code": ""
     },
     {
-      "heading": "Example",
-      "body": "In many other programming languages (like Python, Java, and C++), you would normally use a print function to display the value of a variable. However, this is not possible in C:",
-      "code": "printf(\"Hello World!\");"
+      "heading": "Format Specifiers",
+      "body": "Format specifiers are used together with the printf() function to print variables. You can think of a format specifier as a placeholder that tells C what kind of value will be printed. A format specifier always starts with a percentage sign %, followed by a letter. For example, to output the value of an int variable, use the format specifier %d surrounded by double quotes (\"\"), inside the printf() function:",
+      "code": ""
     },
     {
-      "heading": "Example",
-      "body": "To print variables in C, you must use something called format specifiers. Don't worry - this will be explained clearly in the next chapter.",
-      "code": "int myNum = 15;\n\n  printf(myNum); // This will cause an error"
+      "heading": "Print Values Without Variables",
+      "body": "You can also print values directly without storing them in variables, as long as you use the correct format specifier:",
+      "code": ""
+    },
+    {
+      "heading": "Change Variable Values",
+      "body": "If you assign a new value to an existing variable, the new value will replace the old one:",
+      "code": ""
+    },
+    {
+      "heading": "Add Variables Together",
+      "body": "You can use mathematical operators to work with variables. For example, to add one variable to another, use the + operator:",
+      "code": ""
+    },
+    {
+      "heading": "Declare Multiple Variables",
+      "body": "To declare more than one variable of the same type, use a comma-separated list:",
+      "code": ""
+    },
+    {
+      "heading": "C Variable Names",
+      "body": "All C variables must be identified with unique names. These unique names are called identifiers. Identifiers can be short names (like x and y) or more descriptive names (age, sum, totalVolume).",
+      "code": ""
+    },
+    {
+      "heading": "Real-Life Example",
+      "body": "Often in our examples, we simplify variable names to match their data type (myInt or myNum for int types, myChar for char types, and so on). This is done to avoid confusion. In real programs, variables often represent real-world data. The following example stores information about a college student:",
+      "code": ""
+    },
+    {
+      "heading": "Calculate the Area of a Rectangle",
+      "body": "Variables are often used to store values, perform calculations, and then show the result. In this example, we calculate the area of a rectangle:",
+      "code": ""
+    },
+    {
+      "heading": "Challenge: Calculate the Area of a Rectangle",
+      "body": "Test your understanding of C variables by completing a small coding challenge.",
+      "code": ""
     }
   ]
 }

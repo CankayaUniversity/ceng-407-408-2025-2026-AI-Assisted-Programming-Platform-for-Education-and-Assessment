@@ -11,6 +11,7 @@ import {
   CircularProgress,
   Divider,
   FormControl,
+  IconButton,
   InputLabel,
   List,
   ListItemButton,
@@ -25,9 +26,13 @@ import {
   Typography,
 } from "@mui/material";
 import LightbulbIcon    from "@mui/icons-material/Lightbulb";
-import ArrowBackIcon    from "@mui/icons-material/ArrowBack";
-import MenuBookIcon     from "@mui/icons-material/MenuBook";
-import { API_BASE }     from "../../apiBase";
+import ArrowBackIcon      from "@mui/icons-material/ArrowBack";
+import MenuBookIcon       from "@mui/icons-material/MenuBook";
+import OpenInFullIcon     from "@mui/icons-material/OpenInFull";
+import CloseFullscreenIcon from "@mui/icons-material/CloseFullscreen";
+import ExpandMoreIcon     from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon     from "@mui/icons-material/ExpandLess";
+import { API_BASE }       from "../../apiBase";
 
 import SectionCard         from "../common/SectionCard";
 import AppLayout           from "../layout/AppLayout";
@@ -96,10 +101,12 @@ export default function StudentWorkspace({
 
   // ── Left panel tabs ───────────────────────────────────────────────────────
   const [leftTab,          setLeftTab]          = useState(0); // 0=assignments 1=tutorials
-  const [tutorialList,     setTutorialList]     = useState(null); // null=not loaded
-  const [selectedTutorial, setSelectedTutorial] = useState(null); // { tag, title }
+  const [tutorialList,     setTutorialList]     = useState(null);
+  const [selectedTutorial, setSelectedTutorial] = useState(null);
   const [tutorialContent,  setTutorialContent]  = useState(null);
-  const [tutorialStatus,   setTutorialStatus]   = useState("idle"); // idle|loading|ready|error
+  const [tutorialStatus,   setTutorialStatus]   = useState("idle");
+  const [tutorialExpanded, setTutorialExpanded] = useState(false); // fullscreen overlay
+  const [descOpen,         setDescOpen]         = useState(true);  // problem description toggle
 
   // Load tutorial index when Tutorials tab is first opened
   useEffect(() => {
@@ -151,82 +158,47 @@ export default function StudentWorkspace({
         {/* ── Left panel: Assignments / Tutorials tabs ────────────────── */}
         <Box sx={{ border: 1, borderColor: "divider", borderRadius: 3, overflow: "hidden", bgcolor: "background.paper" }}>
           {/* Tab bar */}
-          <Tabs
-            value={leftTab}
-            onChange={(_, v) => setLeftTab(v)}
-            variant="fullWidth"
-            sx={{ borderBottom: 1, borderColor: "divider", minHeight: 40 }}
-          >
+          <Tabs value={leftTab} onChange={(_, v) => setLeftTab(v)} variant="fullWidth"
+            sx={{ borderBottom: 1, borderColor: "divider", minHeight: 40 }}>
             <Tab label="Assignments" sx={{ fontSize: 12, minHeight: 40, py: 0 }} />
-            <Tab label="Tutorials"   sx={{ fontSize: 12, minHeight: 40, py: 0 }} icon={<MenuBookIcon sx={{ fontSize: 14 }} />} iconPosition="start" />
+            <Tab label="C Tutorials" sx={{ fontSize: 12, minHeight: 40, py: 0 }}
+              icon={<MenuBookIcon sx={{ fontSize: 14 }} />} iconPosition="start" />
           </Tabs>
 
           <Box sx={{ p: 1.5 }}>
-            {/* ── Assignments tab ──────────────────────────────────────── */}
+            {/* ── Assignments ── */}
             {leftTab === 0 && (
-              problems.length === 0 ? (
-                <Typography color="text.secondary" sx={{ p: 1 }}>No assignments available.</Typography>
-              ) : (
-                <List disablePadding>
-                  {problems.map((p) => {
-                    const isSelected = p.id === selectedId;
-                    const diffColor =
-                      p.difficulty === "Easy"   ? "#22c55e" :
-                      p.difficulty === "Medium" ? "#f59e0b" :
-                      p.difficulty === "Hard"   ? "#ef4444" : "#64748b";
-                    return (
-                      <ListItemButton
-                        key={p.id}
-                        selected={isSelected}
-                        onClick={() => selectProblem(p.id)}
-                        sx={{
-                          mb: 1,
-                          border: 1,
-                          borderColor: isSelected ? "primary.main" : "divider",
-                          borderRadius: 2,
-                          alignItems: "flex-start",
-                          bgcolor: isSelected ? "rgba(99,102,241,0.08)" : "transparent",
-                        }}
-                      >
-                        <ListItemText
-                          primary={p.title}
-                          secondary={p.language || "n/a"}
-                          primaryTypographyProps={{ fontWeight: 600, fontSize: 14 }}
-                        />
-                        <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: diffColor, flexShrink: 0, mt: 1.2, ml: 1 }} />
-                      </ListItemButton>
-                    );
-                  })}
-                </List>
-              )
+              problems.length === 0
+                ? <Typography color="text.secondary" sx={{ p: 1 }}>No assignments available.</Typography>
+                : <List disablePadding>
+                    {problems.map((p) => {
+                      const isSelected = p.id === selectedId;
+                      const diffColor = p.difficulty === "Easy" ? "#22c55e" : p.difficulty === "Medium" ? "#f59e0b" : p.difficulty === "Hard" ? "#ef4444" : "#64748b";
+                      return (
+                        <ListItemButton key={p.id} selected={isSelected} onClick={() => selectProblem(p.id)}
+                          sx={{ mb: 1, border: 1, borderColor: isSelected ? "primary.main" : "divider", borderRadius: 2, alignItems: "flex-start", bgcolor: isSelected ? "rgba(99,102,241,0.08)" : "transparent" }}>
+                          <ListItemText primary={p.title} secondary={p.language || "n/a"} primaryTypographyProps={{ fontWeight: 600, fontSize: 14 }} />
+                          <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: diffColor, flexShrink: 0, mt: 1.2, ml: 1 }} />
+                        </ListItemButton>
+                      );
+                    })}
+                  </List>
             )}
 
-            {/* ── Tutorials tab ────────────────────────────────────────── */}
+            {/* ── Tutorials ── */}
             {leftTab === 1 && (
               <Box>
                 {/* Topic list */}
                 {!selectedTutorial && (
                   <>
-                    {tutorialList === null && (
-                      <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-                        <CircularProgress size={24} />
-                      </Box>
-                    )}
-                    {tutorialList !== null && tutorialList.length === 0 && (
-                      <Typography color="text.secondary" sx={{ p: 1 }}>No tutorials available.</Typography>
-                    )}
+                    {tutorialList === null && <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}><CircularProgress size={24} /></Box>}
+                    {tutorialList !== null && tutorialList.length === 0 && <Typography color="text.secondary" sx={{ p: 1 }}>No tutorials available.</Typography>}
                     {tutorialList !== null && tutorialList.length > 0 && (
                       <List disablePadding>
                         {tutorialList.map((t) => (
-                          <ListItemButton
-                            key={t.tag}
-                            onClick={() => openTutorial(t.tag, t.title)}
-                            sx={{ mb: 0.5, borderRadius: 2, border: 1, borderColor: "divider" }}
-                          >
-                            <ListItemText
-                              primary={t.title}
-                              primaryTypographyProps={{ fontSize: 13, fontWeight: 600 }}
-                            />
+                          <ListItemButton key={t.tag} onClick={() => openTutorial(t.tag, t.title)}
+                            sx={{ mb: 0.5, borderRadius: 2, border: 1, borderColor: "divider" }}>
+                            <ListItemText primary={t.title} primaryTypographyProps={{ fontSize: 13, fontWeight: 600 }} />
                           </ListItemButton>
                         ))}
                       </List>
@@ -237,57 +209,44 @@ export default function StudentWorkspace({
                 {/* Tutorial content */}
                 {selectedTutorial && (
                   <Box>
-                    <Button
-                      startIcon={<ArrowBackIcon />}
-                      size="small"
-                      onClick={backToList}
-                      sx={{ mb: 1.5, fontSize: 12 }}
-                    >
-                      All Topics
-                    </Button>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+                      <Button startIcon={<ArrowBackIcon />} size="small" onClick={backToList} sx={{ fontSize: 12 }}>
+                        Topics
+                      </Button>
+                      <Tooltip title={tutorialExpanded ? "Collapse" : "Expand tutorial"}>
+                        <IconButton size="small" onClick={() => setTutorialExpanded((v) => !v)}>
+                          {tutorialExpanded ? <CloseFullscreenIcon fontSize="small" /> : <OpenInFullIcon fontSize="small" />}
+                        </IconButton>
+                      </Tooltip>
+                    </Stack>
 
-                    <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>
+                    <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1.5 }}>
                       {selectedTutorial.title}
                     </Typography>
 
-                    {tutorialStatus === "loading" && (
-                      <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-                        <CircularProgress size={24} />
-                      </Box>
-                    )}
-                    {tutorialStatus === "error" && (
-                      <Alert severity="error" sx={{ borderRadius: 2 }}>Failed to load tutorial.</Alert>
-                    )}
+                    {tutorialStatus === "loading" && <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}><CircularProgress size={24} /></Box>}
+                    {tutorialStatus === "error"   && <Alert severity="error" sx={{ borderRadius: 2 }}>Failed to load tutorial.</Alert>}
                     {tutorialStatus === "ready" && tutorialContent && (
-                      <Stack spacing={2} sx={{ maxHeight: 520, overflowY: "auto", pr: 0.5 }}>
+                      <Stack spacing={2} sx={{ maxHeight: tutorialExpanded ? "none" : 520, overflowY: tutorialExpanded ? "visible" : "auto", pr: 0.5 }}>
                         {(tutorialContent.sections ?? []).map((section, idx) => (
                           <Box key={idx}>
                             {section.heading && (
-                              <Typography variant="body2" fontWeight={700} sx={{ mb: 0.5 }}>
-                                {section.heading}
-                              </Typography>
+                              <Typography variant="body2" fontWeight={700} sx={{ mb: 0.5 }}>{section.heading}</Typography>
                             )}
                             {section.body && (
-                              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: section.code ? 1 : 0, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
+                              <Typography variant="caption" color="text.secondary"
+                                sx={{ display: "block", mb: section.code ? 1 : 0, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
                                 {section.body}
                               </Typography>
                             )}
                             {section.code && (
                               <Box sx={{ borderRadius: 1.5, overflow: "hidden", border: 1, borderColor: "divider" }}>
                                 <Editor
-                                  height={`${Math.min(Math.max(section.code.split("\n").length * 19 + 16, 60), 220)}px`}
+                                  height={`${Math.min(Math.max(section.code.split("\n").length * 19 + 16, 60), 240)}px`}
                                   language="c"
                                   value={section.code}
                                   theme="vs-dark"
-                                  options={{
-                                    readOnly: true,
-                                    minimap: { enabled: false },
-                                    fontSize: 12,
-                                    lineNumbers: "off",
-                                    scrollBeyondLastLine: false,
-                                    padding: { top: 8, bottom: 8 },
-                                    automaticLayout: true,
-                                  }}
+                                  options={{ readOnly: true, minimap: { enabled: false }, fontSize: 12, lineNumbers: "off", scrollBeyondLastLine: false, padding: { top: 8, bottom: 8 }, automaticLayout: true }}
                                 />
                               </Box>
                             )}
@@ -347,29 +306,28 @@ export default function StudentWorkspace({
             </Alert>
           )}
 
-          {/* Difficulty / language chips */}
-          <Box sx={{ mb: 1, display: "flex", gap: 1, flexWrap: "wrap" }}>
+          {/* Difficulty / language chips + description toggle */}
+          <Box sx={{ mb: 1, display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
             {selectedProblem?.difficulty && <Chip label={selectedProblem.difficulty} size="small" />}
             {selectedProblem?.language   && <Chip label={selectedProblem.language}   size="small" variant="outlined" />}
+            {selectedProblem?.description && (
+              <Chip
+                label={descOpen ? "Hide Description" : "Show Description"}
+                size="small"
+                variant="outlined"
+                icon={descOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                onClick={() => setDescOpen((v) => !v)}
+                sx={{ cursor: "pointer", ml: "auto" }}
+              />
+            )}
           </Box>
 
-          {/* Problem description */}
-          {selectedProblem?.description && (
-            <Box
-              sx={{
-                mb: 2,
-                p: 2,
-                bgcolor: "rgba(148,163,184,0.06)",
-                border: 1,
-                borderColor: "divider",
-                borderRadius: 2,
-                whiteSpace: "pre-wrap",
-              }}
-            >
-              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600, mb: 0.5 }}>
-                Problem Description
+          {/* Problem description — collapsible */}
+          {selectedProblem?.description && descOpen && (
+            <Box sx={{ mb: 2, p: 2, bgcolor: "rgba(99,102,241,0.06)", border: 1, borderColor: "rgba(99,102,241,0.2)", borderRadius: 2 }}>
+              <Typography variant="body2" sx={{ lineHeight: 1.8, whiteSpace: "pre-wrap" }}>
+                {selectedProblem.description}
               </Typography>
-              <Typography variant="body2">{selectedProblem.description}</Typography>
             </Box>
           )}
 
@@ -580,6 +538,84 @@ export default function StudentWorkspace({
           )}
         </SectionCard>
       </Box>
+
+      {/* ── Expanded tutorial overlay ────────────────────────────────────────── */}
+      {tutorialExpanded && selectedTutorial && (
+        <Box sx={{
+          position: "fixed", inset: 0, zIndex: 1300,
+          bgcolor: "rgba(0,0,0,0.7)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          p: 3,
+        }}
+          onClick={() => setTutorialExpanded(false)}
+        >
+          <Box
+            onClick={(e) => e.stopPropagation()}
+            sx={{
+              bgcolor: "background.paper",
+              borderRadius: 3,
+              border: 1,
+              borderColor: "divider",
+              width: "100%",
+              maxWidth: 860,
+              maxHeight: "90vh",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            {/* Header */}
+            <Stack direction="row" alignItems="center" justifyContent="space-between"
+              sx={{ px: 3, py: 2, borderBottom: 1, borderColor: "divider" }}>
+              <Stack direction="row" spacing={1.5} alignItems="center">
+                <MenuBookIcon color="primary" />
+                <Typography variant="h6" fontWeight={700}>{selectedTutorial.title}</Typography>
+                <Chip label="C" size="small" variant="outlined" sx={{ fontSize: 11 }} />
+              </Stack>
+              <Stack direction="row" spacing={1}>
+                <Button startIcon={<ArrowBackIcon />} size="small" onClick={() => { backToList(); setTutorialExpanded(false); }}>
+                  Topics
+                </Button>
+                <Tooltip title="Collapse">
+                  <IconButton size="small" onClick={() => setTutorialExpanded(false)}>
+                    <CloseFullscreenIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </Stack>
+            </Stack>
+
+            {/* Content */}
+            <Box sx={{ overflowY: "auto", p: 3 }}>
+              <Stack spacing={2.5}>
+                {(tutorialContent?.sections ?? []).map((section, idx) => (
+                  <Box key={idx}>
+                    {section.heading && (
+                      <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 0.75 }}>{section.heading}</Typography>
+                    )}
+                    {section.body && (
+                      <Typography variant="body2" color="text.secondary"
+                        sx={{ mb: section.code ? 1.5 : 0, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>
+                        {section.body}
+                      </Typography>
+                    )}
+                    {section.code && (
+                      <Box sx={{ borderRadius: 2, overflow: "hidden", border: 1, borderColor: "divider" }}>
+                        <Editor
+                          height={`${Math.min(Math.max(section.code.split("\n").length * 20 + 20, 70), 320)}px`}
+                          language="c"
+                          value={section.code}
+                          theme="vs-dark"
+                          options={{ readOnly: true, minimap: { enabled: false }, fontSize: 13, lineNumbers: "off", scrollBeyondLastLine: false, padding: { top: 10, bottom: 10 }, automaticLayout: true }}
+                        />
+                      </Box>
+                    )}
+                  </Box>
+                ))}
+              </Stack>
+            </Box>
+          </Box>
+        </Box>
+      )}
     </AppLayout>
   );
 }

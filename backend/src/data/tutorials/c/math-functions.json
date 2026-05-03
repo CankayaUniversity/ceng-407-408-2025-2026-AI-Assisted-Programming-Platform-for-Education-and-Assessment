@@ -1,7 +1,8 @@
 {
   "tag": "math-functions",
   "language": "c",
-  "title": "C Math",
+  "title": "C Math Functions",
+  "order": 23,
   "sections": [
     {
       "heading": "Math Functions",
@@ -14,19 +15,9 @@
       "code": ""
     },
     {
-      "heading": "Example",
-      "body": "",
-      "code": "printf(\"%f\", sqrt(16));"
-    },
-    {
       "heading": "Round a Number",
       "body": "The ceil() function rounds a number upwards to its nearest integer, and the floor() method rounds a number downwards to its nearest integer, and returns the result:",
       "code": ""
-    },
-    {
-      "heading": "Example",
-      "body": "",
-      "code": "printf(\"%f\", ceil(1.4));\nprintf(\"%f\", \n  floor(1.4));"
     },
     {
       "heading": "Power",
@@ -34,13 +25,28 @@
       "code": ""
     },
     {
-      "heading": "Example",
-      "body": "",
-      "code": "printf(\"%f\", pow(4, 3));"
+      "heading": "Inline Function",
+      "body": "You might sometimes see the inline keyword used in other people's functions. It's not something you need to use often as a beginner, but it's good to know what it means. An inline function is a small function that asks the compiler to insert its code directly where it is called, instead of jumping to it. This can make short, frequently used functions a little faster, because it removes the small delay of a normal function call. Let's compare a regular function with an inline function: Both functions work the same way. The only difference is that the inline version suggests to the compiler to copy the function's code directly where it is used.",
+      "code": "int square(int x) {\n\n        return x * x;\n\n      }\n\ninline int square(int x) {\n\n        return x * x;\n\n      }"
     },
     {
-      "heading": "Complete Math Reference",
-      "body": "For a complete reference of math functions, go to our C <math.h> Library Reference.",
+      "heading": "Inline Function Example",
+      "body": "Here is a simple example that uses an inline function:",
+      "code": ""
+    },
+    {
+      "heading": "When Not to Use Inline",
+      "body": "Inline functions are best for small, simple functions. Avoid using them for: • Large functions (they make your program bigger) • Recursive functions • Functions that are rarely called Too many inline functions can make your program slower and larger, a problem known as code bloat.",
+      "code": ""
+    },
+    {
+      "heading": "Inline vs Regular Function",
+      "body": "Regular Function | Inline Function Code jumps to the function each time it's called | Code is inserted directly where it's called Slightly slower (small delay) | Slightly faster Good for large functions | Good for small functions In this tutorial, we will continue to use regular functions.",
+      "code": ""
+    },
+    {
+      "heading": "Summary",
+      "body": "• Inline functions are defined with the inline keyword. • They can make small, often-used functions faster. • The compiler decides whether to inline a function or not. • Mostly used for short, simple functions.",
       "code": ""
     }
   ]

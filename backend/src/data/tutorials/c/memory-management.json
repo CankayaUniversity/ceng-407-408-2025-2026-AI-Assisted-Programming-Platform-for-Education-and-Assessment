@@ -1,10 +1,11 @@
 {
   "tag": "memory-management",
   "language": "c",
-  "title": "C Memory Management (Memory Allocation)",
+  "title": "C Memory Management",
+  "order": 26,
   "sections": [
     {
-      "heading": "C Memory Management (Memory Allocation)",
+      "heading": "C Memory Management",
       "body": "Memory management is the process of handling how much memory a program uses through different operations.",
       "code": ""
     },
@@ -14,13 +15,203 @@
       "code": ""
     },
     {
-      "heading": "Example",
-      "body": "Why is it important to know? If you create a program that occupies too much, or unnecessary memory, it can result in slow and poor performance. In C, you have to manage memory yourself. It is a complicated task, but is also quite powerful when used correctly: Properly managing the computer memory optimizes the performance of the program, so it is useful that you know how to release memory when it is no longer required and only use as little as necessary for the task. In previous chapters you learned about memory addresses and pointers. Both have an importance when it comes to memory management, since it is possible to work directly with memory through pointers. But be careful; pointers must be handled with care, since it is possible to damage data stored in other memory addresses.",
-      "code": "int myInt;\nfloat myFloat;\ndouble myDouble;\nchar myChar;\n\n  \nprintf(\"%zu\\n\", sizeof(myInt));      // 4 bytes\nprintf(\"%zu\\n\", sizeof(myFloat));    \n  // 4 bytes\n\n  printf(\"%zu\\n\", sizeof(myDouble));   // 8 bytes\nprintf(\"%zu\\n\", sizeof(myChar));     // 1 byte"
-    },
-    {
       "heading": "Memory Management",
       "body": "Memory management is the process of handling how much memory a program uses through allocation, reallocation and deallocation (often referred to as \"freeing\"). We will introduce each of these topics in the following chapters.",
+      "code": ""
+    },
+    {
+      "heading": "C Allocate Memory",
+      "body": "The process of reserving memory is called allocation. The way to allocate memory depends on the type of memory. C has two types of memory: Static memory and dynamic memory.",
+      "code": ""
+    },
+    {
+      "heading": "Static Memory",
+      "body": "Static memory is memory that is reserved for variables before the program runs. Allocation of static memory is also known as compile time memory allocation. C automatically allocates memory for every variable when the program is compiled. For example, if you create an integer array of 20 students (e.g. for a summer semester), C will reserve space for 20 elements which is typically 80 bytes of memory (20 * 4):",
+      "code": ""
+    },
+    {
+      "heading": "Dynamic Memory",
+      "body": "Dynamic memory is memory that is allocated after the program starts running. Allocation of dynamic memory can also be referred to as runtime memory allocation. Unlike with static memory, you have full control over how much memory is being used at any time. You can write code to determine how much memory you need and allocate it. Dynamic memory does not belong to a variable, it can only be accessed with pointers. To allocate dynamic memory, you can use the malloc() or calloc() functions. It is necessary to include the <stdlib.h> header to use them. The malloc() and calloc() functions allocate some memory and return a pointer to its address. The malloc() function has one parameter, size, which specifies how much memory to allocate, measured in bytes. The calloc() function has two parameters: • amount - Specifies the amount of items to allocate • size - Specifies the size of each item measured in bytes Unlike malloc(), the calloc() function writes zeroes into all of the allocated memory. However, this makes calloc() slightly less efficient. The best way to allocate the right amount of memory for a data type is to use the sizeof operator: Be careful: sizeof(*ptr1) tells C to measure the size of the data at the address. If you forget the * and write sizeof(ptr1) instead, it will measure the size of the pointer itself, which is the (usually) 8 bytes that are needed to store a memory address. Let's use dynamic memory to improve the students example above. As noted previously, we cannot use sizeof to measure how much memory was allocated, we have to calculate that by multiplying the amount of items by the size of the data type:",
+      "code": "int *ptr1 = malloc(size);\n\nint *ptr2 = calloc(amount, size);\n\nint *ptr1, *ptr2;\n\nptr1 = malloc(sizeof(*ptr1));\n\nptr2 = calloc(1, sizeof(*ptr2));"
+    },
+    {
+      "heading": "Stack Memory",
+      "body": "For completeness, it is worth mentioning stack memory. Stack memory is a type of dynamic memory which is reserved for variables that are declared inside functions. Variables declared inside a function use stack memory rather than static memory. When a function is called, stack memory is allocated for the variables in the function. When the function returns the stack memory is freed. It is good to be aware of stack memory to be able to handle the memory usage of nested function calls and recursion. Recursion that repeats itself too many times may take up too much stack memory. When that happens it is called a stack overflow.",
+      "code": ""
+    },
+    {
+      "heading": "Access Dynamic Memory",
+      "body": "Dynamic memory behaves like an array, with its data type specified by the type of the pointer. As with arrays, to access an element in dynamic memory, refer to its index number: You can also dereference the pointer to access the first element:",
+      "code": "ptr[0] = 12;\n\n*ptr = 12;"
+    },
+    {
+      "heading": "A note about data types",
+      "body": "Dynamic memory does not have its own data type, it is just a sequence of bytes. The data in the memory can be interpreted as a type based on the data type of the pointer. In this example a pointer to four bytes can be interpreted as one int value (4 bytes) or as an array of 4 char values (1 byte each).",
+      "code": ""
+    },
+    {
+      "heading": "Reallocate Memory",
+      "body": "If the amount of memory you reserved is not enough, you can reallocate it to make it larger. Reallocating reserves a different (usually larger) amount of memory while keeping the data that was stored in it. You can change the size of allocated memory with the realloc() function. The realloc() function takes two parameters: • The first parameter is a pointer to the memory that is being resized. • The second parameter specifies the new size of allocated memory, measured in bytes. The realloc() function tries to resize the memory at ptr1 and return the same memory address. If it cannot resize the memory at the current address then it will allocate memory at a different address and return the new address instead.",
+      "code": "int *ptr2 = realloc(ptr1, size);"
+    },
+    {
+      "heading": "NULL Pointer & Error Checking",
+      "body": "The realloc() function returns a NULL pointer if it is not able to allocate more memory. This is very unlikely, but it is worth keeping in mind when you need your code to be failproof. The following example checks whether realloc() is able to resize the memory or not, by checking for a NULL pointer:",
+      "code": ""
+    },
+    {
+      "heading": "Deallocate (free) Memory",
+      "body": "When you no longer need a block of memory you should deallocate it. Deallocation is also referred to as \"freeing\" the memory. Dynamic memory stays reserved until it is deallocated or until the program ends. Once the memory is deallocated it can be used by other programs or it may even be allocated to another part of your program.",
+      "code": ""
+    },
+    {
+      "heading": "Free Memory",
+      "body": "To deallocate memory, use the free() function: The pointer parameter is a pointer to the address of the memory to be deallocated: It is considered a good practice to set a pointer to NULL after freeing memory so that you cannot accidentally continue using it. If you continue using memory after it has been freed you may corrupt data from other programs or even another part of your own program.",
+      "code": "free(pointer);\n\nint *ptr;\nptr = malloc(sizeof(*ptr));\n\nfree(ptr);\nptr = NULL;"
+    },
+    {
+      "heading": "Memory Leaks",
+      "body": "A memory leak happens when dynamic memory is allocated but never freed. If a memory leak happens in a loop or in a function that is called frequently it could take up too much memory and cause the computer to slow down. There is a risk of a memory leak if a pointer to dynamic memory is lost before the memory can be freed. This can happen accidentally, so it is important to be careful and keep track of pointers to dynamic memory. Here are some examples of how a pointer to dynamic memory may be lost.",
+      "code": ""
+    },
+    {
+      "heading": "Example 1",
+      "body": "The pointer is overwritten: In this example, after the pointer is changed to point at x, the memory allocated by calloc() can no longer be accessed.",
+      "code": "int x = 5;\nint *ptr;\nptr = calloc(2, sizeof(*ptr));\nptr = &x;"
+    },
+    {
+      "heading": "Example 2",
+      "body": "The pointer exists only inside a function: In this example, the memory that was allocated inside of the function remains allocated after the function ends but it cannot be accessed anymore. One way to prevent this problem is to free the memory before the function ends.",
+      "code": "void myFunction() {\n  int *ptr;\n  ptr = malloc(sizeof(*ptr));\n\n  }\n\n  int main() {\n  myFunction();\n  printf(\"The function has\n  ended\");\n  return 0;\n}"
+    },
+    {
+      "heading": "Example 3",
+      "body": "The pointer gets lost when reallocation fails: If realloc() is unable to reallocate memory it will return a pointer to NULL and the original memory will remain reserved. In this example, if realloc() fails then the NULL pointer is assigned to the ptr variable, overwriting the original memory address so that it cannot be accessed anymore.",
+      "code": "int* ptr;\nptr = malloc(sizeof(*ptr));\nptr = realloc(ptr,\n  2*sizeof(*ptr));"
+    },
+    {
+      "heading": "Summary",
+      "body": "In summary, when managing memory in C, use best practices: • Remember to check for errors (NULL return values) to find out if memory allocation was sucessful or not • Prevent memory leaks - always remember to free memory that is no longer used, or else the program might underperform or even worse, crash if it runs out of memory • Set the pointer to NULL after freeing memory so that you cannot accidentally continue using it",
+      "code": ""
+    },
+    {
+      "heading": "Structures and Dynamic Memory",
+      "body": "You can also use dynamic memory with structures. This is useful when you don't know how many structs you'll need in advance, or want to save memory by only allocating what's necessary (e.g., in a car dealership program where the number of cars is not fixed).",
+      "code": ""
+    },
+    {
+      "heading": "Allocating Memory for a Struct",
+      "body": "You can use the malloc() function to allocate memory for a struct pointer:",
+      "code": ""
+    },
+    {
+      "heading": "Example Explained",
+      "body": "• malloc() allocates memory for one struct • strcpy() is used to copy a string into the brand field • We use -> to access members through the pointer • free() is used at the end to release the memory",
+      "code": ""
+    },
+    {
+      "heading": "Using Arrays of Structs",
+      "body": "You can also allocate memory for multiple structs at once, like an array:",
+      "code": ""
+    },
+    {
+      "heading": "Example: Allocate memory for 3 cars",
+      "body": "",
+      "code": "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n\nstruct Car {\n  char brand[50];\n  int year;\n};\n\nint main() {\n  struct Car *cars = (struct Car*) malloc(3 * sizeof(struct Car));\n\n  if (cars == NULL) {\n    printf(\"Memory allocation failed.\\n\");\n    return 1 // Exit the program with an error code;\n  }\n\n  // Fill the data\n  strcpy(cars[0].brand, \"Ford\");\n  cars[0].year = 2015;\n\n  strcpy(cars[1].brand, \"BMW\");\n  cars[1].year = 2018;\n\n  strcpy(cars[2].brand, \"Volvo\");\n  cars[2].year = 2023;\n\n  // Print the data\n  for (int i = 0; i < 3; i++) {\n    printf(\"%s - %d\\n\", cars[i].brand, cars[i].year);\n  }\n\n  free(cars);\n  return 0;\n}"
+    },
+    {
+      "heading": "Growing Arrays Later with realloc()",
+      "body": "If you need more elements later, you can resize your dynamic array with realloc(). This may move the block to a new location and returns a new pointer. Always store the result in a temporary pointer first to avoid losing the original memory if reallocation fails.",
+      "code": ""
+    },
+    {
+      "heading": "Example: Expand an array of structs",
+      "body": "",
+      "code": "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n\nstruct Car {\n  char brand[50];\n  int year;\n};\n\nint main() {\n  int count = 2;\n  struct Car *cars = (struct Car*) malloc(count * sizeof(struct Car));\n  if (cars == NULL) {\n    printf(\"Initial allocation failed.\\n\");\n    return 1;\n  }\n\n  // Initialize first 2 cars\n  strcpy(cars[0].brand, \"Toyota\"); cars[0].year = 2010;\n  strcpy(cars[1].brand, \"Audi\");   cars[1].year = 2019;\n\n  // Need one more car -> grow to 3\n  int newCount = 3;\n  struct Car *tmp = (struct Car*) realloc(cars, newCount * sizeof(struct Car));\n  if (tmp == NULL) {\n    // 'cars' is still valid here; free it to avoid a leak\n    free(cars);\n    printf(\"Reallocation failed.\\n\");\n    return 1;\n  }\n  cars = tmp;  // use the reallocated block\n\n  // Initialize the new element at index 2\n  strcpy(cars[2].brand, \"Kia\");\n  cars[2].year = 2022;\n\n  // Print all cars\n  for (int i = 0; i < newCount; i++) {\n    printf(\"%s - %d\\n\", cars[i].brand, cars[i].year);\n  }\n\n  free(cars);\n  return 0;\n}"
+    },
+    {
+      "heading": "Real-Life Memory Management Example",
+      "body": "To demonstrate a practical example of dynamic memory, we created a program that can make a list of any length. Regular arrays in C have a fixed length and cannot be changed, but with dynamic memory we can create a list as long as we like:",
+      "code": ""
+    },
+    {
+      "heading": "Example explained",
+      "body": "This example has three parts: • A structure myList that contains a list's data • The main() function with the program in it. • A function addToList() which adds an item to the list The myList structure The myList structure contains all of the information about the list, including its contents. It has three members: • data - A pointer to the dynamic memory which contains the contents of the list • numItems - Indicates the number of items that list has • size - Indicates how many items can fit in the allocated memory We use a structure so that we can easily pass all of this information into a function. The main() function The main() function starts by initializing the list with space for 10 items: myList.numItems is set to 0 because the list starts off empty. myList.size keeps track of how much memory is reserved. We set it to 10 because we will reserve enough memory for 10 items. We then allocate the memory and store a pointer to it in myList.data. Then we include error checking to find out if memory allocation was successful: If everything is fine, a loop adds 44 items to the list using the addToList() function: In the code above, &myList is a pointer to the list and i + 1 is a number that we want to add to the list. We chose i + 1 so that the list would start at 1 instead of 0. You can choose any number to add to the list. After all of the items have been added to the list, the next loop prints the contents of the list. When we finish printing the list we free the memory to prevent memory leaks. The addToList() function Our addToList() function adds an item to the list. It takes two parameters: • A pointer to the list. • The value to be added to the list. The function first checks if the list is full by comparing the number of items in the list to the size (capacity). If the list is full, it tries to grow the memory to fit 10 more items. We use a temporary pointer with realloc so we don't lose the original block if the resize fails. We only update data and size after a successful resize: Finally, the function adds the item to the end of the list. The index at myList->numItems is always at the end of the list because it increases by 1 each time a new item is added.: Why do we reserve 10 items at a time? Optimizing is a balancing act between memory and performance. Even though we may be allocating some memory that we are not using, reallocating memory too frequently can be inefficient. There is a balance between allocating too much memory and allocating memory too frequently. We chose the number 10 for this example, but it depends on how much data you expect and how often it changes. For example, if we know beforehand that we are going to have exactly 44 items then we can allocate memory for exactly 44 items and only allocate it once.",
+      "code": "// Create a list and start with enough space for 10 items\nmyList.numItems =\n  0;\nmyList.size = 10;\nmyList.data = malloc(myList.size * sizeof(int));\n\n// Find out if memory allocation was successful\nif (myList.data == NULL) {\n  printf(\"Memory allocation failed\");\n\n  return 1; // Exit the program with an error code\n}\n\n// Add any number of items to the list specified by the amount variable\n\n  amount = 44;\nfor (i = 0; i < amount; i++) {\n\n  addToList(&myList, i + 1);\n}\n\n// Display the contents of the list\nfor (j = 0; j < myList.numItems;\n  j++) {\n  printf(\"%d \", myList.data[j]);\n}\n\n// Free the memory when it is no longer needed\nfree(myList.data);\n\n  myList.data = NULL;\n\nvoid addToList(struct list *myList, int item)\n\n// If the list is full then resize the memory to fit 10 more items\nif (myList->numItems == myList->size) {\n  int newSize = myList->size + 10;\n\n  // Use a temp pointer so we don't lose the original on failure\n  int *tmp = realloc(myList->data, newSize * sizeof(int));\n  if (tmp == NULL) {\n    printf(\"Memory resize failed\\n\");\n    return; // Leave the list unchanged\n  }\n\n  // Only update fields after a successful reallocation\n  myList->data = tmp;\n  myList->size = newSize;\n}\n\n// Add the item to the end of the list\nmyList->data[myList->numItems] = item;\nmyList->numItems++;"
+    },
+    {
+      "heading": "Complete stdlib Reference",
+      "body": "For a complete reference of memory management functions and other functions found in the standard library, go to our C <stdlib.h> Library Reference.",
+      "code": ""
+    },
+    {
+      "heading": "Errors",
+      "body": "Even experienced C developers make mistakes. The key is learning how to spot and fix them! These pages cover common errors and helpful debugging tips to help you understand what's going wrong and how to fix it.",
+      "code": ""
+    },
+    {
+      "heading": "Common Compile-Time Errors",
+      "body": "Compile-time errors are mistakes that prevent your program from compiling. 1) Missing semicolon:",
+      "code": ""
+    },
+    {
+      "heading": "Common Runtime Errors",
+      "body": "Runtime errors occur when the program compiles but crashes or behaves unexpectedly. 1) Dividing by zero:",
+      "code": ""
+    },
+    {
+      "heading": "Good Habits to Avoid Errors",
+      "body": "• Always initialize your variables • Use meaningful variable names • Keep your code clean and use indentation to stay organized • Keep functions short and focused • Check if loops or conditions are running as expected • Read error messages carefully - they often tell you exactly where the problem is In the next chapter, you will learn how to debug your code - how to find and fix bugs/errors in your C program.",
+      "code": ""
+    },
+    {
+      "heading": "Challenge: Spot and Fix the Errors",
+      "body": "Test your understanding of C by spotting and fixing errors in the code below.",
+      "code": ""
+    },
+    {
+      "heading": "Debugging",
+      "body": "Debugging is the process of finding and fixing errors (bugs) in your program. Bugs are mistakes that make your program crash, behave incorrectly, or give the wrong output. Before you start debugging, make sure your code is clean and organized: • Use proper indentation to keep the structure clear. • Give your variables clear, meaningful names that describe what they store. Clean code is easier to read - and easier to debug! In the sections below, we'll introduce several common debugging techniques.",
+      "code": ""
+    },
+    {
+      "heading": "1. Print Debugging",
+      "body": "Use printf() to print values at different points in your code to see what's going wrong: If you don't see \"After division\", the program crashed at x / y.",
+      "code": "int x = 10;\nint y = 0;\nprintf(\"Before division\\n\"); // Debug output\n\n  int z = x / y; // Crashes (division by zero)\nprintf(\"After division\\n\"); //\n  Never runs"
+    },
+    {
+      "heading": "2. Check Variable Values",
+      "body": "Print variables to see if they are what you expect: Expected 15? That means the logic is wrong: try using x + y instead.",
+      "code": "int x = 10;\nint y = 5;\nint result = x - y;\n\nprintf(\"Result:\n  %d\\n\", result); // Result: 5"
+    },
+    {
+      "heading": "3. Use a Debugger Tool",
+      "body": "IDEs like Visual Studio, Code::Blocks, and VS Code have built-in debuggers that work with C. These tools let you: • Pause your program using breakpoints • Step through your code line by line • Watch variables and see unexpected values as they change Tip: Start with printf() debugging. Once you're comfortable, explore your IDE's debugger to get even better insights into your code.",
+      "code": ""
+    },
+    {
+      "heading": "4. Learn from Error Messages",
+      "body": "The C compiler and runtime errors often tell you what went wrong and where. For example: Easy solution: Fix the missing semicolon!",
+      "code": ""
+    },
+    {
+      "heading": "Debugging with Safe Checks",
+      "body": "Some bugs, like dividing by zero (used in the first example of this page), are known to cause crashes. If you know an operation could fail, you can check for it in advance and avoid the crash:",
+      "code": ""
+    },
+    {
+      "heading": "Another Example - Out-of-Bounds Array Access",
+      "body": "Accessing elements outside the array is another common mistake. In the example below, we use printf() to check the index value before using it:",
+      "code": ""
+    },
+    {
+      "heading": "Summary",
+      "body": "• Use printf() to print values and trace your code. • Read error messages carefully - they often tell you what went wrong and where. • Add checks (like if (y != 0)) to avoid crashes before they happen. • Use an IDE's debugger when you're ready for deeper debugging. • Debugging helps you understand your program better and fix problems faster.",
+      "code": ""
+    },
+    {
+      "heading": "Error Handling",
+      "body": "While debugging is about finding and fixing mistakes in your code during development, error handling is a way to deal with problems while the program is running, and run specific code when something goes wrong. You will learn about NULL Pointers and Error Handling in the next chapters.",
       "code": ""
     }
   ]

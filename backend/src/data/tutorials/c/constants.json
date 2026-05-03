@@ -2,6 +2,7 @@
   "tag": "constants",
   "language": "c",
   "title": "C Constants",
+  "order": 8,
   "sections": [
     {
       "heading": "Constants",
@@ -9,34 +10,14 @@
       "code": ""
     },
     {
-      "heading": "Example",
-      "body": "You should always declare a variable as const when you have values that are unlikely to change:",
-      "code": "const int myNum = 15;  // myNum will always be 15\nmyNum = 10;  // error: \n  assignment of read-only variable 'myNum'"
-    },
-    {
-      "heading": "Example",
-      "body": "",
-      "code": "const int minutesPerHour = 60;\nconst int \n  monthsInYear = 12;"
-    },
-    {
       "heading": "Notes On Constants",
       "body": "When you declare a constant variable, it must be assigned with a value:",
       "code": ""
     },
     {
-      "heading": "Example",
-      "body": "Like this: This however, will not work:",
-      "code": "const int minutesPerHour = 60;\n\nconst int minutesPerHour;\nminutesPerHour = 60; // error"
-    },
-    {
       "heading": "Good Practice",
       "body": "Another thing about constant variables, is that it is considered good practice to declare them with uppercase. It is not required, but useful for code readability and common for C programmers:",
       "code": ""
-    },
-    {
-      "heading": "Example",
-      "body": "",
-      "code": "const int BIRTHYEAR = 1980;"
     }
   ]
 }

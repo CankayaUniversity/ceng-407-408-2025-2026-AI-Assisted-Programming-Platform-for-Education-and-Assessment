@@ -2,6 +2,7 @@
   "tag": "functions",
   "language": "c",
   "title": "C Functions",
+  "order": 21,
   "sections": [
     {
       "heading": "Functions",
@@ -14,19 +15,14 @@
       "code": ""
     },
     {
-      "heading": "Example",
-      "body": "",
-      "code": "int main() {\n  printf(\"Hello World!\");\n  \n  return 0;\n}"
-    },
-    {
       "heading": "Create a Function",
       "body": "To create (often referred to as declare) your own function, specify the name of the function, followed by parentheses () and curly brackets {}:",
       "code": ""
     },
     {
       "heading": "Syntax",
-      "body": "myFunction() is the name of the function; void means that the function does not have a return value. You will learn more about return values later in the next chapter; Inside the function (the body), add code that defines what the function should do",
-      "code": "void myFunction() {\n  \n  // code to be executed\n}"
+      "body": "• myFunction() is the name of the function • Inside the function (the body), add code that defines what the function should do",
+      "code": "void myFunction() {\n\n  // code to be executed\n}"
     },
     {
       "heading": "Call a Function",
@@ -34,24 +30,84 @@
       "code": ""
     },
     {
-      "heading": "Example",
-      "body": "Inside main, call myFunction(): A function can be called multiple times:",
-      "code": "// Create a function\nvoid myFunction() {\n  printf(\"I just got \n  executed!\");\n}\n\nint main() {\n  \n  myFunction(); // call the function\n  return 0;\n}\n\n// Outputs \n  \"I just got executed!\""
-    },
-    {
-      "heading": "Example",
-      "body": "",
-      "code": "void myFunction() {\n  printf(\"I just got executed!\");\n}\n\nint main() {\n  \n  myFunction();\n  myFunction();\n  \n  myFunction();\n  return 0;\n}\n\n// \n  I just got executed!\n// I just got executed!\n// I just got executed!"
-    },
-    {
       "heading": "Calculate the Sum of Numbers",
       "body": "You can put almost whatever you want inside a function. The purpose of the function is to save the code, and execute it when you need it. Like in the example below, we have created a function to calculate the sum of two numbers. Whenever you are ready to execute the function (and perform the calculation), you just call it:",
       "code": ""
     },
     {
-      "heading": "Example",
-      "body": "This was just an example to demonstrate a simple function with different statements in C. The real power of a function is revealed in the next chapter, when we pass \"parameters\" to it. This allows the function to calculate the sum of any numbers, instead of being limited to the fixed values 5 and 10.",
-      "code": "void \n  calculateSum() {\n  int x = 5;\n  int y = 10;\n  int sum = \n  x + y;\n  printf(\"The sum of x + y is: %d\", sum);\n}\n\nint main() {\n  \n  calculateSum();  // call the function\n  return 0;\n}\n\n// Outputs The \n  sum of x + y is: 15"
+      "heading": "Parameters and Arguments",
+      "body": "Information can be passed to functions as a parameter. Parameters act as variables inside the function. Parameters are specified after the function name, inside the parentheses. You can add as many parameters as you want, just separate them with a comma:",
+      "code": ""
+    },
+    {
+      "heading": "Syntax",
+      "body": "In the example below, the function takes a string of characters with name as parameter. When the function is called, we pass along a name, which is used inside the function to print \"Hello\" and the name of each person:",
+      "code": "returnType functionName(parameter1, parameter2, parameter3) {\n\n  // code to be executed\n}"
+    },
+    {
+      "heading": "Multiple Parameters",
+      "body": "Inside the function, you can add as many parameters as you want:",
+      "code": ""
+    },
+    {
+      "heading": "Pass Arrays as Function Parameters",
+      "body": "You can also pass arrays to a function:",
+      "code": ""
+    },
+    {
+      "heading": "Return Values",
+      "body": "The void keyword, used in the previous examples, indicates that the function should not return a value. If you want the function to return a value, you can use a data type (such as int or float, etc.) instead of void, and use the return keyword inside the function:",
+      "code": ""
+    },
+    {
+      "heading": "Real-Life Example",
+      "body": "To demonstrate a practical example of using functions, let's create a program that converts a value from fahrenheit to celsius:",
+      "code": ""
+    },
+    {
+      "heading": "Scope",
+      "body": "Now that you understand how functions work, it is important to learn how variables act inside and outside of functions. In C, variables are only accessible inside the region they are created. This is called scope.",
+      "code": ""
+    },
+    {
+      "heading": "Local Scope",
+      "body": "A variable created inside a function belongs to the local scope of that function, and can only be used inside that function:",
+      "code": ""
+    },
+    {
+      "heading": "Global Scope",
+      "body": "A variable created outside of a function, is called a global variable and belongs to the global scope. Global variables are available from within any scope, global and local:",
+      "code": ""
+    },
+    {
+      "heading": "Naming Variables",
+      "body": "If you operate with the same variable name inside and outside of a function, C will treat them as two separate variables; One available in the global scope (outside the function) and one available in the local scope (inside the function):",
+      "code": ""
+    },
+    {
+      "heading": "Conclusion",
+      "body": "To sum up, use local variables (with good variable names) as much as you can. This will make your code easier to maintain and better to understand. However, you may find global variables when working on existing C programs or while collaborating with others. Therefore, it is good to understand how the scope works and how to use it effectively to make sure your code is clear and functional.",
+      "code": ""
+    },
+    {
+      "heading": "Function Declaration and Definition",
+      "body": "You have already learned from the previous chapters that you can create and call a function in the following way:",
+      "code": ""
+    },
+    {
+      "heading": "What About Parameters",
+      "body": "If we use the example from the function parameters chapter regarding parameters and return values:",
+      "code": ""
+    },
+    {
+      "heading": "Functions Calling Other Functions",
+      "body": "As long as you declare functions first, it is also possible to use functions to call other functions:",
+      "code": ""
+    },
+    {
+      "heading": "Challenge: Create a Function to Add Two Numbers",
+      "body": "Test your understanding of C functions by completing a small coding challenge.",
+      "code": ""
     }
   ]
 }

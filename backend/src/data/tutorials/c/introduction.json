@@ -1,7 +1,8 @@
 {
   "tag": "introduction",
   "language": "c",
-  "title": "Introduction to C",
+  "title": "C Introduction",
+  "order": 1,
   "sections": [
     {
       "heading": "What is C?",
@@ -10,28 +11,23 @@
     },
     {
       "heading": "What is C used for?",
-      "body": "C is often used to create programs that need to run fast and work closely with the computer. Operating systems, such as parts of Windows, Linux, and macOS; Programs inside devices like cars, TVs, and home electronics; Software that needs to be fast, including databases and system tools; Game engines and programs that handle graphics; Core libraries that other programming languages rely on For curious learners: C has different language standards (like C90, C99, C11, C17, and newer versions). This tutorial focuses on modern, widely supported C, and we point out important differences when it matters.",
+      "body": "C is often used to create programs that need to run fast and work closely with the computer. • Operating systems, such as parts of Windows, Linux, and macOS • Programs inside devices like cars, TVs, and home electronics • Software that needs to be fast, including databases and system tools • Game engines and programs that handle graphics • Core libraries that other programming languages rely on For curious learners: C has different language standards (like C90, C99, C11, C17, and newer versions). This tutorial focuses on modern, widely supported C, and we point out important differences when it matters.",
       "code": ""
     },
     {
       "heading": "Why Learn C?",
-      "body": "It is one of the most widely used programming languages; If you know C, you will have no problem learning other popular programming languages such as Java, Python, C++, C#, etc, as the syntax is similar; It helps you understand memory, performance, and how computers handle data; C is very versatile; it can be used in both applications and technologies",
+      "body": "• It is one of the most widely used programming languages • If you know C, you will have no problem learning other popular programming languages such as Java, Python, C++, C#, etc, as the syntax is similar • It helps you understand memory, performance, and how computers handle data • C is very versatile; it can be used in both applications and technologies",
       "code": ""
     },
     {
       "heading": "Difference between C and C++",
-      "body": "C++ was developed as an extension of C, and the syntax is often similar; C is mainly a procedural language (you build programs with functions); C++ supports classes and objects (often used for object-oriented programming) Note: C can still organize data using structures, and you can build large programs in C too. C++ just offers additional features (like classes) on top.",
+      "body": "• C++ was developed as an extension of C, and the syntax is often similar • C is mainly a procedural language (you build programs with functions) • C++ supports classes and objects (often used for object-oriented programming)",
       "code": ""
     },
     {
       "heading": "C Example",
       "body": "C is often used in everyday programming tasks, like showing a message to a user:",
       "code": ""
-    },
-    {
-      "heading": "Example",
-      "body": "Result:",
-      "code": "#include <stdio.h>\n\nint main() {\n  char name[] = \"John\";\n  \n  printf(\"Hello %s\", name);\n  return 0;\n}"
     },
     {
       "heading": "Get Started",

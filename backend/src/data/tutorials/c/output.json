@@ -1,7 +1,8 @@
 {
   "tag": "output",
   "language": "c",
-  "title": "C Output (Print Text)",
+  "title": "C Output",
+  "order": 4,
   "sections": [
     {
       "heading": "Output (Print Text)",
@@ -9,19 +10,9 @@
       "code": ""
     },
     {
-      "heading": "Example",
-      "body": "",
-      "code": "#include <stdio.h>\n\nint main() {\n  printf(\"Hello World!\");\n \n  return 0;\n}"
-    },
-    {
       "heading": "Double Quotes",
       "body": "When you want to print text, the text must be wrapped in double quotes \"\". If you forget the double quotes, an error occurs:",
       "code": ""
-    },
-    {
-      "heading": "Example",
-      "body": "Tip: If you see strange error messages, check that your text starts and ends with double quotes.",
-      "code": "printf(\"This sentence will work!\");\n\nprintf(This sentence will produce an error.);"
     },
     {
       "heading": "Many printf() Functions",
@@ -29,9 +20,14 @@
       "code": ""
     },
     {
-      "heading": "Example",
-      "body": "Notice: All the text appears on the same line. In the next chapter, you will learn how to add new lines to make the output easier to read.",
-      "code": "#include <stdio.h>\n\nint main() {\n  printf(\"Hello World!\");\n \n  printf(\"I am learning C.\");\n \n  printf(\"And it is awesome!\");\n \n  return 0;\n}"
+      "heading": "New Lines",
+      "body": "To start a new line when printing text, you can use the \\n character:",
+      "code": ""
+    },
+    {
+      "heading": "Challenge: Print Text Output",
+      "body": "Test your understanding of C output by completing a small coding challenge.",
+      "code": ""
     }
   ]
 }

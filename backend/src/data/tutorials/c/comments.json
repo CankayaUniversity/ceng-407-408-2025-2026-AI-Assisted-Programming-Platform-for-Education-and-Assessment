@@ -2,6 +2,7 @@
   "tag": "comments",
   "language": "c",
   "title": "C Comments",
+  "order": 5,
   "sections": [
     {
       "heading": "Comments in C",
@@ -14,29 +15,9 @@
       "code": ""
     },
     {
-      "heading": "Example",
-      "body": "This example uses a single-line comment at the end of a line of code:",
-      "code": "// This is a comment\nprintf(\"Hello World!\");"
-    },
-    {
-      "heading": "Example",
-      "body": "You can also use // to disable a single line of code:",
-      "code": "printf(\"Hello World!\"); // This is a comment"
-    },
-    {
-      "heading": "Example",
-      "body": "",
-      "code": "printf(\"This will run\");\n// printf(\"This will NOT run\");"
-    },
-    {
       "heading": "Multi-line Comments",
       "body": "Multi-line comments start with /* and end with */. Any text between /* and */ will be ignored by the compiler:",
       "code": ""
-    },
-    {
-      "heading": "Example",
-      "body": "It is up to you which you want to use. Normally, we use // for short comments and /* */ for longer comments. Good to know: Before C99 (released in 1999), you could only use multi-line comments in C.",
-      "code": "/* The code below will print the words Hello World!\nto the screen, and it is\n  amazing */\nprintf(\"Hello World!\");"
     }
   ]
 }

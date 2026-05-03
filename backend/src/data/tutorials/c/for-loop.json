@@ -2,6 +2,7 @@
   "tag": "for-loop",
   "language": "c",
   "title": "C For Loop",
+  "order": 14,
   "sections": [
     {
       "heading": "For Loop",
@@ -11,7 +12,7 @@
     {
       "heading": "Syntax",
       "body": "Expression 1 is executed (one time) before the execution of the code block. Expression 2 defines the condition for executing the code block. Expression 3 is executed (every time) after the code block has been executed.",
-      "code": "for (expression 1; expression 2; expression 3) {\n\n      // code block to be executed\n\n }"
+      "code": "for (expression 1; expression 2; expression 3) {\n\n      // code block to be executed\n\n }"
     },
     {
       "heading": "Print Numbers",
@@ -19,19 +20,9 @@
       "code": ""
     },
     {
-      "heading": "Example",
-      "body": "Example explained Statement 1 sets a variable before the loop starts: int i = 0; Statement 2 defines the condition for the loop to run: i < 5. If the condition is true, the loop will start over again, if it is false, the loop will end.; Statement 3 increases a value each time the code block in the loop has been executed: i++",
-      "code": "int i;\n\nfor (i = 0; i < 5; i++) {\n  printf(\"%d\\n\", \n  i);\n}"
-    },
-    {
       "heading": "Print Even Numbers",
       "body": "This example prints even values between 0 and 10:",
       "code": ""
-    },
-    {
-      "heading": "Example",
-      "body": "",
-      "code": "int i;\n\n\n    for (i = 0; i <= 10; i = i + 2) {\n\n      printf(\"%d\\n\", i);\n\n    }"
     },
     {
       "heading": "Sum of Numbers",
@@ -39,19 +30,29 @@
       "code": ""
     },
     {
-      "heading": "Example",
-      "body": "",
-      "code": "int sum = 0;\n\n    int i;\n\n\n    for (i = 1; i <= 5; i++) {\n\n      sum = sum + i;\n\n    }\n\n\n    printf(\"Sum is %d\", sum);"
-    },
-    {
       "heading": "Countdown",
       "body": "This example prints a countdown from 5 to 1:",
       "code": ""
     },
     {
-      "heading": "Example",
-      "body": "",
-      "code": "int i;\n\n\n    for (i = 5; i > 0; i--) {\n\n      printf(\"%d\\n\", i);\n\n    }"
+      "heading": "Nested Loops",
+      "body": "It is also possible to place a loop inside another loop. This is called a nested loop. The \"inner loop\" will be executed one time for each iteration of the \"outer loop\":",
+      "code": ""
+    },
+    {
+      "heading": "Multiplication Table Example",
+      "body": "This example uses nested loops to print a simple multiplication table (1 to 3):",
+      "code": ""
+    },
+    {
+      "heading": "Real-Life Examples",
+      "body": "To demonstrate a practical example of the for loop, let's create a program that counts to 100 by tens:",
+      "code": ""
+    },
+    {
+      "heading": "Challenge: Count to 5",
+      "body": "Test your understanding of C for loops by completing a small coding challenge.",
+      "code": ""
     }
   ]
 }

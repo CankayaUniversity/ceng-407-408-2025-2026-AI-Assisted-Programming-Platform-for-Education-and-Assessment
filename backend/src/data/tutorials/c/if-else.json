@@ -1,11 +1,12 @@
 {
   "tag": "if-else",
   "language": "c",
-  "title": "C If ... Else Conditions",
+  "title": "C If...Else",
+  "order": 11,
   "sections": [
     {
       "heading": "Conditions and If Statements",
-      "body": "You already know that C supports familiar comparison conditions from mathematics, such as: Less than: a < b; Less than or equal to: a <= b; Greater than: a > b; Greater than or equal to: a >= b; Equal to: a == b; Not equal to: a != b You can use these conditions to perform different actions for different decisions. C has the following conditional statements: Use if to specify a block of code to be executed, if a specified condition is true; Use else to specify a block of code to be executed, if the same condition is false; Use else if to specify a new condition to test, if the first condition is false; Use switch to specify many alternative blocks of code to be executed",
+      "body": "You already know that C supports familiar comparison conditions from mathematics, such as: • Less than: a < b • Less than or equal to: a <= b • Greater than: a > b • Greater than or equal to: a >= b • Equal to: a == b • Not equal to: a != b You can use these conditions to perform different actions for different decisions. C has the following conditional statements: • Use if to specify a block of code to be executed, if a specified condition is true • Use else to specify a block of code to be executed, if the same condition is false • Use else if to specify a new condition to test, if the first condition is false • Use switch to specify many alternative blocks of code to be executed",
       "code": ""
     },
     {
@@ -16,17 +17,7 @@
     {
       "heading": "Syntax",
       "body": "Note that if is written in lowercase letters. Uppercase letters (If or IF) will generate an error. In the example below, we test two values to find out if 20 is greater than 18. If the condition is true, we print a message:",
-      "code": "if (condition) {\n\n  // block of code to be executed if the condition is true\n\n}"
-    },
-    {
-      "heading": "Example",
-      "body": "We can also test variables:",
-      "code": "if (20 > 18) {\n\n  printf(\"20 is greater than 18\");\n\n}"
-    },
-    {
-      "heading": "Example",
-      "body": "In the example above we use two variables, x and y, to test whether x is greater than y (using the > operator). As x is 20 and y is 18, the condition is true, so the program prints \"x is greater than y\".",
-      "code": "int x = 20;\n\nint y = 18;\n\n\n\nif (x > y) {\n\n  printf(\"x is greater than y\");\n\n}"
+      "code": "if (condition) {\n\n  // block of code to be executed if the condition is true\n\n}"
     },
     {
       "heading": "Using a Boolean Variable",
@@ -34,9 +25,99 @@
       "code": ""
     },
     {
-      "heading": "Example",
-      "body": "This can make your code easier to read, especially when the condition is complex or used more than once. Note: Remember to include <stdbool.h> when working with bool variables.",
-      "code": "int x = 20;\n\nint y = 18;\n\n\n\nbool isGreater = x > y;\n\n\n\nif (isGreater) {\n\n  printf(\"x is greater than y\");\n\n}"
+      "heading": "The else Statement",
+      "body": "Use the else statement to specify a block of code to be executed if the condition is false.",
+      "code": ""
+    },
+    {
+      "heading": "Syntax",
+      "body": "In the example below, the program checks the value of time. If it is less than 18, it prints \"Good day\". Otherwise, it prints \"Good evening\":",
+      "code": "if (condition) {\n\n  // block of code to be executed if the condition is true\n\n} else {\n\n  // block of code to be executed if the condition is false\n\n}"
+    },
+    {
+      "heading": "Using a Boolean Variable",
+      "body": "You can also store the condition in a boolean variable and use it in the if...else statement. This can make the code easier to read:",
+      "code": ""
+    },
+    {
+      "heading": "The else if Statement",
+      "body": "Use the else if statement to specify a new condition to test if the first condition is false. You can use else if to check multiple conditions, one after another.",
+      "code": ""
+    },
+    {
+      "heading": "Syntax",
+      "body": "The conditions are checked from top to bottom. As soon as one condition is true, its block of code runs, and the rest are skipped.",
+      "code": "if (condition1) {\n\n  // block of code to be executed if condition1 is true\n\n} else if (condition2) {\n\n  // block of code to be executed if condition1 is false and condition2 is true\n\n} else {\n\n  // block of code to be executed if both conditions are false\n\n}"
+    },
+    {
+      "heading": "Using Boolean Variables",
+      "body": "Just like with if statements, you can store conditions in boolean variables and use them with else if:",
+      "code": ""
+    },
+    {
+      "heading": "Short Hand If...Else (Ternary Operator)",
+      "body": "There is also a short-hand if...else, known as the ternary operator because it uses three operands. The ternary operator returns a value based on a condition: if the condition is true, it returns the first value; otherwise, it returns the second value. It can be used to replace multiple lines of code with a single line, and is often used to replace simple if...else statements:",
+      "code": ""
+    },
+    {
+      "heading": "Syntax",
+      "body": "Instead of writing:",
+      "code": "variable = (condition) ? expressionTrue :\n  expressionFalse;"
+    },
+    {
+      "heading": "Nested If",
+      "body": "You can also place an if statement inside another if. This is called a nested if statement. A nested if lets you check for a condition only if another condition is already true.",
+      "code": ""
+    },
+    {
+      "heading": "Syntax",
+      "body": "",
+      "code": "if (condition1) {\n  // code to run if condition1 is true\n  if (condition2) {\n    // code to run if both condition1 and condition2 are true\n  }\n}"
+    },
+    {
+      "heading": "Real-Life Example",
+      "body": "Nested if statements are useful when you need to test multiple conditions that depend on each other. For example, checking if a person is old enough to vote, and if they are a citizen:",
+      "code": ""
+    },
+    {
+      "heading": "Notes",
+      "body": "• You can nest as many if statements as you want, but avoid making the code too deep - it can become hard to read. • Nested if is often used together with else and else if for more complex decision making.",
+      "code": ""
+    },
+    {
+      "heading": "Logical Operators in Conditions",
+      "body": "You can combine or reverse conditions using logical operators. These work together with if, else, and else if to build more complex decisions. • && (AND) - all conditions must be true • || (OR) - at least one condition must be true • ! (NOT) - reverses a condition (true → false, false → true)",
+      "code": ""
+    },
+    {
+      "heading": "AND (&&)",
+      "body": "Use AND (&&) when both conditions must be true:",
+      "code": ""
+    },
+    {
+      "heading": "OR (||)",
+      "body": "Use OR (||) when at least one of the conditions can be true:",
+      "code": ""
+    },
+    {
+      "heading": "NOT (!)",
+      "body": "The NOT operator (!) reverses a condition: • If a condition is true, ! makes it false. • If a condition is false, ! makes it true. This is useful when you want to check that something is not the case:",
+      "code": ""
+    },
+    {
+      "heading": "Real-Life Example",
+      "body": "In real programs, logical operators are often used for access control. For example, to get access to a system, there are specific requirements: You must be logged in, and then you either need to be an admin, or have a high security clearance (level 1 or 2):",
+      "code": ""
+    },
+    {
+      "heading": "Real-Life Examples",
+      "body": "This example shows how you can use if..else to \"open a door\" if the user enters the correct code:",
+      "code": ""
+    },
+    {
+      "heading": "Challenge: Make a Decision with If and Else",
+      "body": "Test your understanding of if and else statements, and run different code based on a condition.",
+      "code": ""
     }
   ]
 }

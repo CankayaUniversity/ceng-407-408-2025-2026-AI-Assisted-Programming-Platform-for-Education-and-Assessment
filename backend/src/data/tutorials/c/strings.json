@@ -2,6 +2,7 @@
   "tag": "strings",
   "language": "c",
   "title": "C Strings",
+  "order": 17,
   "sections": [
     {
       "heading": "Strings",
@@ -9,19 +10,9 @@
       "code": "char greetings[] = \"Hello World!\";"
     },
     {
-      "heading": "Example",
-      "body": "",
-      "code": "char greetings[] = \"Hello World!\";\n\n  printf(\"%s\", greetings);"
-    },
-    {
       "heading": "Access Strings",
       "body": "Since strings are actually arrays in C, you can access a string by referring to its index number inside square brackets []. This example prints the first character (0) in greetings:",
       "code": ""
-    },
-    {
-      "heading": "Example",
-      "body": "Note that we have to use the %c format specifier to print a single character.",
-      "code": "char greetings[] = \"Hello World!\";\n\n  printf(\"%c\", greetings[0]);"
     },
     {
       "heading": "Modify Strings",
@@ -29,24 +20,9 @@
       "code": ""
     },
     {
-      "heading": "Example",
-      "body": "",
-      "code": "char greetings[] = \"Hello World!\";\ngreetings[0] = 'J';\n\n  printf(\"%s\", greetings);\n// Outputs Jello World! instead of Hello \n  World!"
-    },
-    {
       "heading": "Loop Through a String",
       "body": "You can also loop through the characters of a string, using a for loop:",
       "code": ""
-    },
-    {
-      "heading": "Example",
-      "body": "And like we specified in the arrays loop chapter, you should use the sizeof formula (instead of manually write the size of the array in the loop condition (i < 5)) to make the loop more sustainable:",
-      "code": "char carName[] = \"Volvo\";\nint i;\n\nfor (i = 0; i < 5; ++i) {\n  \n  printf(\"%c\\n\", carName[i]);\n}"
-    },
-    {
-      "heading": "Example",
-      "body": "",
-      "code": "char carName[] = \"Volvo\";\nint length = sizeof(carName) / \n  sizeof(carName[0]);\nint i;\n\nfor (i = 0; i < length; ++i) {\n  \n  printf(\"%c\\n\", carName[i]);\n}"
     },
     {
       "heading": "Another Way Of Creating Strings",
@@ -54,19 +30,9 @@
       "code": ""
     },
     {
-      "heading": "Example",
-      "body": "Why do we include the \\0 character at the end? This is known as the \"null terminating character\", and must be included when creating strings using this method. It tells C that this is the end of the string.",
-      "code": "char greetings[] = {'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', \n  '!', '\\0'};\n\n  printf(\"%s\", greetings);"
-    },
-    {
       "heading": "Differences",
       "body": "The difference between the two ways of creating strings, is that the first method is easier to write, and you do not have to include the \\0 character, as C will do it for you. You should note that the size of both arrays is the same: They both have 13 characters (space also counts as a character by the way), including the \\0 character:",
       "code": ""
-    },
-    {
-      "heading": "Example",
-      "body": "",
-      "code": "char greetings[] = {'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', \n  '!', '\\0'};\nchar greetings2[] = \"Hello World!\";\n\nprintf(\"%zu\\n\", \n  sizeof(greetings));   // Outputs 13\nprintf(\"%zu\\n\", \n  sizeof(greetings2));  // Outputs 13"
     },
     {
       "heading": "Real-Life Example",
@@ -74,9 +40,39 @@
       "code": ""
     },
     {
-      "heading": "Example",
-      "body": "",
-      "code": "char message[] = \"Good to see you,\";\nchar fname[] = \"John\";\n\nprintf(\"%s \n  %s!\", message, fname);"
+      "heading": "Strings - Special Characters",
+      "body": "Because strings must be written within quotes, C will misunderstand this string, and generate an error: The solution to avoid this problem, is to use the backslash escape character. The backslash (\\) escape character turns special characters into string characters: Escape character | Result | Description \\' | ' | Single quote \\\" | \" | Double quote \\\\ | \\ | Backslash The sequence \\\" inserts a double quote in a string:",
+      "code": "char txt[] = \"We are the so-called \"Vikings\" from the north.\";"
+    },
+    {
+      "heading": "String Functions",
+      "body": "C also has many useful string functions, which can be used to perform certain operations on strings. To use them, you must include the <string.h> header file in your program:",
+      "code": "#include <string.h>"
+    },
+    {
+      "heading": "String Length",
+      "body": "For example, to get the length of a string, you can use the strlen() function:",
+      "code": ""
+    },
+    {
+      "heading": "Concatenate Strings",
+      "body": "To concatenate (combine) two strings, you can use the strcat() function:",
+      "code": ""
+    },
+    {
+      "heading": "Copy Strings",
+      "body": "To copy the value of one string to another, you can use the strcpy() function:",
+      "code": ""
+    },
+    {
+      "heading": "Compare Strings",
+      "body": "To compare two strings, you can use the strcmp() function. It returns 0 if the two strings are equal, otherwise a value that is not 0:",
+      "code": ""
+    },
+    {
+      "heading": "Challenge: Create a Greeting Message",
+      "body": "Test your understanding of C strings by completing a small coding challenge.",
+      "code": ""
     }
   ]
 }

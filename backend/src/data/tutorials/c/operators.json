@@ -2,6 +2,7 @@
   "tag": "operators",
   "language": "c",
   "title": "C Operators",
+  "order": 9,
   "sections": [
     {
       "heading": "Operators",
@@ -9,14 +10,69 @@
       "code": ""
     },
     {
-      "heading": "Example",
-      "body": "Although the + operator is often used to add together two values, like in the example above, it can also be used to add together a variable and a value, or a variable and another variable:",
-      "code": "int myNum = 100 + 50;"
+      "heading": "Arithmetic Operators",
+      "body": "Arithmetic operators are used to perform common mathematical operations. Operator | Name | Description | Example | Try it + | Addition | Adds together two values | x + y | Try it » - | Subtraction | Subtracts one value from another | x - y | Try it » * | Multiplication | Multiplies two values | x * y | Try it » / | Division | Divides one value by another | x / y | Try it » % | Modulus | Returns the division remainder | x % y | Try it » ++ | Increment | Increases the value of a variable by 1 | ++x | Try it » -- | Decrement | Decreases the value of a variable by 1 | --x | Try it » Here is an example using different arithmetic operators in one example:",
+      "code": ""
     },
     {
-      "heading": "Example",
-      "body": "C divides the operators into the following groups: Arithmetic operators; Assignment operators; Comparison operators; Logical operators; Bitwise operators (advanced)",
-      "code": "int sum1 = 100 + 50;        \n  // 150 (100 + 50)\n\n  int sum2 = sum1 + 250;      // 400 (150 + 250)\n\n  int sum3 = sum2 + sum2;     // 800 (400 + 400)"
+      "heading": "Incrementing and Decrementing",
+      "body": "The ++ operator increases a value by 1, while the -- operator decreases a value by 1:",
+      "code": ""
+    },
+    {
+      "heading": "Assignment Operators",
+      "body": "Assignment operators are used to assign values to variables. In the example below, we use the assignment operator (=) to assign the value 10 to a variable called x:",
+      "code": ""
+    },
+    {
+      "heading": "Real-Life Example: Tracking Savings",
+      "body": "Assignment operators can also be used in real-life scenarios. For example, you can use the += operator to keep track of savings when you add money to an account:",
+      "code": ""
+    },
+    {
+      "heading": "Comparison Operators",
+      "body": "Comparison operators are used to compare two values (or variables). This is important in programming, because it helps us to find answers and make decisions. In the following example, we use the greater than operator (>) to find out if 5 is greater than 3:",
+      "code": ""
+    },
+    {
+      "heading": "Real-Life Examples",
+      "body": "Comparison operators are often used in real-world conditions, such as checking if a person is old enough to vote:",
+      "code": ""
+    },
+    {
+      "heading": "Logical Operators",
+      "body": "As with comparison operators, you can also test for true or false values with logical operators. Logical operators are used to determine the logic between variables or values, by combining multiple conditions: Operator | Name | Example | Description | Try it && | AND | x < 5 && x < 10 | Returns 1 if both statements are true | Try it » || | OR | x < 5 || x < 4 | Returns 1 if one of the statements is true | Try it » ! | NOT | !(x < 5 && x < 10) | Reverse the result, returns 0 if the result is 1 | Try it »",
+      "code": ""
+    },
+    {
+      "heading": "Real-Life Example: Login Check",
+      "body": "The example below shows how logical operators can be used in a real situation, e.g. when checking login status and access rights:",
+      "code": ""
+    },
+    {
+      "heading": "Operator Precedence",
+      "body": "When a calculation contains more than one operator, C follows order of operations rules to decide which part to calculate first. For example, multiplication happens before addition:",
+      "code": ""
+    },
+    {
+      "heading": "Why Does This Happen?",
+      "body": "In 2 + 3 * 4, the multiplication is done first, so the answer is 14. If you want the addition to happen first, you must use parentheses: (2 + 3) * 4, which gives 20. Tip: Always use parentheses ( ) if you want to make sure the calculation is done in the order you expect. It also makes your code easier to read.",
+      "code": ""
+    },
+    {
+      "heading": "Order of Operations",
+      "body": "Here are some common operators in C, from highest to lowest priority: • () - Parentheses • *, /, % - Multiplication, Division, Modulus • +, - - Addition, Subtraction • >, <, >=, <= - Comparison • ==, != - Equality • && - Logical AND • || - Logical OR • = - Assignment",
+      "code": ""
+    },
+    {
+      "heading": "Another Example",
+      "body": "Subtraction and addition are done from left to right, unless you add parentheses:",
+      "code": ""
+    },
+    {
+      "heading": "Challenge: Calculate the Total Cost of an Item",
+      "body": "Test your understanding of C operators by completing a small coding challenge.",
+      "code": ""
     }
   ]
 }

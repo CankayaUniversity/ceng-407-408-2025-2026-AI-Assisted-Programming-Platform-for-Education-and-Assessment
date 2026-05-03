@@ -2,6 +2,7 @@
   "tag": "switch",
   "language": "c",
   "title": "C Switch",
+  "order": 12,
   "sections": [
     {
       "heading": "Switch Statement",
@@ -10,13 +11,8 @@
     },
     {
       "heading": "Syntax",
-      "body": "This is how it works: The switch expression is evaluated once; The value of the expression is compared with the values of each case; If there is a match, the associated block of code is executed; The break statement breaks out of the switch block and stops the execution; The default statement is optional, and specifies some code to run if there is no case match The example below uses the weekday number to calculate the weekday name:",
-      "code": "switch (expression) {\n  case x:\n    // code \n  block\n    break;\n  case y:\n   \n  // code block\n    break;\n  default:\n   \n  // code block\n\n  }"
-    },
-    {
-      "heading": "Example",
-      "body": "",
-      "code": "int day = 4;\n\nswitch (day) {\n  case 1:\n    \n    printf(\"Monday\");\n    break;\n  case 2:\n    \n    printf(\"Tuesday\");\n    break;\n  case 3:\n    \n    printf(\"Wednesday\");\n    break;\n  case 4:\n    \n    printf(\"Thursday\");\n    break;\n  case 5:\n    \n    printf(\"Friday\");\n    break;\n  case 6:\n    \n    printf(\"Saturday\");\n    break;\n  case 7:\n    \n    printf(\"Sunday\");\n    break;\n}\n\n// Outputs \"Thursday\" (day 4)"
+      "body": "This is how it works: • The switch expression is evaluated once • The value of the expression is compared with the values of each case • If there is a match, the associated block of code is executed • The break statement breaks out of the switch block and stops the execution • The default statement is optional, and specifies some code to run if there is no case match The example below uses the weekday number to calculate the weekday name:",
+      "code": "switch (expression) {\n  case x:\n    // code\n  block\n    break;\n  case y:\n\n  // code block\n    break;\n  default:\n\n  // code block\n\n  }"
     },
     {
       "heading": "The break Keyword",
@@ -29,9 +25,9 @@
       "code": ""
     },
     {
-      "heading": "Example",
-      "body": "Note: The default keyword must be used as the last statement in the switch, and it does not need a break.",
-      "code": "int day = 4;\n\nswitch (day) {\n  case 6:\n    printf(\"Today is \n  Saturday\");\n    \n  break;\n  case 7:\n    printf(\"Today is Sunday\");\n    \n  break;\n  default:\n    printf(\"Looking forward to the Weekend\");\n\n  }\n\n// Outputs \"Looking forward to the Weekend\""
+      "heading": "Challenge: Fix Customer Order",
+      "body": "Test your understanding of C switch by completing a small coding challenge.",
+      "code": ""
     }
   ]
 }

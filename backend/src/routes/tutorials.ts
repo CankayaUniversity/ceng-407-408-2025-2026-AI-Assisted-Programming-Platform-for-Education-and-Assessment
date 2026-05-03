@@ -33,8 +33,8 @@ router.get("/index/:language", (req: Request, res: Response) => {
     const topics = files.map((f) => {
       const raw     = fs.readFileSync(path.join(langDir, f), "utf-8");
       const content = JSON.parse(raw);
-      return { tag: content.tag, title: content.title };
-    });
+      return { tag: content.tag, title: content.title, order: content.order ?? 999 };
+    }).sort((a, b) => a.order - b.order);
     res.json({ success: true, data: topics });
   } catch {
     res.status(500).json({ error: "Failed to read tutorial index" });

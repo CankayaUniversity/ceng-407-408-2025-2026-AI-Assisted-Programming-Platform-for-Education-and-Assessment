@@ -2,6 +2,7 @@
   "tag": "pointers",
   "language": "c",
   "title": "C Pointers",
+  "order": 20,
   "sections": [
     {
       "heading": "Creating Pointers",
@@ -9,24 +10,69 @@
       "code": ""
     },
     {
-      "heading": "Example",
-      "body": "A pointer is a variable that stores the memory address of another variable as its value. A pointer variable points to a data type (like int) of the same type, and is created with the * operator. The address of the variable you are working with is assigned to the pointer:",
-      "code": "int myAge = 43; // an int variable\n\nprintf(\"%d\", myAge);  // \n    Outputs the value of myAge (43)\nprintf(\"%p\", &myAge); // Outputs the \n    memory address of myAge (0x7ffe5367e044)"
-    },
-    {
-      "heading": "Example",
-      "body": "Create a pointer variable with the name ptr, that points to an int variable (myAge). Note that the type of the pointer has to match the type of the variable you're working with (int in our example). Use the & operator to store the memory address of the myAge variable, and assign it to the pointer. Now, ptr holds the value of myAge's memory address.",
-      "code": "int myAge = 43;     // An int variable\nint* ptr = \n    &myAge;  // A pointer variable, with the name ptr, that \n    stores the address of myAge\n\n// Output the value of myAge (43)\n\n    printf(\"%d\\n\", myAge);\n\n// Output \n    the memory address of myAge (0x7ffe5367e044)\nprintf(\"%p\\n\", &myAge);\n\n// \n    Output the memory address of myAge with the pointer (0x7ffe5367e044)\n\n    printf(\"%p\\n\", ptr);"
-    },
-    {
       "heading": "Dereference",
       "body": "In the example above, we used the pointer variable to get the memory address of a variable (used together with the & reference operator). You can also get the value of the variable the pointer points to, by using the * operator (the dereference operator):",
       "code": ""
     },
     {
-      "heading": "Example",
-      "body": "Note that the * sign can be confusing here, as it does two different things in our code: When used in declaration (int* ptr), it creates a pointer variable.; When not used in declaration, it act as a dereference operator. Good To Know: There are two ways to declare pointer variables in C: Notes on Pointers Pointers are one of the things that make C stand out from other programming languages, like Python and Java. They are important in C, because they allow us to manipulate the data in the computer's memory. This can reduce the code and improve the performance. If you are familiar with data structures like lists, trees and graphs, you should know that pointers are especially useful for implementing those. And sometimes you even have to use pointers, for example when working with files and memory management. But be careful; pointers must be handled with care, since it is possible to damage data stored in other memory addresses.",
-      "code": "int myAge = 43;     // Variable declaration\nint* ptr = &myAge;  // Pointer \n    declaration\n\n// Reference: Output the memory address of myAge with the \n    pointer (0x7ffe5367e044)\nprintf(\"%p\\n\", ptr);\n\n// Dereference: \n    Output the value of myAge with the pointer (43)\nprintf(\"%d\\n\", *ptr);\n\nint* myNum;\nint *myNum;"
+      "heading": "Pointers & Arrays",
+      "body": "You can also use pointers to access arrays. Consider the following array of integers:",
+      "code": ""
+    },
+    {
+      "heading": "How Are Pointers Related to Arrays",
+      "body": "Ok, so what's the relationship between pointers and arrays? Well, in C, the name of an array, is actually a pointer to the first element of the array. Confused? Let's try to understand this better, and use our \"memory address example\" above again. The memory address of the first element is the same as the name of the array:",
+      "code": ""
+    },
+    {
+      "heading": "Pointer Arithmetic",
+      "body": "Pointer arithmetic means changing the value of a pointer to make it point to a different element in memory. Like we saw on the previous page, array elements are stored next to each other in memory. So if a pointer points to one element, adding 1 moves it to the next one:",
+      "code": ""
+    },
+    {
+      "heading": "Increment and Decrement",
+      "body": "You can move a pointer with ++ and -- (and with += / -=):",
+      "code": ""
+    },
+    {
+      "heading": "Pointer Subtraction (Distance)",
+      "body": "You can subtract two pointers that point to elements in the same array to find out how many elements are between them:",
+      "code": ""
+    },
+    {
+      "heading": "Pointer Arithmetic Depends on Type",
+      "body": "Not all pointers move the same way. When you add 1 to a pointer, it moves forward by the size of the thing it points to - not just by 1 byte. For example: • An int* pointer moves by the size of an integer (usually 4 bytes). • A char* pointer moves by the size of a character (1 byte). So if both pointers start at memory address 1000: • int* → p + 1 would move to address 1004 • char* → p + 1 would move to address 1001 This shows that pointer movement depends on the data type it points to - not on the number you add:",
+      "code": ""
+    },
+    {
+      "heading": "Looping with Pointers",
+      "body": "In the previous chapter, you learned how to loop through an array using *(ptr + i). Now let's look at another way - by moving the pointer itself inside the loop. Each time the pointer is increased (p++), it moves to the next element in memory:",
+      "code": ""
+    },
+    {
+      "heading": "Common Mistakes to Avoid",
+      "body": "• Using the wrong type: Remember that pointer movement depends on its type. An int* moves in 4-byte steps, but a char* moves 1 byte at a time. Mixing them up will point to the wrong memory locations. • Uninitialized pointers: Always make sure a pointer is pointing to something real before you use it. Using a pointer that doesn't point anywhere can crash your program. • Going out of bounds: Never move a pointer past the end of an array or before it starts. The only safe \"outside\" position is one step past the end, and that's only for comparing pointers - not for accessing values. And be careful; pointers must be handled with care, since it is possible to damage data stored in other memory addresses.",
+      "code": ""
+    },
+    {
+      "heading": "Pointer to Pointer",
+      "body": "You can also have a pointer that points to another pointer. This is called a pointer to pointer (or \"double pointer\"). It might sound confusing at first, but it's just one more level of indirection: a pointer that stores the address of another pointer. Think of it like this: A normal pointer is like a note with an address on it. A pointer to pointer is like another note telling you where that first note is kept. Let's look at a simple example to understand how this works:",
+      "code": ""
+    },
+    {
+      "heading": "Changing Values Through a Pointer to Pointer",
+      "body": "Since **pptr accesses the original variable, you can use it to change the value of the variable too:",
+      "code": ""
+    },
+    {
+      "heading": "Summary",
+      "body": "• A pointer to pointer stores the address of another pointer. • *ptr gives the value of a variable. • **pptr gives the same value by following two levels of indirection. • They can be useful when passing pointers to functions or working with complex data structures.",
+      "code": ""
+    },
+    {
+      "heading": "Challenge: Create a Pointer",
+      "body": "Test your understanding of C pointers by completing a small coding challenge.",
+      "code": ""
     }
   ]
 }

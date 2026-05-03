@@ -14,7 +14,8 @@ RUN npx prisma generate
 
 COPY . .
 RUN npm run build \
- && npx tsc --outDir dist-seed --rootDir . --skipLibCheck --esModuleInterop prisma/seed.ts
+ && npx tsc --outDir dist-seed --rootDir . --skipLibCheck --esModuleInterop prisma/seed.ts \
+ && cp -r src/data dist/data
 
 # ── .NET SDK stage (for C# interactive terminal) ──
 FROM mcr.microsoft.com/dotnet/sdk:8.0-bookworm-slim AS dotnet-sdk

@@ -1,21 +1,16 @@
 /**
  * FlashcardCard.jsx
  *
- * Shared primitives for rendering a single AI feedback flashcard.
- * Used by both FlashcardModal (transient post-submission popup) and
- * FlashcardsPage (persistent library view).
+ * Compact clickable preview card used in the library grid.
+ * Shows: problem name → type badge + brief description.
+ * Clicking opens FlashcardDetailDialog with full content.
  *
  * Exports:
- *   TYPE_CONFIG   — style/icon map keyed by card type
- *   FlashcardCard — standalone card component
+ *   TYPE_CONFIG      — style/icon map keyed by card type
+ *   FlashcardCard    — compact preview card (clickable)
  */
 
-import {
-  Box,
-  Chip,
-  Stack,
-  Typography,
-} from "@mui/material";
+import { Box, Chip, Stack, Typography } from "@mui/material";
 import ErrorOutlineIcon   from "@mui/icons-material/ErrorOutline";
 import WarningAmberIcon   from "@mui/icons-material/WarningAmber";
 import TipsAndUpdatesIcon from "@mui/icons-material/TipsAndUpdates";
@@ -28,6 +23,7 @@ export const TYPE_CONFIG = {
     color:  "error",
     bg:     "#2d1212",
     border: "#b71c1c",
+    hoverBg:"#3a1616",
     icon:   <ErrorOutlineIcon fontSize="small" />,
     desc:   "Something that went wrong in a previous attempt.",
   },
@@ -36,6 +32,7 @@ export const TYPE_CONFIG = {
     color:  "warning",
     bg:     "#2a1f00",
     border: "#f57f17",
+    hoverBg:"#342600",
     icon:   <WarningAmberIcon fontSize="small" />,
     desc:   "Works, but could be improved.",
   },
@@ -44,98 +41,102 @@ export const TYPE_CONFIG = {
     color:  "info",
     bg:     "#0d1e2d",
     border: "#0288d1",
+    hoverBg:"#102435",
     icon:   <TipsAndUpdatesIcon fontSize="small" />,
     desc:   "A better approach compared to the reference.",
   },
 };
 
-// ── Code snippet block ────────────────────────────────────────────────────────
-
-function CodeBlock({ label, code, bgColor = "#161b22" }) {
-  if (!code) return null;
-  return (
-    <Box sx={{ mt: 1 }}>
-      <Typography variant="caption" sx={{ color: "text.secondary", mb: 0.5, display: "block" }}>
-        {label}
-      </Typography>
-      <Box
-        component="pre"
-        sx={{
-          m: 0, p: 1.5,
-          borderRadius: 1,
-          bgcolor: bgColor,
-          fontSize: "0.78rem",
-          fontFamily: "monospace",
-          overflowX: "auto",
-          whiteSpace: "pre-wrap",
-          wordBreak: "break-word",
-          border: "1px solid",
-          borderColor: "divider",
-        }}
-      >
-        {code}
-      </Box>
-    </Box>
-  );
-}
-
-// ── Main export ───────────────────────────────────────────────────────────────
+// ── Compact preview card ──────────────────────────────────────────────────────
 
 /**
- * FlashcardCard
+ * FlashcardCard — compact library preview.
  *
  * Props:
- *   card        FlashcardItem   — { type, title, body, codeSnippet? }
- *   problemBadge string|null    — optional "from: <Problem Title>" label
- *   minHeight   number          — override min card height (default 220)
+ *   card          FlashcardItem   — { type, title, concept, body, rootCause, codeSnippet? }
+ *   problemTitle  string          — the problem this card belongs to
+ *   onClick       () => void      — called when the card is clicked
  */
-export default function FlashcardCard({ card, problemBadge = null, minHeight = 220 }) {
+export default function FlashcardCard({ card, problemTitle, onClick }) {
   const cfg = TYPE_CONFIG[card.type] ?? TYPE_CONFIG.improvement;
+
+  // Brief preview: use concept if available, else first ~100 chars of body
+  const preview = card.concept
+    ? card.concept
+    : (card.body ?? "").slice(0, 100) + ((card.body ?? "").length > 100 ? "…" : "");
 
   return (
     <Box
+      onClick={onClick}
       sx={{
         border: "1px solid",
         borderColor: cfg.border,
         borderRadius: 2,
         bgcolor: cfg.bg,
-        p: 2.5,
-        minHeight,
+        p: 2,
+        cursor: "pointer",
+        transition: "background-color 0.15s, transform 0.1s, box-shadow 0.15s",
+        "&:hover": {
+          bgcolor: cfg.hoverBg,
+          transform: "translateY(-2px)",
+          boxShadow: `0 4px 16px ${cfg.border}44`,
+        },
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        gap: 1,
       }}
     >
-      {/* Problem badge (library view only) */}
-      {problemBadge && (
-        <Typography
-          variant="caption"
-          sx={{ color: "text.disabled", display: "block", mb: 1, fontStyle: "italic" }}
-        >
-          {problemBadge}
-        </Typography>
-      )}
+      {/* Problem name */}
+      <Typography
+        variant="caption"
+        sx={{
+          fontWeight: 700,
+          color: "text.secondary",
+          fontSize: "0.72rem",
+          letterSpacing: 0.3,
+          textTransform: "uppercase",
+          display: "block",
+        }}
+      >
+        {problemTitle}
+      </Typography>
 
-      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
+      {/* Type badge */}
+      <Stack direction="row" alignItems="center" spacing={1}>
         <Chip
           icon={cfg.icon}
           label={cfg.label}
           color={cfg.color}
           size="small"
           variant="outlined"
+          sx={{ fontWeight: 600 }}
         />
-        <Typography variant="subtitle1" sx={{ fontWeight: 700, flexGrow: 1 }}>
-          {card.title}
-        </Typography>
       </Stack>
 
-      <Typography variant="body2" sx={{ color: "text.primary", lineHeight: 1.7 }}>
-        {card.body}
+      {/* Title */}
+      <Typography
+        variant="body2"
+        sx={{ fontWeight: 700, color: "text.primary", lineHeight: 1.4 }}
+      >
+        {card.title}
       </Typography>
 
-      {card.codeSnippet && (
-        <Box sx={{ mt: 2 }}>
-          <CodeBlock label="Before (problematic)" code={card.codeSnippet.bad}  bgColor="#1a0a0a" />
-          <CodeBlock label="After (improved)"     code={card.codeSnippet.good} bgColor="#0a1a0a" />
-        </Box>
-      )}
+      {/* Brief description — concept or first line of body */}
+      <Typography
+        variant="caption"
+        sx={{ color: "text.secondary", lineHeight: 1.5, flexGrow: 1 }}
+      >
+        {preview}
+      </Typography>
+
+      {/* "Click to read more" hint */}
+      <Typography
+        variant="caption"
+        sx={{ color: cfg.border, opacity: 0.7, fontSize: "0.68rem", mt: 0.5 }}
+      >
+        Click to see full details →
+      </Typography>
     </Box>
   );
 }

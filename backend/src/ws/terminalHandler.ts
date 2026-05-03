@@ -56,7 +56,7 @@ function cleanup(dir: string | null): void {
 // ── Sandbox helpers ───────────────────────────────────────────────────────────
 
 /**
- * ulimit flags applied before every student process:
+ * ulimit flags applied before every student process (best-effort).
  *   -f  max file size in 512-byte blocks (20480 = 10 MB)
  *   -u  max user processes               (64 — prevents fork bombs)
  *   -t  CPU time in seconds              (25 s — belt-and-suspenders with the 30 s wall timer)
@@ -64,8 +64,11 @@ function cleanup(dir: string | null): void {
  * We deliberately omit -v (virtual memory) because the JVM and .NET runtime
  * both map large virtual address ranges at startup and would be killed immediately.
  * Java heap is capped separately via -Xmx256m.
+ *
+ * NOTE: Some Docker configurations deny ulimit -u without extra capabilities.
+ *       We use "|| true" so a failed ulimit never blocks the exec that follows.
  */
-const ULIMIT_PREFIX = "ulimit -f 20480 -u 64 -t 25 2>/dev/null";
+const ULIMIT_PREFIX = "ulimit -f 20480 -u 64 -t 25 2>/dev/null || true";
 
 const COMPILE_TIMEOUT_MS = 20_000; // 20 s max for compilation
 

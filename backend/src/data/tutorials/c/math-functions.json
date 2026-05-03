@@ -8,8 +8,8 @@
   "sections": [
     {
       "heading": "Math Functions",
-      "body": "Math Functions\n\nThere is also a list of math functions available, that allows you to perform mathematical tasks on numbers.\nTo use them, you must include the math.h\nheader file in your program:\n\nSquare Root\n\nTo find the square root of a number, use the sqrt()\nfunction:\n\nExample\n\nRound a Number\n\nThe ceil() function rounds a number upwards to its nearest integer, and the floor() method rounds a number downwards to its nearest integer, and returns the result:\n\nExample\n\nPower\n\nThe pow() function returns the value of x to the power of\ny (xy):\n\nExample\n\nComplete Math Reference\n\nFor a complete reference of math functions, go to our C\n<math.h> Library Reference.",
-      "code": "#include <math.h>\n\nprintf(\"%f\", sqrt(16));\n\nprintf(\"%f\", ceil(1.4));printf(\"%f\",\n floor(1.4));\n\nprintf(\"%f\", pow(4, 3));"
+      "body": "Math Functions\n\nThere is also a list of math functions available, that allows you to perform mathematical tasks on numbers.\nTo use them, you must include the math.h\nheader file in your program:\n\nSquare Root\n\nTo find the square root of a number, use the sqrt()\nfunction:\n\nExample\n\nRound a Number\n\nThe ceil() function rounds a number upwards to its nearest integer, and the floor()  method rounds a number downwards to its nearest integer, and returns the result:\n\nExample\n\nPower\n\nThe pow() function returns the value of x to the power of\ny (xy):\n\nExample\n\nComplete Math Reference\n\nFor a complete reference of math functions, go to our C\n<math.h> Library Reference.",
+      "code": "#include <math.h>\n\n// ─────────────────────────────────────\n\nprintf(\"%f\", sqrt(16));\n\n// ─────────────────────────────────────\n\nprintf(\"%f\", ceil(1.4));\nprintf(\"%f\",\n  floor(1.4));\n\n// ─────────────────────────────────────\n\nprintf(\"%f\", pow(4, 3));"
     }
   ]
 }

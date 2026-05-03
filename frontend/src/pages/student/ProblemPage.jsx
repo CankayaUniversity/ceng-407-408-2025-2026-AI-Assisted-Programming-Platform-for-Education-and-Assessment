@@ -4,7 +4,6 @@ import { useAuth } from "../../context/AuthContext";
 import { api } from "../../lib/api";
 import { API_BASE } from "../../apiBase";
 import StudentWorkspace from "../../components/student/StudentWorkspace";
-import FlashcardModal    from "../../components/student/FlashcardModal";
 
 const STUDENT_NAV = [
   { label: "Dashboard",   path: "/", matchPaths: ["/problem/"] },
@@ -104,8 +103,10 @@ export default function ProblemPage() {
   const [submissionsLoading, setSubmissionsLoading] = useState(false);
 
   // ── Flashcard state ──────────────────────────────────────────────────────
-  const [flashcardModalOpen, setFlashcardModalOpen] = useState(false);
-  const [flashcards,         setFlashcards]         = useState([]);
+  const [hasSolvedProblem,    setHasSolvedProblem]    = useState(false);  // true after allPassed in this session
+  const [flashcardExists,     setFlashcardExists]     = useState(false);  // true if already generated
+  const [flashcardGenerating, setFlashcardGenerating] = useState(false);  // true while polling after button click
+  const [flashcardToastOpen,  setFlashcardToastOpen]  = useState(false);  // "ready" snackbar
   const flashcardPollRef = useRef(null);
   const [selectedId,       setSelectedId]       = useState(problemId);
 
@@ -159,6 +160,19 @@ export default function ProblemPage() {
   useEffect(() => {
     if (!token || !problemId) return;
     let cancelled = false;
+
+    // Reset flashcard state for the new problem
+    setHasSolvedProblem(false);
+    setFlashcardExists(false);
+    setFlashcardGenerating(false);
+    if (flashcardPollRef.current) { clearInterval(flashcardPollRef.current); flashcardPollRef.current = null; }
+
+    // Check whether flashcards already exist for this problem
+    api(`/api/flashcards/status?problemId=${problemId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((s) => {
+      if (!cancelled) setFlashcardExists(s?.ready === true);
+    }).catch(() => {});
 
     // Block the cache-save effect so the temporary empty-files reset below
     // does NOT overwrite the student's real saved code for this problem.
@@ -304,9 +318,9 @@ export default function ProblemPage() {
       }).catch(() => ({ data: [] }));
       setSubmissions(subRes?.data ?? []);
 
-      // If all tests passed, start polling for AI flashcards
+      // If all tests passed, mark problem as solved so "Create Flashcards" button appears
       if (result.allPassed) {
-        startFlashcardPolling(selectedProblem.id);
+        setHasSolvedProblem(true);
       }
     } catch (err) {
       termWrite(`\x1b[31m[error] ${err.message}\x1b[0m\r\n`);
@@ -315,13 +329,26 @@ export default function ProblemPage() {
     }
   }
 
-  // ── Flashcard polling ─────────────────────────────────────────────────────
-  // After a correct submission the backend generates cards in the background.
-  // Poll /api/flashcards/status every 5 s (up to 2 minutes).
-  function startFlashcardPolling(pid) {
+  // ── Flashcard creation (manual trigger) ──────────────────────────────────
+  // Called when the student clicks "Create Flashcards".
+  // Posts to /generate (returns 202 immediately), then polls status every 4s.
+  async function createFlashcards() {
+    if (!selectedProblem || flashcardGenerating || flashcardExists) return;
+    const pid = selectedProblem.id;
+    setFlashcardGenerating(true);
+
+    try {
+      await api("/api/flashcards/generate", {
+        method:  "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body:    JSON.stringify({ problemId: pid }),
+      });
+    } catch { /* 202 or error — either way start polling */ }
+
+    // Poll every 4 s, up to 5 minutes (75 attempts)
     if (flashcardPollRef.current) clearInterval(flashcardPollRef.current);
     let attempts = 0;
-    const MAX_ATTEMPTS = 24; // 24 x 5s = 2 min
+    const MAX_ATTEMPTS = 75;
 
     flashcardPollRef.current = setInterval(async () => {
       attempts++;
@@ -333,23 +360,19 @@ export default function ProblemPage() {
         if (status?.ready) {
           clearInterval(flashcardPollRef.current);
           flashcardPollRef.current = null;
-
-          const data = await api(`/api/flashcards?problemId=${pid}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }).catch(() => null);
-
-          if (data?.cards && Array.isArray(data.cards)) {
-            setFlashcards(data.cards);
-            setFlashcardModalOpen(true);
-          }
+          setFlashcardGenerating(false);
+          setFlashcardExists(true);
+          setFlashcardToastOpen(true);
+          return;
         }
       } catch { /* ignore poll errors */ }
 
       if (attempts >= MAX_ATTEMPTS) {
         clearInterval(flashcardPollRef.current);
         flashcardPollRef.current = null;
+        setFlashcardGenerating(false);
       }
-    }, 5_000);
+    }, 4_000);
   }
 
   function runRaw() {
@@ -461,7 +484,6 @@ export default function ProblemPage() {
   }
 
   return (
-    <>
     <StudentWorkspace
       currentUser={currentUser}
       selectedProblem={selectedProblem}
@@ -498,17 +520,15 @@ export default function ProblemPage() {
       submissions={submissions}
       submissionsLoading={submissionsLoading}
       examMode={examMode}
-      flashcards={flashcards}
-      onViewFlashcards={() => setFlashcardModalOpen(true)}
+      // Flashcard props (manual trigger flow)
+      hasSolvedProblem={hasSolvedProblem}
+      flashcardExists={flashcardExists}
+      flashcardGenerating={flashcardGenerating}
+      flashcardToastOpen={flashcardToastOpen}
+      onCreateFlashcards={createFlashcards}
+      onFlashcardToastClose={() => setFlashcardToastOpen(false)}
       token={token}
       tutorialLanguage={selectedProblem?.language ?? "c"}
     />
-
-    <FlashcardModal
-      open={flashcardModalOpen}
-      onClose={() => setFlashcardModalOpen(false)}
-      cards={flashcards}
-    />
-  </>
   );
 }

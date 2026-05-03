@@ -18,6 +18,7 @@ import {
   ListItemText,
   MenuItem,
   Select,
+  Snackbar,
   Stack,
   Tab,
   Tabs,
@@ -25,6 +26,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import LightbulbIcon    from "@mui/icons-material/Lightbulb";
 import ArrowBackIcon      from "@mui/icons-material/ArrowBack";
 import MenuBookIcon       from "@mui/icons-material/MenuBook";
@@ -92,8 +94,13 @@ export default function StudentWorkspace({
   submissionsLoading,
   examMode,
   lateDeduction = 0,
-  flashcards = [],
-  onViewFlashcards,
+  // Flashcard (manual trigger) props
+  hasSolvedProblem = false,
+  flashcardExists = false,
+  flashcardGenerating = false,
+  flashcardToastOpen = false,
+  onCreateFlashcards,
+  onFlashcardToastClose,
   token,
   tutorialLanguage = "c",
 }) {
@@ -355,14 +362,19 @@ export default function StudentWorkspace({
           title={selectedProblem?.title || "Code Editor"}
           action={
             <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
-              {flashcards.length > 0 && (
-                <Chip
-                  label={`💡 Feedback Cards (${flashcards.length})`}
-                  color="primary"
+              {/* Create Flashcards button — shown after solving, hidden once generated */}
+              {hasSolvedProblem && !flashcardExists && (
+                <Button
                   variant="outlined"
-                  onClick={onViewFlashcards}
-                  sx={{ cursor: "pointer", fontWeight: 600 }}
-                />
+                  size="small"
+                  color="secondary"
+                  disabled={flashcardGenerating}
+                  startIcon={flashcardGenerating ? <CircularProgress size={14} color="inherit" /> : <span>🃏</span>}
+                  onClick={onCreateFlashcards}
+                  sx={{ fontWeight: 600, whiteSpace: "nowrap" }}
+                >
+                  {flashcardGenerating ? "Creating flashcards…" : "Create Flashcards"}
+                </Button>
               )}
               <FormControl size="small" sx={{ minWidth: 160 }}>
                 <InputLabel id="language-select-label">Language</InputLabel>
@@ -706,6 +718,34 @@ export default function StudentWorkspace({
           </Box>
         </Box>
       )}
+      {/* ── Flashcard ready toast ─────────────────────────────────────────── */}
+      <Snackbar
+        open={flashcardToastOpen}
+        autoHideDuration={8000}
+        onClose={onFlashcardToastClose}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={onFlashcardToastClose}
+          severity="success"
+          icon={<CheckCircleOutlineIcon fontSize="inherit" />}
+          sx={{
+            width: "100%",
+            alignItems: "center",
+            "& .MuiAlert-message": { display: "flex", alignItems: "center", gap: 1.5 },
+          }}
+        >
+          <span>Your flashcards are ready!</span>
+          <Button
+            size="small"
+            color="inherit"
+            href="/flashcards"
+            sx={{ fontWeight: 700, textDecoration: "underline", ml: 0.5 }}
+          >
+            View on Flashcards page →
+          </Button>
+        </Alert>
+      </Snackbar>
     </AppLayout>
   );
 }

@@ -10,15 +10,12 @@ import { Router, type Request, type Response } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import * as fs   from "fs";
 import * as path from "path";
-import { fileURLToPath } from "url";
 
 const router = Router();
 router.use(requireAuth);
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname  = path.dirname(__filename);
-
 // Resolve to backend/src/data/tutorials/
+// __dirname is available in CommonJS without import.meta
 const DATA_DIR = path.join(__dirname, "..", "data", "tutorials");
 
 // GET /api/tutorials/index/:language — list all available topics for a language

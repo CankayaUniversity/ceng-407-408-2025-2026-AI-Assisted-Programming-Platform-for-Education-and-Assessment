@@ -1,90 +1,40 @@
 /**
  * FlashcardsPage.jsx
  *
- * Persistent library of all AI-generated feedback flashcards earned by the student.
- * Cards are fetched from GET /api/flashcards/library.
+ * Flashcard library grouped by problem.
  *
  * Layout:
- *   - Filters (language, topic, card type)
- *   - Grid of compact FlashcardCard previews — showing:
- *       problem name → type badge → brief description
+ *   - Classic dropdown filters (language, topic, card type)
+ *   - Problems listed newest-first as collapsible accordion rows
+ *   - Only problem titles visible by default; clicking expands cards below
  *   - Clicking a card opens FlashcardDetailDialog with full content
  */
 
 import { useEffect, useMemo, useState } from "react";
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Box,
   Chip,
   CircularProgress,
-  Divider,
+  FormControl,
   Grid,
+  InputLabel,
+  MenuItem,
+  Select,
   Stack,
   Typography,
 } from "@mui/material";
+import ExpandMoreIcon     from "@mui/icons-material/ExpandMore";
 import TipsAndUpdatesIcon from "@mui/icons-material/TipsAndUpdates";
 import StyleIcon          from "@mui/icons-material/Style";
 
 import AppLayout             from "../../components/layout/AppLayout";
-import SectionCard           from "../../components/common/SectionCard";
 import FlashcardCard, { TYPE_CONFIG } from "../../components/student/FlashcardCard";
 import FlashcardDetailDialog from "../../components/student/FlashcardDetailDialog";
 import { API_BASE }          from "../../apiBase";
-
-// ── Filter chip row ───────────────────────────────────────────────────────────
-
-function FilterChips({ label, options, selected, onToggle, colorFn }) {
-  return (
-    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-      <Typography variant="caption" color="text.secondary" sx={{ minWidth: 52, fontWeight: 600 }}>
-        {label}
-      </Typography>
-      {options.map((opt) => {
-        const active = selected.includes(opt);
-        const sx     = colorFn ? colorFn(opt, active) : {};
-        return (
-          <Chip
-            key={opt}
-            label={opt}
-            size="small"
-            variant={active ? "filled" : "outlined"}
-            onClick={() => onToggle(opt)}
-            sx={{ cursor: "pointer", transition: "all 0.15s", ...sx }}
-          />
-        );
-      })}
-    </Stack>
-  );
-}
-
-// ── Language colour map ───────────────────────────────────────────────────────
-
-const LANG_COLORS = {
-  python:     "#3b82f6",
-  javascript: "#f59e0b",
-  java:       "#f97316",
-  cpp:        "#8b5cf6",
-  "c++":      "#8b5cf6",
-  c:          "#6b7280",
-  csharp:     "#a855f7",
-  "c#":       "#a855f7",
-};
-
-function langChipSx(lang, active) {
-  const color = LANG_COLORS[lang.toLowerCase()] ?? "#64748b";
-  return active
-    ? { bgcolor: color + "33", color, borderColor: color }
-    : { color: "text.secondary", borderColor: "divider" };
-}
-
-const TYPE_OPTIONS = ["error", "shortcoming", "improvement"];
-
-function typeChipSx(type, active) {
-  const cfg = TYPE_CONFIG[type] ?? TYPE_CONFIG.improvement;
-  return active
-    ? { bgcolor: cfg.border + "22", color: cfg.border, borderColor: cfg.border }
-    : { color: "text.secondary", borderColor: "divider" };
-}
 
 // ── Empty state ───────────────────────────────────────────────────────────────
 
@@ -115,17 +65,17 @@ export default function FlashcardsPage({ currentUser, token, handleLogout, navIt
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState(null);
 
-  // Detail dialog state
-  const [dialogOpen,     setDialogOpen]     = useState(false);
-  const [selectedCard,   setSelectedCard]   = useState(null);
+  // Detail dialog
+  const [dialogOpen,      setDialogOpen]      = useState(false);
+  const [selectedCard,    setSelectedCard]    = useState(null);
   const [selectedProblem, setSelectedProblem] = useState(null);
 
   // Filters
-  const [langFilter,  setLangFilter]  = useState([]);
-  const [topicFilter, setTopicFilter] = useState([]);
-  const [typeFilter,  setTypeFilter]  = useState([]);
+  const [langFilter,  setLangFilter]  = useState("all");
+  const [topicFilter, setTopicFilter] = useState("all");
+  const [typeFilter,  setTypeFilter]  = useState("all");
 
-  // ── Fetch library ─────────────────────────────────────────────────────────
+  // ── Fetch ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!token) return;
     setLoading(true);
@@ -149,29 +99,28 @@ export default function FlashcardsPage({ currentUser, token, handleLogout, navIt
     return [...s].sort();
   }, [library]);
 
-  // ── Toggle filter ─────────────────────────────────────────────────────────
-  function toggle(setter, value) {
-    setter((prev) =>
-      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value],
-    );
-  }
-
-  // ── Build flat card list ──────────────────────────────────────────────────
-  const items = useMemo(() => {
+  // ── Filtered + grouped rows ───────────────────────────────────────────────
+  // Each row = one problem with its filtered cards. Problems are already
+  // ordered newest-first by the API (orderBy: createdAt desc).
+  const groups = useMemo(() => {
     const out = [];
     for (const row of library) {
-      if (langFilter.length  && !langFilter.includes(row.language))  continue;
-      if (topicFilter.length && !topicFilter.includes(row.category)) continue;
+      if (langFilter  !== "all" && row.language !== langFilter)  continue;
+      if (topicFilter !== "all" && row.category !== topicFilter) continue;
 
-      for (let ci = 0; ci < (row.cards ?? []).length; ci++) {
-        const card = row.cards[ci];
-        if (typeFilter.length && !typeFilter.includes(card.type)) continue;
-        out.push({
-          card,
-          problemTitle: row.problemTitle,
-          key: `${row.id}-${ci}`,
-        });
-      }
+      const cards = (row.cards ?? []).filter(
+        (c) => typeFilter === "all" || c.type === typeFilter,
+      );
+      if (cards.length === 0) continue;
+
+      out.push({
+        id:           row.id,
+        problemTitle: row.problemTitle,
+        language:     row.language,
+        difficulty:   row.difficulty,
+        category:     row.category,
+        cards,
+      });
     }
     return out;
   }, [library, langFilter, topicFilter, typeFilter]);
@@ -181,13 +130,18 @@ export default function FlashcardsPage({ currentUser, token, handleLogout, navIt
     [library],
   );
 
-  const hasFilters = langFilter.length > 0 || topicFilter.length > 0 || typeFilter.length > 0;
+  const hasFilters = langFilter !== "all" || topicFilter !== "all" || typeFilter !== "all";
 
-  // ── Open detail dialog ────────────────────────────────────────────────────
   function openCard(card, problemTitle) {
     setSelectedCard(card);
     setSelectedProblem(problemTitle);
     setDialogOpen(true);
+  }
+
+  function clearFilters() {
+    setLangFilter("all");
+    setTopicFilter("all");
+    setTypeFilter("all");
   }
 
   return (
@@ -217,51 +171,65 @@ export default function FlashcardsPage({ currentUser, token, handleLogout, navIt
 
         {/* ── Filters ───────────────────────────────────────────────────────── */}
         {!loading && library.length > 0 && (
-          <SectionCard title="Filter">
-            <Stack spacing={1.5}>
-              {languages.length > 0 && (
-                <FilterChips
-                  label="Language"
-                  options={languages}
-                  selected={langFilter}
-                  onToggle={(v) => toggle(setLangFilter, v)}
-                  colorFn={langChipSx}
-                />
-              )}
-              {topics.length > 0 && (
-                <>
-                  <Divider />
-                  <FilterChips
-                    label="Topic"
-                    options={topics}
-                    selected={topicFilter}
-                    onToggle={(v) => toggle(setTopicFilter, v)}
-                    colorFn={null}
-                  />
-                </>
-              )}
-              <Divider />
-              <FilterChips
-                label="Type"
-                options={TYPE_OPTIONS}
-                selected={typeFilter}
-                onToggle={(v) => toggle(setTypeFilter, v)}
-                colorFn={typeChipSx}
-              />
-            </Stack>
+          <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" useFlexGap>
+            {/* Language */}
+            <FormControl size="small" sx={{ minWidth: 150 }}>
+              <InputLabel>Language</InputLabel>
+              <Select
+                value={langFilter}
+                label="Language"
+                onChange={(e) => setLangFilter(e.target.value)}
+              >
+                <MenuItem value="all">All languages</MenuItem>
+                {languages.map((l) => (
+                  <MenuItem key={l} value={l}>{l}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
-            {hasFilters && (
-              <Box sx={{ mt: 1.5 }}>
-                <Chip
-                  label="Clear all filters"
-                  size="small"
-                  variant="outlined"
-                  onClick={() => { setLangFilter([]); setTopicFilter([]); setTypeFilter([]); }}
-                  sx={{ color: "text.secondary", borderColor: "divider", cursor: "pointer" }}
-                />
-              </Box>
+            {/* Topic */}
+            {topics.length > 0 && (
+              <FormControl size="small" sx={{ minWidth: 150 }}>
+                <InputLabel>Topic</InputLabel>
+                <Select
+                  value={topicFilter}
+                  label="Topic"
+                  onChange={(e) => setTopicFilter(e.target.value)}
+                >
+                  <MenuItem value="all">All topics</MenuItem>
+                  {topics.map((t) => (
+                    <MenuItem key={t} value={t}>{t}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             )}
-          </SectionCard>
+
+            {/* Card type */}
+            <FormControl size="small" sx={{ minWidth: 160 }}>
+              <InputLabel>Card type</InputLabel>
+              <Select
+                value={typeFilter}
+                label="Card type"
+                onChange={(e) => setTypeFilter(e.target.value)}
+              >
+                <MenuItem value="all">All types</MenuItem>
+                <MenuItem value="error">Error</MenuItem>
+                <MenuItem value="shortcoming">Shortcoming</MenuItem>
+                <MenuItem value="improvement">Improvement</MenuItem>
+              </Select>
+            </FormControl>
+
+            {/* Clear */}
+            {hasFilters && (
+              <Chip
+                label="Clear filters"
+                size="small"
+                variant="outlined"
+                onClick={clearFilters}
+                sx={{ cursor: "pointer", color: "text.secondary", borderColor: "divider" }}
+              />
+            )}
+          </Stack>
         )}
 
         {/* ── Loading / error / empty ────────────────────────────────────────── */}
@@ -275,30 +243,67 @@ export default function FlashcardsPage({ currentUser, token, handleLogout, navIt
 
         {!loading && !error && library.length === 0 && <EmptyState />}
 
-        {/* ── Card grid ─────────────────────────────────────────────────────── */}
-        {!loading && items.length > 0 && (
-          <>
-            <Typography variant="caption" color="text.secondary">
-              Showing {items.length} card{items.length !== 1 ? "s" : ""}
-              {hasFilters ? " (filtered)" : ""}
-              {" — click any card to see full details"}
-            </Typography>
-            <Grid container spacing={2}>
-              {items.map(({ card, problemTitle, key }) => (
-                <Grid item xs={12} sm={6} lg={4} key={key}>
-                  <FlashcardCard
-                    card={card}
-                    problemTitle={problemTitle}
-                    onClick={() => openCard(card, problemTitle)}
-                  />
-                </Grid>
-              ))}
-            </Grid>
-          </>
+        {/* ── Grouped accordion list ─────────────────────────────────────────── */}
+        {!loading && !error && groups.length > 0 && (
+          <Stack spacing={1}>
+            {groups.map((group) => (
+              <Accordion
+                key={group.id}
+                disableGutters
+                elevation={0}
+                sx={{
+                  border: "1px solid",
+                  borderColor: "divider",
+                  borderRadius: "10px !important",
+                  bgcolor: "background.paper",
+                  "&:before": { display: "none" },
+                  overflow: "hidden",
+                }}
+              >
+                <AccordionSummary
+                  expandIcon={<ExpandMoreIcon />}
+                  sx={{
+                    px: 2.5,
+                    py: 0.5,
+                    "&:hover": { bgcolor: "rgba(255,255,255,0.03)" },
+                  }}
+                >
+                  <Stack direction="row" alignItems="center" spacing={1.5} sx={{ flexGrow: 1 }}>
+                    <Typography variant="subtitle1" fontWeight={700} sx={{ flexGrow: 1 }}>
+                      {group.problemTitle}
+                    </Typography>
+                    {group.difficulty && (
+                      <Chip label={group.difficulty} size="small" variant="outlined" />
+                    )}
+                    {group.language && (
+                      <Chip label={group.language} size="small" variant="outlined" />
+                    )}
+                    <Typography variant="caption" color="text.disabled">
+                      {group.cards.length} card{group.cards.length !== 1 ? "s" : ""}
+                    </Typography>
+                  </Stack>
+                </AccordionSummary>
+
+                <AccordionDetails sx={{ px: 2.5, pb: 2.5, pt: 0 }}>
+                  <Grid container spacing={2}>
+                    {group.cards.map((card, ci) => (
+                      <Grid item xs={12} sm={6} lg={4} key={ci}>
+                        <FlashcardCard
+                          card={card}
+                          problemTitle={group.problemTitle}
+                          onClick={() => openCard(card, group.problemTitle)}
+                        />
+                      </Grid>
+                    ))}
+                  </Grid>
+                </AccordionDetails>
+              </Accordion>
+            ))}
+          </Stack>
         )}
 
         {/* No results from filter */}
-        {!loading && !error && library.length > 0 && items.length === 0 && (
+        {!loading && !error && library.length > 0 && groups.length === 0 && (
           <Box sx={{ textAlign: "center", py: 6 }}>
             <Typography color="text.secondary">
               No cards match the selected filters.
@@ -307,7 +312,7 @@ export default function FlashcardsPage({ currentUser, token, handleLogout, navIt
               label="Clear filters"
               size="small"
               variant="outlined"
-              onClick={() => { setLangFilter([]); setTopicFilter([]); setTypeFilter([]); }}
+              onClick={clearFilters}
               sx={{ mt: 1.5, cursor: "pointer" }}
             />
           </Box>

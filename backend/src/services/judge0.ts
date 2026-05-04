@@ -27,10 +27,10 @@ function getJudge0BaseUrl(): string {
 function getJudge0RequestTimeoutMs(): number {
   const raw = process.env.JUDGE0_REQUEST_TIMEOUT_MS;
   if (raw == null || raw === "") {
-    return 90_000;
+    return 30_000; // 30 s — faster failure on slow machines; Judge0 usually responds in <10 s
   }
   const n = Number.parseInt(raw, 10);
-  return Number.isFinite(n) && n > 0 ? n : 90_000;
+  return Number.isFinite(n) && n > 0 ? n : 30_000;
 }
 
 function getJudge0CandidateBaseUrls(): string[] {

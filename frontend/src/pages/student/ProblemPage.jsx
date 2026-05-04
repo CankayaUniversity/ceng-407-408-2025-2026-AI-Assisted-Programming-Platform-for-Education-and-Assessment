@@ -528,7 +528,7 @@ export default function ProblemPage() {
       onCreateFlashcards={createFlashcards}
       onFlashcardToastClose={() => setFlashcardToastOpen(false)}
       token={token}
-      tutorialLanguage={selectedProblem?.language ?? "c"}
+      tutorialLanguage="c"
     />
   );
 }

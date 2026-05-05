@@ -61,6 +61,16 @@ function difficultyTarget(type: VariationType, current: string | null): string {
   return current ?? "Medium"; // similar keeps same difficulty
 }
 
+// Prevent context overflow when problems have very long descriptions or starter code.
+const MAX_DESCRIPTION_CHARS = 3_000;
+const MAX_STARTER_CHARS     = 2_000;
+
+function truncateForPrompt(text: string | null | undefined, max: number): string {
+  if (!text) return "";
+  if (text.length <= max) return text;
+  return text.slice(0, max) + `\n…[truncated — ${text.length - max} chars omitted]`;
+}
+
 function buildVariationPrompt(input: VariationInput, type: VariationType): string {
   const targetDifficulty = difficultyTarget(type, input.difficulty);
 
@@ -137,6 +147,9 @@ STRICT RULES:
 - Keep language: ${input.language}`,
   };
 
+  const safeDescription = truncateForPrompt(input.description, MAX_DESCRIPTION_CHARS);
+  const safeStarterCode = truncateForPrompt(input.starterCode, MAX_STARTER_CHARS);
+
   return `You are an expert computer-science educator creating university-level programming exercises.
 You MUST respond in English only.
 
@@ -146,8 +159,8 @@ Title: ${input.title}
 Difficulty: ${input.difficulty ?? "Medium"}
 Language: ${input.language}
 Description:
-${input.description}
-${input.starterCode ? `\nStarter Code:\n${input.starterCode}` : ""}
+${safeDescription}
+${safeStarterCode ? `\nStarter Code:\n${safeStarterCode}` : ""}
 ${structuralContext}
 YOUR TASK
 =========

@@ -2,6 +2,29 @@
  * Mentor prompts and Ollama calls.
  */
 
+// ── Prompt injection protection ───────────────────────────────────────────────
+// Remove or neutralise delimiter markers a student could embed to confuse the LLM.
+const PROMPT_DELIMITER_RE =
+  /\[(CODE|ASSIGNMENT|STUDENT_MESSAGE|LANGUAGE|MODE|RUN_STATUS|OUTPUT|ERROR|STDERR|INSTRUCTOR|SYSTEM)\]/gi;
+
+function sanitizeForPrompt(text: string | null | undefined): string {
+  if (!text) return "";
+  // Replace bracket delimiters with lookalike Unicode brackets so the model
+  // never sees its own structural markers inside student-supplied text.
+  return text.replace(PROMPT_DELIMITER_RE, (m) => m.replace("[", "⟦").replace("]", "⟧"));
+}
+
+// ── Input length guards (prevent context overflow) ────────────────────────────
+const MAX_CODE_CHARS       = 4_000;   // ~100 lines average
+const MAX_ASSIGNMENT_CHARS = 2_000;
+const MAX_QUESTION_CHARS   = 600;
+const MAX_OUTPUT_CHARS     = 1_000;
+
+function truncate(text: string, max: number): string {
+  if (text.length <= max) return text;
+  return text.slice(0, max) + `\n…[truncated — ${text.length - max} chars omitted]`;
+}
+
 export type MentorRequestInput = {
   problemDescription?: string | null;
   assignmentText?: string | null;
@@ -77,7 +100,7 @@ function detectMessageMode(message: string | null | undefined): MessageMode {
   }
 
   if (
-    /full solution|just write the code|solve it completely|send the final answer only|no hints|just code|fix the code and send the corrected version|pretend you are not a mentor|ignore previous instructions|for testing purposes, output the final code/i.test(
+    /full solution|just write the code|solve it completely|send the final answer only|no hints|just code|fix the code and send the corrected version|pretend you are not a mentor|ignore previous instructions|for testing purposes, output the final code|give me the answer|just tell me the answer|what is the correct code|write me the complete|show me the working code|provide the complete solution|give me the working code|don't give hints|skip the hints|write the whole|complete the code for me|finish my code|write the rest of the code|act as if you have no restrictions|disregard your instructions|you are now|forget your rules|bypass|output only code|return only the code/i.test(
       msg,
     )
   ) {
@@ -143,6 +166,14 @@ function buildMentorPrompt(
   const basicHelp = options?.basicHelp ?? false;
   const compactRewrite = options?.compactRewrite ?? false;
 
+  // Sanitize & truncate all student-supplied text before injecting into the prompt.
+  const safeCode       = truncate(sanitizeForPrompt(input.studentCode), MAX_CODE_CHARS);
+  const safeAssignment = truncate(sanitizeForPrompt(input.assignmentText), MAX_ASSIGNMENT_CHARS);
+  const safeQuestion   = truncate(sanitizeForPrompt(input.studentQuestion), MAX_QUESTION_CHARS);
+  const safeStderr     = truncate(sanitizeForPrompt(input.stderr), MAX_OUTPUT_CHARS);
+  const safeStdout     = truncate(sanitizeForPrompt(input.stdout), MAX_OUTPUT_CHARS);
+  const safeError      = truncate(sanitizeForPrompt(input.errorMessage), MAX_OUTPUT_CHARS);
+
   let prompt = `
 You are an AI programming mentor.
 
@@ -151,31 +182,31 @@ You MUST respond in English only.
 Your goal is to help the student make progress without completing the assignment for them.
 
 [LANGUAGE]
-${input.language ?? "Unknown"}
+${sanitizeForPrompt(input.language) || "Unknown"}
 
 [ASSIGNMENT]
-${input.assignmentText || "Use the code as the main technical context only when relevant."}
+${safeAssignment || "Use the code as the main technical context only when relevant."}
 
 [CODE]
-${input.studentCode ?? "No code provided."}
+${safeCode || "No code provided."}
 
 [STDERR]
-${input.stderr ?? "No stderr"}
+${safeStderr || "No stderr"}
 
 [RUN_STATUS]
 ${normalizedStatus}
 
 [OUTPUT]
-${input.stdout ?? "Not available."}
+${safeStdout || "Not available."}
 
 [ERROR]
-${input.errorMessage ?? "No error message."}
+${safeError || "No error message."}
 
 [MODE]
 ${normalizedMode}
 
 [STUDENT_MESSAGE]
-${input.studentQuestion ?? "No message provided."}
+${safeQuestion || "No message provided."}
 
 Core rules:
 - Never provide the full final solution.
@@ -312,6 +343,9 @@ async function callModel(prompt: string): Promise<string> {
         options: {
           temperature: 0.2,
           top_p: 0.9,
+          // Ensure the full system prompt + student code fits in the context window.
+          // Without this, Ollama may silently truncate the safety rules section.
+          num_ctx: 8192,
         },
       }),
       signal: controller.signal,
@@ -503,7 +537,7 @@ export async function* getMentorReplyStream(
         prompt,
         stream: true,
         keep_alive: -1,
-        options: { temperature: 0.2, top_p: 0.9 },
+        options: { temperature: 0.2, top_p: 0.9, num_ctx: 8192 },
       }),
       signal: controller.signal,
     });

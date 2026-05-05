@@ -28,7 +28,8 @@ function getOllamaGenerateUrl(): string {
 }
 
 function getModelName(): string {
-  return process.env.OLLAMA_MODEL ?? "ai-mentor";
+  // Allow a dedicated rubric model distinct from the mentor/variation model.
+  return process.env.OLLAMA_RUBRIC_MODEL ?? process.env.OLLAMA_MODEL ?? "ai-mentor";
 }
 
 // ── JSON extraction ───────────────────────────────────────────────────────────
@@ -47,7 +48,7 @@ function extractJson(raw: string): GeneratedRubric | null {
     const obj = JSON.parse(stripped.slice(start, end + 1)) as Record<string, unknown>;
 
     const rawCriteria = Array.isArray(obj.criteria) ? obj.criteria : [];
-    const criteria: RubricCriterion[] = rawCriteria
+    let criteria: RubricCriterion[] = rawCriteria
       .filter((c): c is Record<string, unknown> => typeof c === "object" && c !== null)
       .map((c) => ({
         name:         typeof c.name         === "string" ? c.name.trim()         : "Criterion",
@@ -58,6 +59,29 @@ function extractJson(raw: string): GeneratedRubric | null {
       .filter((c) => c.name && c.maxScore > 0);
 
     if (criteria.length === 0) return null;
+
+    // Deduplicate criterion names — if the AI returns two "Correctness" criteria,
+    // suffix duplicates so grading logic can tell them apart.
+    const nameCount = new Map<string, number>();
+    for (const c of criteria) {
+      const count = nameCount.get(c.name) ?? 0;
+      if (count > 0) {
+        c.name = `${c.name} (${count + 1})`;
+      }
+      nameCount.set(c.name, count + 1);
+    }
+
+    // Normalize so the rubric always totals exactly 100 points.
+    const rawTotal = criteria.reduce((sum, c) => sum + c.maxScore, 0);
+    if (rawTotal !== 100 && rawTotal > 0) {
+      const scale = 100 / rawTotal;
+      criteria = criteria.map((c) => ({ ...c, maxScore: Math.round(c.maxScore * scale) }));
+      // Fix rounding drift on the last criterion
+      const newTotal = criteria.reduce((s, c) => s + c.maxScore, 0);
+      if (newTotal !== 100) {
+        criteria[criteria.length - 1].maxScore += 100 - newTotal;
+      }
+    }
 
     const totalPoints  = criteria.reduce((sum, c) => sum + c.maxScore, 0);
     const gradingNotes = typeof obj.gradingNotes === "string" ? obj.gradingNotes.trim() : "";

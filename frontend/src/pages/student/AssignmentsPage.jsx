@@ -137,9 +137,11 @@ export default function AssignmentsPage({ currentUser, token, handleLogout, navI
       .finally(() => setLoading(false));
   }, [token]);
 
+  // Submission records have a `status` field ("accepted" | "failed"),
+  // not `normalizedStatus` (which lives on SubmissionAttempt).
   const solvedSet = new Set(
     submissions
-      .filter((s) => s.normalizedStatus === "accepted" || s.allPassed === true)
+      .filter((s) => s.status === "accepted")
       .map((s) => s.problemId),
   );
 

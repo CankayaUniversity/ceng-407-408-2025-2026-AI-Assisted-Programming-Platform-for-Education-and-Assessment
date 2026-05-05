@@ -126,7 +126,16 @@ router.patch("/:id/approve", async (req, res) => {
     }),
   ]);
 
-  res.json({ data: { newProblemId: newProblem.id, variation: { id, status: "approved" } } });
+  // AI-generated variations contain no test cases — the teacher must add them
+  // via the problem editor before the problem can be used for grading.
+  res.json({
+    data: {
+      newProblemId: newProblem.id,
+      variation:    { id, status: "approved" },
+    },
+    warning:
+      "The new problem has no test cases. Add test cases in the problem editor before assigning it to students.",
+  });
 });
 
 // ── DELETE /api/variations/:id ────────────────────────────────────────────────

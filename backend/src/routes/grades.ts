@@ -224,7 +224,7 @@ router.put("/:assignmentId/:userId", async (req: Request, res: Response) => {
   const gradeData = {
     score,
     maxScore,
-    breakdown:   breakdown ? (breakdown as object) : undefined,
+    breakdown:   breakdown != null ? (breakdown as object) : null,
     feedback:    feedback ?? null,
     rubricId:    rubricId ?? null,
     aiSuggested,

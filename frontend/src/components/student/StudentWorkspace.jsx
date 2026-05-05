@@ -330,7 +330,7 @@ export default function StudentWorkspace({
                         <Box sx={{ borderRadius: 1.5, overflow: "hidden", border: 1, borderColor: "divider" }}>
                           <Editor
                             height={`${Math.min(Math.max(selectedSection.code.split("\n").length * 19 + 16, 60), 320)}px`}
-                            language="c"
+                            language={tutorialLanguage ?? "c"}
                             value={selectedSection.code}
                             theme="vs-dark"
                             options={{
@@ -705,7 +705,7 @@ export default function StudentWorkspace({
                       <Box sx={{ borderRadius: 2, overflow: "hidden", border: 1, borderColor: "divider" }}>
                         <Editor
                           height={`${Math.min(Math.max(section.code.split("\n").length * 20 + 20, 70), 320)}px`}
-                          language="c"
+                          language={tutorialLanguage ?? "c"}
                           value={section.code}
                           theme="vs-dark"
                           options={{ readOnly: true, minimap: { enabled: false }, fontSize: 13, lineNumbers: "off", scrollBeyondLastLine: false, padding: { top: 10, bottom: 10 }, automaticLayout: true }}

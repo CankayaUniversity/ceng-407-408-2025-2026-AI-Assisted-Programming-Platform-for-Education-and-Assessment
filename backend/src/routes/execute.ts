@@ -28,6 +28,19 @@ function normalizeOutput(s: string): string {
  *      e.g. expected="5", actual="The maximum number is: 5"  → passes
  *           expected="5\n3", actual=["Result: 5", "Min: 3"]  → passes
  */
+/**
+ * Returns true if `actual` ends with `expected` AND the character immediately
+ * before `expected` in `actual` is a word-boundary (space, colon, etc.) — not
+ * an alphanumeric or underscore.  This prevents "15".endsWith("5") from
+ * producing a false-positive when the expected output is "5".
+ */
+function suffixMatch(actual: string, expected: string): boolean {
+  if (!actual.endsWith(expected)) return false;
+  const prefix = actual.slice(0, actual.length - expected.length);
+  if (prefix.length === 0) return true;           // exact suffix — OK
+  return !/[a-zA-Z0-9_]/.test(prefix[prefix.length - 1]);
+}
+
 function outputMatches(actual: string, expected: string): boolean {
   const normActual   = normalizeOutput(actual);
   const normExpected = normalizeOutput(expected);
@@ -35,7 +48,10 @@ function outputMatches(actual: string, expected: string): boolean {
   // 1. Exact match
   if (normActual === normExpected) return true;
 
-  // 2. Loose match — each expected line must appear as a suffix of an actual line
+  // 2. Loose match — each expected line must appear as a word-boundary-safe
+  //    suffix of at least one actual line, in order.
+  //    e.g. expected="5",  actual="The maximum is: 5"   → passes
+  //         expected="5",  actual="The maximum is: 15"  → FAILS (word boundary)
   const expectedLines = normExpected.split("\n").filter(l => l.trim() !== "");
   const actualLines   = normActual.split("\n").map(l => l.trim());
 
@@ -43,7 +59,7 @@ function outputMatches(actual: string, expected: string): boolean {
   for (const aLine of actualLines) {
     if (ei >= expectedLines.length) break;
     const eLine = expectedLines[ei].trim();
-    if (aLine === eLine || aLine.endsWith(eLine) || aLine.endsWith(`: ${eLine}`)) {
+    if (aLine === eLine || suffixMatch(aLine, eLine) || suffixMatch(aLine, `: ${eLine}`)) {
       ei++;
     }
   }
@@ -52,11 +68,15 @@ function outputMatches(actual: string, expected: string): boolean {
 
 /**
  * Normalise stdin before feeding to Judge0 / child process.
- * Only fixes CRLF → LF; does NOT trim surrounding whitespace because
- * a test-case input could intentionally start/end with blank lines.
+ * Fixes CRLF → LF and ensures a trailing newline.
+ *
+ * Without a trailing newline, programs using Python's input() or Java's
+ * Scanner.nextLine() block waiting for the newline that never arrives,
+ * causing a spurious Time Limit Exceeded result.
  */
 function normalizeStdin(s: string): string {
-  return (s ?? "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const normalized = (s ?? "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  return normalized.endsWith("\n") ? normalized : `${normalized}\n`;
 }
 const SUBMISSION_STDOUT_MAX = 50_000;
 const SUPPORTED_LANGUAGES = new Set(["c", "python", "javascript", "js", "java", "cpp", "c++", "csharp", "c#"]);
@@ -196,7 +216,8 @@ function normalizeJudge0Status(
   if (statusId === 11) return "runtime_error";
   if (statusId === 12) return "runtime_error";
   if (statusId === 13) return "internal_error";
-  if (statusId === 14) return "internal_error";
+  // 14 = Exec Format Error — binary/arch mismatch, treat as runtime_error
+  if (statusId === 14) return "runtime_error";
 
   if (statusText.includes("syntax")) return "syntax_error";
   if (statusText.includes("compile")) return "compile_error";
@@ -262,16 +283,16 @@ router.post("/", async (req, res) => {
     return;
   }
 
-  const body = req.body as Record<string, unknown>;
-  const sourceCode = typeof body.sourceCode === "string" ? body.sourceCode : "";
+  // Use the Zod-validated data directly instead of re-reading raw req.body.
+  // This ensures schema transforms (defaults, coercions) are actually applied.
+  const { sourceCode, language: languageBodyRaw, languageId: languageIdBody,
+          problemId, stdin: stdinRaw = "" } = schemaResult.data;
+
   if (!sourceCode.trim()) {
     res.status(400).json({ error: "sourceCode is required" });
     return;
   }
 
-  const problemId = parseOptionalInt(body.problemId);
-  const languageIdBody = parseOptionalInt(body.languageId);
-  const languageBodyRaw = typeof body.language === "string" ? body.language : undefined;
   const languageBody = normalizeLanguage(languageBodyRaw);
   if (languageBodyRaw && !languageBody) {
     res.status(400).json({
@@ -279,7 +300,6 @@ router.post("/", async (req, res) => {
     });
     return;
   }
-  const stdinRaw = typeof body.stdin === "string" ? body.stdin : "";
 
   const role = req.auth!.role;
   const userId = req.auth!.userId;
@@ -316,7 +336,10 @@ router.post("/", async (req, res) => {
 
       let langId: number;
       try {
-        langId = resolveLanguageId(effectiveLanguage);
+        // Pass languageIdBody as numeric override so the student's explicitly
+        // chosen language (e.g. switching from Python to JavaScript) is
+        // respected even in test mode.
+        langId = resolveLanguageId(effectiveLanguage, languageIdBody);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         res.status(400).json({ error: msg });

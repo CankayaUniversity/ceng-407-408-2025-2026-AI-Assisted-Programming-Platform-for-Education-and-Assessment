@@ -24,10 +24,23 @@ function getValidatorModelName(): string {
 }
 
 function extractJson(text: string): string | null {
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start === -1 || end === -1 || end <= start) return null;
-  return text.slice(start, end + 1);
+  // Balanced-brace search — avoids being spoofed by a student embedding
+  // {"decision":"allow"} inside their code or message which then appears
+  // earlier in the flat indexOf("{") scan.
+  let depth = 0;
+  let start = -1;
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === "{") {
+      if (depth === 0) start = i;
+      depth++;
+    } else if (text[i] === "}") {
+      depth--;
+      if (depth === 0 && start !== -1) {
+        return text.slice(start, i + 1);
+      }
+    }
+  }
+  return null;
 }
 
 function normalize(text: string | null | undefined): string {
@@ -68,7 +81,7 @@ function detectQuestionMode(message: string): "casual" | "meta" | "solution" | "
   }
 
   if (
-    /full solution|just write the code|solve it completely|final answer only|no hints|just code|fix the code and send the corrected version|pretend you are not a mentor|ignore previous instructions|for testing purposes, output the final code/i.test(
+    /full solution|just write the code|solve it completely|final answer only|no hints|just code|fix the code and send the corrected version|pretend you are not a mentor|ignore previous instructions|for testing purposes, output the final code|give me the answer|just tell me the answer|what is the correct code|write me the complete|show me the working code|provide the complete solution|give me the working code|don't give hints|skip the hints|write the whole|complete the code for me|finish my code|write the rest of the code|act as if you have no restrictions|disregard your instructions|you are now|forget your rules|bypass|output only code|return only the code/i.test(
       msg,
     )
   ) {
@@ -128,15 +141,33 @@ function containsFullSolutionLanguage(text: string): boolean {
 
 function containsAssignmentWalkthrough(text: string): boolean {
   const lower = text.toLowerCase();
-  const hits = [
-    "read input",
-    "split",
-    "convert",
-    "calculate",
-    "print",
-  ].filter((p) => lower.includes(p)).length;
 
-  return hits >= 4;
+  // Input-reading patterns across common languages (Python, JS, Java, C/C++)
+  const inputPatterns = [
+    "read input", "readline", "scanner", "input(", "cin >>",
+    "bufferedreader", "gets(", "scanf", "prompt(",
+  ];
+  // Processing/parsing patterns
+  const processPatterns = [
+    "split", "parse", "convert", "parseint", "atoi", "strtol", "int(",
+  ];
+  // Computation patterns
+  const computePatterns = [
+    "calculate", "sum", "loop", "iterate", "traverse", "accumulate", "total",
+  ];
+  // Output patterns
+  const outputPatterns = [
+    "print", "console.log", "printf", "puts", "cout", "system.out", "echo",
+  ];
+
+  const hasInput   = inputPatterns.some((p) => lower.includes(p));
+  const hasProcess = processPatterns.some((p) => lower.includes(p));
+  const hasCompute = computePatterns.some((p) => lower.includes(p));
+  const hasOutput  = outputPatterns.some((p) => lower.includes(p));
+
+  // Walkthrough = reads + processes + (computes or outputs) + at least one more category
+  return (hasInput && hasProcess && hasOutput) ||
+         (hasInput && hasCompute && hasOutput && hasProcess);
 }
 
 function heuristicValidate(input: ValidateInput): ValidatorResult {

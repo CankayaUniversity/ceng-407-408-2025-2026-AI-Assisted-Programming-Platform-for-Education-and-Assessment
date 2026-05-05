@@ -69,8 +69,10 @@ function parseExecutionTimeMs(time: string | null): number | undefined {
   if (time == null || time === "") {
     return undefined;
   }
-  const n = Number.parseFloat(time);
-  return Number.isFinite(n) ? n : undefined;
+  // Judge0 returns execution time in seconds (e.g. "0.045").
+  // Convert to milliseconds to match the execute.ts helper.
+  const seconds = Number.parseFloat(time);
+  return Number.isFinite(seconds) ? seconds * 1000 : undefined;
 }
 
 function clipText(value: string, maxLength = 50_000): string {

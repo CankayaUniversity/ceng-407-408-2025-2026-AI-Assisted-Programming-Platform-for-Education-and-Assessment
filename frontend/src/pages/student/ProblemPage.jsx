@@ -137,8 +137,10 @@ export default function ProblemPage() {
     setFiles((prev) => prev.map((f) => (f.id === activeFileId ? { ...f, content } : f)));
   };
 
-  // Concatenate all files for submission (Judge0 is single-file; files are for organisation)
-  const allCode = files.map((f) => f.content).join("\n\n");
+  // For test submission, only the active file is sent to Judge0.
+  // Concatenating all files breaks JavaScript (duplicate declarations, conflicting
+  // module systems) and other languages.  Extra files are for local organisation only.
+  const allCode = activeFile?.content ?? "";
 
   // ── File tab actions (Phase 7) ───────────────────────────────────────────
   function addFile() {
@@ -386,6 +388,12 @@ export default function ProblemPage() {
     let attempts = 0;
     const MAX_ATTEMPTS = 75;
 
+    function stopPolling() {
+      clearInterval(flashcardPollRef.current);
+      flashcardPollRef.current = null;
+      setFlashcardGenerating(false);
+    }
+
     flashcardPollRef.current = setInterval(async () => {
       attempts++;
       try {
@@ -394,19 +402,24 @@ export default function ProblemPage() {
         }).catch(() => null);
 
         if (status?.ready) {
-          clearInterval(flashcardPollRef.current);
-          flashcardPollRef.current = null;
-          setFlashcardGenerating(false);
+          stopPolling();
           setFlashcardExists(true);
           setFlashcardToastOpen(true);
           return;
         }
-      } catch { /* ignore poll errors */ }
+
+        // If the server returned { ready: false, generating: false } after we
+        // already started generation it means the background job was lost
+        // (e.g. server restart).  Stop polling so the button reappears
+        // immediately and the student can try again.
+        if (status && !status.ready && !status.generating && attempts > 1) {
+          stopPolling();
+          return;
+        }
+      } catch { /* ignore transient poll errors */ }
 
       if (attempts >= MAX_ATTEMPTS) {
-        clearInterval(flashcardPollRef.current);
-        flashcardPollRef.current = null;
-        setFlashcardGenerating(false);
+        stopPolling();
       }
     }, 4_000);
   }

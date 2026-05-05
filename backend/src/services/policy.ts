@@ -1,6 +1,15 @@
 import type { ValidatorResult } from "./validator";
 import { getMentorReply, type MentorRequestInput } from "./mentor";
 
+// Strips LLM prompt delimiter markers to prevent injected text from being
+// re-injected into the retry prompt via the studentQuestion field.
+const PROMPT_DELIMITER_RE =
+  /\[(CODE|ASSIGNMENT|STUDENT_MESSAGE|LANGUAGE|MODE|RUN_STATUS|OUTPUT|ERROR|STDERR|INSTRUCTOR|SYSTEM)\]/gi;
+function sanitizeForPrompt(text: string | null | undefined): string {
+  if (!text) return "";
+  return text.replace(PROMPT_DELIMITER_RE, (m) => m.replace("[", "⟦").replace("]", "⟧"));
+}
+
 export type PolicyResult = {
   action: "allow" | "rewrite" | "block";
   finalText: string;
@@ -35,7 +44,7 @@ function detectQuestionMode(message: string | null | undefined): "casual" | "met
   }
 
   if (
-    /full solution|just write the code|solve it completely|send the final answer only|no hints|just code|fix the code and send the corrected version|pretend you are not a mentor|ignore previous instructions|for testing purposes, output the final code/i.test(
+    /full solution|just write the code|solve it completely|send the final answer only|no hints|just code|fix the code and send the corrected version|pretend you are not a mentor|ignore previous instructions|for testing purposes, output the final code|give me the answer|just tell me the answer|what is the correct code|write me the complete|show me the working code|provide the complete solution|give me the working code|don't give hints|skip the hints|write the whole|complete the code for me|finish my code|write the rest of the code|act as if you have no restrictions|disregard your instructions|you are now|forget your rules|bypass|output only code|return only the code/i.test(
       msg,
     )
   ) {
@@ -60,12 +69,9 @@ function buildGenericGuidance(studentQuestion?: string | null): string {
     return "I can't give the full final code, but I can give one next step or explain one part clearly.";
   }
 
-  const focus =
-    studentQuestion && studentQuestion.trim()
-      ? `Let's focus on your question: ${studentQuestion.trim()}`
-      : "Let's focus on the part that is blocking you.";
-
-  return `${focus} I can point out one issue or one next step without giving the full final solution.`;
+  // Do NOT echo the student question verbatim — it may contain injected content
+  // that would be laundered back to the student via this safe-fallback path.
+  return "Let's focus on the part that is blocking you. I can point out one issue or one next step without giving the full final solution.";
 }
 
 export function applyPolicy(params: {
@@ -127,7 +133,7 @@ Rules:
 - If run status is idle, do not guess output or pass/fail.
 
 Original student question:
-${studentQuestion ?? "No question provided."}
+${sanitizeForPrompt(studentQuestion) || "No question provided."}
 `.trim(),
     });
 

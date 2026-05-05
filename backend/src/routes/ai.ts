@@ -442,7 +442,8 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
   }
 
   // ── Step 4: persist audit logs (background, non-blocking) ────────────────────
-  if (!modelError && problemId !== undefined) {
+  // Run even on model error so hint events and the audit trail are never lost.
+  if (problemId !== undefined) {
     Promise.resolve().then(async () => {
       try {
         const problem = await prisma.problem.findUnique({ where: { id: problemId } });

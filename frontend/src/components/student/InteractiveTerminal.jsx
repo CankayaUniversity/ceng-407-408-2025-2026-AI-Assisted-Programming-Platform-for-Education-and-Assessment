@@ -116,7 +116,9 @@ export default function InteractiveTerminal({ wsUrl, onReady }) {
     });
 
     // ── API exposed to parent ─────────────────────────────────────────────
-    onReady?.({
+    // Only register the API once the WebSocket URL is known so the parent
+    // never holds a writer that will immediately fail on run().
+    if (wsUrl) onReady?.({
       write: (text) => term.write(text),
 
       clear: () => term.reset(),

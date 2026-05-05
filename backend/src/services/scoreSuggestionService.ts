@@ -91,9 +91,21 @@ function extractJson(raw: string, criteria: RubricCriterion[]): ScoreSuggestion 
     const breakdown: CriterionScore[] = rawBreakdown
       .filter((b): b is Record<string, unknown> => typeof b === "object" && b !== null)
       .map((b, idx) => {
-        const matched  = criteria[idx] ?? criteria.find((c) => c.name === b.name);
+        // Prefer name-based matching so reordered AI output still maps correctly.
+        // Fall back to positional index only when the name doesn't match anything.
+        const bNameStr = typeof b.name === "string" ? b.name.toLowerCase().trim() : null;
+        const byName = bNameStr
+          ? criteria.find((c) => c.name.toLowerCase() === bNameStr)
+          : undefined;
+        const matched  = byName ?? criteria[idx];
         const maxScore = matched?.maxScore ?? 10;
-        const suggested = Math.max(0, Math.min(maxScore, Math.round(Number(b.suggested) || 0)));
+        // Guard non-numeric values so "N/A" or null don't silently become NaN → 0
+        const rawScore = typeof b.suggested === "number"
+          ? b.suggested
+          : typeof b.suggested === "string"
+            ? Number.parseFloat(b.suggested)
+            : 0;
+        const suggested = Math.max(0, Math.min(maxScore, Math.round(Number.isFinite(rawScore) ? rawScore : 0)));
         return {
           name:      typeof b.name    === "string" ? b.name.trim() : matched?.name ?? `Criterion ${idx + 1}`,
           maxScore,
@@ -103,6 +115,22 @@ function extractJson(raw: string, criteria: RubricCriterion[]): ScoreSuggestion 
       });
 
     if (breakdown.length === 0) return null;
+
+    // Pad any rubric criteria that the AI omitted with a 0-score entry so the
+    // grading table is always complete and the teacher notices what's missing.
+    for (const criterion of criteria) {
+      const alreadyPresent = breakdown.some(
+        (b) => b.name.toLowerCase() === criterion.name.toLowerCase(),
+      );
+      if (!alreadyPresent) {
+        breakdown.push({
+          name:      criterion.name,
+          maxScore:  criterion.maxScore,
+          suggested: 0,
+          comment:   "Not assessed — criterion was absent from AI response.",
+        });
+      }
+    }
 
     const totalScore   = breakdown.reduce((s, c) => s + c.suggested, 0);
     const maxTotal     = breakdown.reduce((s, c) => s + c.maxScore, 0);
@@ -132,9 +160,9 @@ function buildExecutionBlock(exec: ExecutionContext): string {
   }
 
   if (exec.allPassed === true) {
-    lines.push("All test cases : PASSED ✓");
+    lines.push("All test cases : PASSED [OK]");
   } else if (exec.allPassed === false) {
-    lines.push("All test cases : FAILED ✗");
+    lines.push("All test cases : FAILED [FAIL]");
   }
 
   // ── Compile error ──

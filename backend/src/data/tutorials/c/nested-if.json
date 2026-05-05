@@ -1,0 +1,30 @@
+{
+  "tag": "nested-if",
+  "language": "c",
+  "title": "C Nested If",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "order": 35,
+  "sections": [
+    {
+      "heading": "Nested If",
+      "body": "You can also place an if statement inside another if. \nThis is called a nested if statement.\n\nA nested if lets you check for a condition only if another condition is already true.",
+      "code": "if (condition1) {\n  // code to run if condition1 is true\n  if (condition2) {\n    // code to run if both condition1 and condition2 are true\n  }\n}"
+    },
+    {
+      "heading": "Example",
+      "body": "In this example, we first check if x is greater than 10. \nIf it is, we then check if y is greater than 20:\n\nResult:",
+      "code": "int x = 15;\nint y = 25;\n\nif (x > 10) {\n  printf(\"x is greater than 10\\n\");\n\n  // Nested if\n  if (y > 20) {\n    printf(\"y is also greater than 20\\n\");\n  }\n}"
+    },
+    {
+      "heading": "Real-Life Example",
+      "body": "Nested if statements are useful when you need to test multiple conditions that depend on each other. \nFor example, checking if a person is old enough to vote, and if they are a citizen:\n\nResult:",
+      "code": "int age = 20;\nbool isCitizen = true;\n\nif (age >= 18) {\n  printf(\"Old enough to vote.\\n\");\n\n  if (isCitizen) {\n    printf(\"And you are a citizen, so you can vote!\\n\");\n  } else {\n    printf(\"But you must be a citizen to vote.\\n\");\n  }\n} else {\n  printf(\"Not old enough to vote.\\n\");\n}"
+    },
+    {
+      "heading": "Notes",
+      "body": "- You can nest as many if statements as you want, but avoid making the code too deep - it can become hard to read.\n- Nested if is often used together with else and else if for more complex decision making.",
+      "code": ""
+    }
+  ]
+}

@@ -588,7 +588,8 @@ export default function StudentWorkspace({
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
-                      if (!chatLoading && selectedProblem) sendChat();
+                      // Bug #2 fix: don't submit empty messages via keyboard
+                      if (!chatLoading && selectedProblem && chatInput.trim()) sendChat();
                     }
                   }}
                   placeholder="Ask a question… (Enter to send, Shift+Enter for newline)"
@@ -625,11 +626,11 @@ export default function StudentWorkspace({
                     </span>
                   </Tooltip>
 
-                  {/* Send button */}
+                  {/* Send button — Bug #2 fix: also disabled when input is empty */}
                   <Button
                     variant="contained"
                     onClick={() => sendChat()}
-                    disabled={chatLoading || !selectedProblem}
+                    disabled={chatLoading || !selectedProblem || !chatInput.trim()}
                     sx={{ flex: 1 }}
                   >
                     {chatLoading ? "Sending…" : "Send"}

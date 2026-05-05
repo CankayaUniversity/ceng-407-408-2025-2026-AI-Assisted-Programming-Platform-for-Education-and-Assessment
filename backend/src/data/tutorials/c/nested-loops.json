@@ -1,0 +1,20 @@
+{
+  "tag": "nested-loops",
+  "language": "c",
+  "title": "C Nested Loops",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "order": 43,
+  "sections": [
+    {
+      "heading": "Nested Loops",
+      "body": "It is also possible to place a loop inside another loop. This is called a \nnested loop.\n\nThe \"inner loop\" will be executed one time for each iteration of the \"outer loop\":",
+      "code": "  int i, j;\n\n// Outer loop\nfor (i = 1; i <= 2; ++i) {\n  printf(\"Outer:\n  %d\\n\", i);  // Executes 2 times\n\n  // Inner loop\n  for (j = 1; j <= 3; ++j) {\n\n  printf(\" Inner: %d\\n\", j);  // Executes 6 times (2 * 3)\n  }\n}"
+    },
+    {
+      "heading": "Multiplication Table Example",
+      "body": "This example uses nested loops to print a simple multiplication table (1 to 3):\n\nResult:\n\nNested loops are useful when working with tables, matrices, or multi-dimensional data structures.",
+      "code": "    int i, j;\n\n\n    for (i = 1; i <= 3; i++) {\n\n      for (j = 1; j <= 3; j++) {\n\n        printf(\"%d \", i * j);\n\n      }\n\n      printf(\"\\n\");\n\n    }"
+    }
+  ]
+}

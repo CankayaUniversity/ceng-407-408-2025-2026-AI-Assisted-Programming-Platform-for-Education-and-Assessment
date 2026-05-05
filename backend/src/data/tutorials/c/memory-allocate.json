@@ -1,0 +1,35 @@
+{
+  "tag": "memory-allocate",
+  "language": "c",
+  "title": "C Allocate Memory",
+  "category": "C Memory",
+  "categoryOrder": 6,
+  "order": 2,
+  "sections": [
+    {
+      "heading": "",
+      "body": "The process of reserving memory is called allocation. The way to allocate memory depends on the type of memory.\n\nC has two types of memory: Static memory and dynamic memory.",
+      "code": ""
+    },
+    {
+      "heading": "Static Memory",
+      "body": "Static memory is memory that is reserved for variables before the program runs. Allocation of static memory is also known as compile time memory allocation.\n\nC automatically allocates memory for every variable when the program is compiled.\n\nFor example, if you create an integer array of 20 students (e.g. for a summer semester), C will reserve space for 20 elements which is typically 80 bytes of memory (20 * 4):\n\nBut when the semester starts, it turns out that only 12 students are attending. Then you have wasted the space of 8 unused elements.\n\nSince you are not able to change the size of the array, you are left with unnecessary reserved memory.\n\nNote that the program will still run, and it is not damaged in any way. But if your program contains a lot of this kind of code, it may run slower than it optimally could.\n\nIf you want better control of allocated memory, take a look at Dynamic Memory below.",
+      "code": "  int students[20];\nprintf(\"%zu\", sizeof(students)); // 80 bytes"
+    },
+    {
+      "heading": "Dynamic Memory",
+      "body": "Dynamic memory is memory that is allocated after the program starts running. Allocation of dynamic memory can also be referred to as runtime memory allocation.\n\nUnlike with static memory, you have full control over how much memory is being used at any time. You can write code to determine how much memory you need and allocate it.\n\nDynamic memory does not belong to a variable, it can only be accessed with pointers.\n\nTo allocate dynamic memory, you can use the malloc() or calloc() functions. It is necessary to include the <stdlib.h> header to use them. The malloc() and calloc() functions allocate some memory and return a pointer to its address.\n\nThe malloc() function has one parameter, size, which specifies how much memory to allocate, measured in bytes.\n\nThe calloc() function has two parameters:\n\n- amount - Specifies the amount of items to allocate\n- size - Specifies the size of each item measured in bytes\n\nNote: The data in the memory allocated by malloc() is unpredictable. To avoid unexpected values, make sure to write something into the memory before reading it.\n\nUnlike malloc(), the calloc() function writes zeroes into all of the allocated memory. However, this makes calloc() slightly less efficient.\n\nThe best way to allocate the right amount of memory for a data type is to use the sizeof operator:\n\nBe careful: sizeof(*ptr1) tells C to measure the size of the data at the address. If you forget the * and write sizeof(ptr1) instead, it will measure the size of the pointer itself, which is the (usually) 8 bytes that are needed to store a memory address.\n\nNote: The sizeof operator cannot measure how much dynamic memory is allocated. When measuring dynamic memory, it only tells you the size of the data type of the memory. For example, if you reserve space for 5 float values, the sizeof operator will return 4, which is the number of bytes needed for a single float value.\n\nLet's use dynamic memory to improve the students example above.\n\nAs noted previously, we cannot use sizeof to \nmeasure how much memory was allocated, we have to calculate that by multiplying \nthe amount of items by the size of the data type:",
+      "code": "int *ptr1 = malloc(size);\n\nint *ptr2 = calloc(amount, size);\n\nint *ptr1, *ptr2;\n\nptr1 = malloc(sizeof(*ptr1));\n\nptr2 = calloc(1, sizeof(*ptr2));\n\n  int *students;\nint numStudents = 12;\nstudents = calloc(numStudents,\n  sizeof(*students));\nprintf(\"%d\", numStudents * sizeof(*students)); // 48\n  bytes"
+    },
+    {
+      "heading": "Notes",
+      "body": "When working with dynamic memory allocation, you should also check for errors and \nfree memory at the end of the program. You will learn more about this in the next chapters.",
+      "code": ""
+    },
+    {
+      "heading": "Stack Memory",
+      "body": "For completeness, it is worth mentioning stack memory. Stack memory is a type of dynamic memory which is reserved for variables that are declared inside functions. Variables declared inside a function use stack memory rather than static memory.\n\nWhen a function is called, stack memory is allocated for the variables in the function. When the function returns the stack memory is freed.\n\nIt is good to be aware of stack memory to be able to handle the memory usage of nested function calls and recursion. Recursion that repeats itself too many times may take up too much stack memory. When that happens it is called a stack overflow.",
+      "code": ""
+    }
+  ]
+}

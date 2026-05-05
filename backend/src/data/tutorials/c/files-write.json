@@ -7,9 +7,14 @@
   "order": 2,
   "sections": [
     {
-      "heading": "Write To Files",
-      "body": "Write To a File\n\nLet's use the w mode from the previous\nchapter again, and write something to the file we just created.\nThe w mode means that the file is opened for\nwriting. To insert content to it, you can use the fprintf()\nfunction and add the pointer variable (fptr in our example) and some text:\n\nExample\n\nNote: If you write to a file that already exists, the old content is deleted, and the new content is inserted. This is important to know, as you might accidentally erase\nexisting content.\n\nFor example:\n\n  Example\n\n  As a result, when we open the file on our computer, it says \"Hello World!\"\n  instead of \"Some text\":\n\nRun example »\n\nExample\n\nAppend Content To a File\n\nIf you want to add content to a file without deleting the old content, you can use the\na mode.\nThe a mode appends content at the end of the file:\n\nExample\n\nNote: Just like with the w mode; if the file does not exist, the a\nmode will create a new file with the \"appended\" content.",
-      "code": "FILE *fptr;\n\n// Open a file in writing mode\nfptr = fopen(\"filename.txt\", \"w\");\n\n// Write some text to the file\nfprintf(fptr, \"Some text\");\n\n// Close the file\nfclose(fptr);\n\n// ─────────────────────────────────────\n\nfprintf(fptr, \"Hello\n    World!\");\n\n// ─────────────────────────────────────\n\nFILE *fptr;\n\n// Open a file in append mode\nfptr = fopen(\"filename.txt\", \"a\");\n\n// Append some text to the file\nfprintf(fptr, \"\\nHi everybody!\");\n\n// Close the file\nfclose(fptr);"
+      "heading": "Write To a File",
+      "body": "Let's use the w mode from the previous \nchapter again, and write something to the file we just created.\n\nThe w mode means that the file is opened for\nwriting. To insert content to it, you can use the fprintf() \nfunction and add the pointer variable (fptr in our example) and some text:\n\nAs a result, when we open the file on our computer, it looks like this:\n\nNote: If you write to a file that already exists, the old content is deleted, and the new content is inserted. This is important to know, as you might accidentally erase \nexisting content.\n\nFor example:\n\nAs a result, when we open the file on our computer, it says \"Hello World!\" \n instead of \"Some text\":",
+      "code": "    FILE *fptr;\n\n// Open a file in writing mode\nfptr = fopen(\"filename.txt\", \"w\");\n\n\n// Write some text to the file\nfprintf(fptr, \"Some text\");\n\n\n// Close the file\nfclose(fptr);\n\n    fprintf(fptr, \"Hello\n    World!\");"
+    },
+    {
+      "heading": "Append Content To a File",
+      "body": "If you want to add content to a file without deleting the old content, you can use the\na mode.\n\nThe a mode appends content at the end of the file:\n\nAs a result, when we open the file on our computer, it looks like this:\n\nNote: Just like with the w mode; if the file does not exist, the a \nmode will create a new file with the \"appended\" content.",
+      "code": "    FILE *fptr;\n\n// Open a file in append mode\nfptr = fopen(\"filename.txt\", \"a\");\n\n\n// Append some text to the file\nfprintf(fptr, \"\\nHi everybody!\");\n\n\n// Close the file\nfclose(fptr);"
     }
   ]
 }

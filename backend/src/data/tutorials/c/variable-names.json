@@ -1,0 +1,15 @@
+{
+  "tag": "variable-names",
+  "language": "c",
+  "title": "C Variable Names",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "order": 12,
+  "sections": [
+    {
+      "heading": "C Variable Names",
+      "body": "All C variables must be\nidentified with unique names.\n\nThese unique names are called identifiers.\n\nIdentifiers can be short names (like x and y) or more descriptive names (age, sum, totalVolume).\n\nNote: It is recommended to use descriptive names in order to \ncreate understandable and maintainable code:\n\nThe general rules for naming variables are:\n\n- Names can contain letters, digits and underscores\n- Names must begin with a letter or an underscore (_)\n- Names are case-sensitive (myVar and myvar are different variables)\n- Names cannot contain whitespaces or special characters like !, #, %, etc.\n- Reserved words (such as int) cannot be used as names\n\nHere are some examples to help you remember the rules:\n\n- Valid: age, _count, totalSum\n- Invalid: 1age (starts with a number), my-age (contains -), int (reserved word)\n\nNaming style: Many C programmers use camelCase (like totalScore) or underscores\n(like total_score). Choose one style and use it consistently.",
+      "code": "  // Good variable name\nint minutesPerHour = 60;\n\n// OK, but not so easy to\n  understand what m actually is\nint\n  m = 60;"
+    }
+  ]
+}

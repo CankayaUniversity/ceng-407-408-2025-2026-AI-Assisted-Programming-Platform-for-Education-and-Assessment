@@ -106,7 +106,7 @@ export default function TutorialModal({ open, onClose, tag, language, token }) {
             {(content.sections ?? []).map((section, idx) => (
               <Box key={idx}>
                 {section.heading && (
-                  <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 0.75 }}>
+                  <Typography variant="h6" fontWeight={700} sx={{ mb: 0.75, fontSize: "1.05rem" }}>
                     {section.heading}
                   </Typography>
                 )}

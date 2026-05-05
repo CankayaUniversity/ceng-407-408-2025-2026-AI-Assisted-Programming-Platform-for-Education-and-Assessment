@@ -80,10 +80,11 @@ export function applyPolicy(params: {
   }
 
   if (validator.decision === "rewrite") {
+    // Bug #9 fix: rewriteCount was always 0; a rewrite substitution counts as 1
     return {
       action: "rewrite",
       finalText: buildGenericGuidance(studentQuestion),
-      rewriteCount: 0,
+      rewriteCount: 1,
     };
   }
 

@@ -55,37 +55,55 @@ export const executeSchema = z.object({
 
 // ── AI Mentor ─────────────────────────────────────────────────────────────────
 
+const VALID_RUN_STATUSES = [
+  "idle",
+  "accepted",
+  "wrong_answer",
+  "runtime_error",
+  "compile_error",
+  "time_limit_exceeded",
+  "memory_limit_exceeded",
+  "presentation_error",
+] as const;
+
+const VALID_CHAT_MODES = ["practice", "hint", "tip", "mentor"] as const;
+
 export const aiChatSchema = z.object({
   problemId:          z.number().int().optional(),
   submissionId:       z.number().int().optional(),
-  problemDescription: z.string().optional().nullable(),
-  assignmentText:     z.string().optional().nullable(),
-  studentCode:        z.string().optional().nullable(),
-  errorMessage:       z.string().optional().nullable(),
-  studentQuestion:    z.string().optional().nullable(),
-  runStatus:          z.string().optional().nullable(),
-  stdout:             z.string().optional().nullable(),
-  stderr:             z.string().optional().nullable(),
-  language:           z.string().optional().nullable(),
-  mode:               z.string().optional().nullable(),
-  hintLevel:          z.number().int().optional().nullable(),
+  problemDescription: z.string().max(10_000).optional().nullable(),
+  assignmentText:     z.string().max(10_000).optional().nullable(),
+  // 50 000 chars ≈ ~1 250 lines — generous but bounded
+  studentCode:        z.string().max(50_000).optional().nullable(),
+  errorMessage:       z.string().max(2_000).optional().nullable(),
+  studentQuestion:    z.string().max(2_000).optional().nullable(),
+  // Only accept known status strings to prevent prompt injection via this field
+  runStatus:          z.enum(VALID_RUN_STATUSES).optional().nullable(),
+  stdout:             z.string().max(2_000).optional().nullable(),
+  stderr:             z.string().max(2_000).optional().nullable(),
+  language:           z.string().max(50).optional().nullable(),
+  // Only accept known chat modes
+  mode:               z.enum(VALID_CHAT_MODES).optional().nullable(),
+  hintLevel:          z.number().int().min(0).max(10).optional().nullable(),
 });
 
 // ── Assignments ───────────────────────────────────────────────────────────────
 
 export const assignmentSchema = z.object({
-  problemId:  z.number().int({ message: "problemId must be an integer" }),
-  title:      z.string().optional().nullable(),
-  mode:       z.enum(["practice", "homework", "exam"]).default("homework"),
-  deadline:   z.string().datetime({ offset: true }).optional().nullable(),
-  aiEnabled:  z.boolean().default(true),
+  problemId:   z.number().int({ message: "problemId must be an integer" }),
+  title:       z.string().optional().nullable(),
+  mode:        z.enum(["practice", "homework", "exam"]).default("homework"),
+  deadline:    z.string().datetime({ offset: true }).optional().nullable(),
+  aiEnabled:   z.boolean().default(true),
+  description: z.string().max(5_000).optional().nullable(),
 });
 
 export const assignmentUpdateSchema = z.object({
-  title:     z.string().optional().nullable(),
-  mode:      z.enum(["practice", "homework", "exam"]).optional(),
-  deadline:  z.string().datetime({ offset: true }).optional().nullable(),
-  aiEnabled: z.boolean().optional(),
+  title:       z.string().optional().nullable(),
+  mode:        z.enum(["practice", "homework", "exam"]).optional(),
+  deadline:    z.string().datetime({ offset: true }).optional().nullable(),
+  aiEnabled:   z.boolean().optional(),
+  description: z.string().max(5_000).optional().nullable(),
 });
 
 export const enrollSchema = z.object({

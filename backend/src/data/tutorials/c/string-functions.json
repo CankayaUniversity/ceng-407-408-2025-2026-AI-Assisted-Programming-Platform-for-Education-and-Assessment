@@ -1,0 +1,40 @@
+{
+  "tag": "string-functions",
+  "language": "c",
+  "title": "C String Functions",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "order": 53,
+  "sections": [
+    {
+      "heading": "String Functions",
+      "body": "C also has many useful string functions, which can be used to perform \ncertain operations on strings.\n\nTo use them, you must include the <string.h> header file in your program:",
+      "code": "  #include <string.h>"
+    },
+    {
+      "heading": "String Length",
+      "body": "For example, to get the length of a string, you can use the strlen() function:\n\nIn the Strings chapter, we used sizeof to get the size of a string/array. Note that sizeof and strlen behaves differently, as sizeof also includes the \\0 character \nwhen counting:\n\nIt is also important that you know that sizeof will always return the memory size (in bytes), and not the actual \nstring length:",
+      "code": "  char alphabet[] = \"ABCDEFGHIJKLMNOPQRSTUVWXYZ\";\nprintf(\"%zu\",\n  strlen(alphabet));\n\n  char alphabet[] = \"ABCDEFGHIJKLMNOPQRSTUVWXYZ\";\nprintf(\"%zu\\n\",\n  strlen(alphabet));   // 26\nprintf(\"%zu\\n\",\n  sizeof(alphabet));   // 27\n\n  char alphabet[50] = \"ABCDEFGHIJKLMNOPQRSTUVWXYZ\";\nprintf(\"%zu\\n\",\n  strlen(alphabet));   // 26\nprintf(\"%zu\\n\", sizeof(alphabet));   //\n  50"
+    },
+    {
+      "heading": "Concatenate Strings",
+      "body": "To concatenate (combine) two strings, you can use the strcat() function:\n\nNote that the size of str1 should be large enough to store the result of the \ntwo strings combined (20 in our example).",
+      "code": "  char str1[20] = \"Hello \";\nchar str2[] = \"World!\";\n\n//\n  Concatenate\n  str2 to str1 (result is stored in str1)\nstrcat(str1, str2);\n\n//\n  Print str1\nprintf(\"%s\", str1);"
+    },
+    {
+      "heading": "Copy Strings",
+      "body": "To copy the value of one string to another, you can use the strcpy() function:\n\nNote that the size of str2 should be large \nenough to store the copied string (20 in our example).",
+      "code": "  char str1[20] = \"Hello World!\";\nchar str2[20];\n\n// Copy str1 to str2\n\n  strcpy(str2, str1);\n\n// Print str2\nprintf(\"%s\", str2);"
+    },
+    {
+      "heading": "Compare Strings",
+      "body": "To compare two strings, you can use the strcmp() \nfunction.\n\nIt returns 0 if the two strings are equal, otherwise a value that is not 0:",
+      "code": "  char str1[] = \"Hello\";\nchar str2[] = \"Hello\";\nchar str3[] = \"Hi\";\n\n\n// Compare str1 and str2, and print the result\nprintf(\"%d\\n\",\n  strcmp(str1, str2));  // Returns 0 (the strings are equal)\n\n//\n  Compare str1 and str3, and print the result\n\n  printf(\"%d\\n\", strcmp(str1, str3));  // Returns -4 (the strings are not\n  equal)"
+    },
+    {
+      "heading": "Complete String Reference",
+      "body": "For a complete reference of string functions, go to our C \n<string.h> Library Reference.",
+      "code": ""
+    }
+  ]
+}

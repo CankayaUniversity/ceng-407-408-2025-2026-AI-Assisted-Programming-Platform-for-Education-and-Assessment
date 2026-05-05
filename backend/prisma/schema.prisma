@@ -265,6 +265,7 @@ model Assignment {
   allowedLanguages String[]  @default([])
   lateDeadline     DateTime?
   lateDeduction    Int       @default(0)
+  aiEnabled        Boolean   @default(true)   // when false, AI Mentor is blocked for this assignment
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 

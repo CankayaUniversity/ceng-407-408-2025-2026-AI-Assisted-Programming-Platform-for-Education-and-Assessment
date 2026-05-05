@@ -42,28 +42,30 @@ const STARTER_CODE = {
 let _nextFileId = 2; // file id counter (1 is reserved for the initial file)
 
 // ── Code cache: survives navigation (module-level) AND page refresh (localStorage) ──
-// Reads always check the in-memory Map first (fast), then fall back to localStorage.
-// Writes update both so either path works.
-const _codeCache = new Map(); // Map<problemId, { files, activeFileId, language }>
+// Solution-visibility fix: keys are now scoped by userId so that Student A's code
+// stored on a shared browser cannot bleed into Student B's editor session.
+// Map key format: `${userId}_${problemId}`, localStorage key: `code_cache_u${userId}_p${problemId}`
+const _codeCache = new Map(); // Map<`${userId}_${problemId}`, { files, activeFileId, language }>
 
-function _cacheKey(problemId) { return `code_cache_${problemId}`; }
+function _cacheKey(userId, problemId) { return `code_cache_u${userId}_p${problemId}`; }
 
-function _cacheGet(problemId) {
-  if (_codeCache.has(problemId)) return _codeCache.get(problemId);
+function _cacheGet(userId, problemId) {
+  const mapKey = `${userId}_${problemId}`;
+  if (_codeCache.has(mapKey)) return _codeCache.get(mapKey);
   try {
-    const raw = localStorage.getItem(_cacheKey(problemId));
+    const raw = localStorage.getItem(_cacheKey(userId, problemId));
     if (raw) {
       const parsed = JSON.parse(raw);
-      _codeCache.set(problemId, parsed); // warm the in-memory cache
+      _codeCache.set(mapKey, parsed); // warm the in-memory cache
       return parsed;
     }
   } catch { /* ignore corrupt entries */ }
   return undefined;
 }
 
-function _cacheSet(problemId, value) {
-  _codeCache.set(problemId, value);
-  try { localStorage.setItem(_cacheKey(problemId), JSON.stringify(value)); } catch { /* quota */ }
+function _cacheSet(userId, problemId, value) {
+  _codeCache.set(`${userId}_${problemId}`, value);
+  try { localStorage.setItem(_cacheKey(userId, problemId), JSON.stringify(value)); } catch { /* quota */ }
 }
 
 export default function ProblemPage() {
@@ -100,6 +102,9 @@ export default function ProblemPage() {
   const [chatLoading,      setChatLoading]      = useState(false);
   const [hintCount,        setHintCount]        = useState(0);
   const [submissions,      setSubmissions]      = useState([]);
+  // Bug #1 fix: track real run result so the AI gets accurate execution context
+  // null = code not yet run; set after each runTests() call
+  const [lastRunResult,    setLastRunResult]    = useState(null);
   const [submissionsLoading, setSubmissionsLoading] = useState(false);
 
   // ── Flashcard state ──────────────────────────────────────────────────────
@@ -161,7 +166,8 @@ export default function ProblemPage() {
     if (!token || !problemId) return;
     let cancelled = false;
 
-    // Reset flashcard state for the new problem
+    // Reset run result and flashcard state for the new problem
+    setLastRunResult(null);
     setHasSolvedProblem(false);
     setFlashcardExists(false);
     setFlashcardGenerating(false);
@@ -193,8 +199,11 @@ export default function ProblemPage() {
 
         const lang = (problem.language || "python").toLowerCase();
 
-        // Restore from cache only if the student has actually written something
-        const cached = _cacheGet(problemId);
+        // Restore from cache only if the student has actually written something.
+        // Cache is scoped by userId so different students on the same browser
+        // never see each other's code (solution-visibility fix).
+        const uid = currentUser?.id ?? 0;
+        const cached = _cacheGet(uid, problemId);
         const cacheHasContent = cached?.files?.some((f) => f.content.trim() !== "");
 
         // Re-enable cache saving BEFORE the setState calls so the upcoming
@@ -278,8 +287,9 @@ export default function ProblemPage() {
   // ── Persist current editor state to cache + localStorage whenever it changes ─
   useEffect(() => {
     if (!selectedId || skipCacheSave.current) return;
-    _cacheSet(selectedId, { files, activeFileId, language: selectedLanguage });
-  }, [files, activeFileId, selectedLanguage, selectedId]);
+    const uid = currentUser?.id ?? 0;
+    _cacheSet(uid, selectedId, { files, activeFileId, language: selectedLanguage });
+  }, [files, activeFileId, selectedLanguage, selectedId, currentUser?.id]);
 
   // ── Navigation ───────────────────────────────────────────────────────────
   function selectProblem(pid) { navigate(`/problem/${pid}`); }
@@ -317,6 +327,32 @@ export default function ProblemPage() {
         headers: { Authorization: `Bearer ${token}` },
       }).catch(() => ({ data: [] }));
       setSubmissions(subRes?.data ?? []);
+
+      // Bug #1 fix: compute real runStatus from the result so the AI mentor
+      // receives accurate execution context instead of the hardcoded "idle".
+      const testResults = result.results ?? [];
+      let computedStatus = "wrong_answer";
+      if (result.allPassed) {
+        computedStatus = "accepted";
+      } else {
+        const firstFail = testResults.find((r) => !r.passed);
+        if (firstFail) {
+          const s = (firstFail.status ?? "").toLowerCase();
+          if      (s.includes("compile"))  computedStatus = "compile_error";
+          else if (s.includes("runtime") || s.includes("signal")) computedStatus = "runtime_error";
+          else if (s.includes("time"))     computedStatus = "time_limit_exceeded";
+          else if (s.includes("memory"))   computedStatus = "memory_limit_exceeded";
+          else                             computedStatus = "wrong_answer";
+        }
+      }
+      const combinedStdout = testResults.map((r) => r.stdout).filter(Boolean).join("\n").slice(0, 1_000);
+      const combinedStderr = testResults.map((r) => r.stderr).filter(Boolean).join("\n").slice(0, 500);
+      const combinedCompile = testResults.map((r) => r.compileOutput).filter(Boolean).join("\n").slice(0, 500);
+      setLastRunResult({
+        status:  computedStatus,
+        stdout:  combinedStdout,
+        stderr:  combinedStderr || combinedCompile, // stderr field in AI schema covers both
+      });
 
       // If all tests passed, mark problem as solved so "Create Flashcards" button appears
       if (result.allPassed) {
@@ -383,12 +419,24 @@ export default function ProblemPage() {
   }
 
   // ── AI chat (SSE streaming) ───────────────────────────────────────────────
-  // overrideMessage: pre-set message text (used by hint button)
-  // overrideMode:    "hint" | "practice" etc.
-  async function sendChat(overrideMessage, overrideMode) {
+  // overrideMessage:   pre-set message text (used by hint button)
+  // overrideMode:      "hint" | "practice" etc.
+  // overrideHintLevel: explicit hint level (Bug #8 fix — avoids closure stale value)
+  async function sendChat(overrideMessage, overrideMode, overrideHintLevel) {
     const message = overrideMessage ?? chatInput.trim();
     const mode    = overrideMode    ?? "practice";
-    if (!message || !selectedProblem) return;
+
+    // Bug #2 fix: give visible feedback when the student tries to send an empty message
+    if (!message) {
+      if (!overrideMessage) {
+        setChat((prev) => [
+          ...prev,
+          { role: "assistant", content: "Please type a question before sending." },
+        ]);
+      }
+      return;
+    }
+    if (!selectedProblem) return;
 
     setChat((prev) => [
       ...prev,
@@ -407,10 +455,14 @@ export default function ProblemPage() {
           assignmentText:  selectedProblem.description,
           studentCode:     allCode,
           studentQuestion: message,
-          runStatus:       "idle",
+          // Bug #1 fix: send real run status and execution output instead of hardcoded "idle"
+          runStatus:       lastRunResult?.status ?? "idle",
+          stdout:          lastRunResult?.stdout  ?? null,
+          stderr:          lastRunResult?.stderr  ?? null,
           language:        selectedLanguage,
           mode,
-          hintLevel:       overrideMode === "hint" ? hintCount : undefined,
+          // Bug #8 fix: use explicitly passed hintLevel to avoid closure stale-value bug
+          hintLevel:       mode === "hint" ? (overrideHintLevel ?? hintCount) : undefined,
         }),
       });
 
@@ -472,15 +524,18 @@ export default function ProblemPage() {
   // ── Hint button handler ───────────────────────────────────────────────────
   async function sendHint() {
     if (!selectedProblem || chatLoading) return;
+    // Capture current hintCount BEFORE the async setState so sendChat receives
+    // the correct level (Bug #8 fix: setState is async, closure captures stale value).
+    const currentLevel = hintCount;
     // Progressive phrasing so the AI knows this is a follow-up hint
     const hintMessages = [
       "Give me a hint",
       "Give me another hint",
       "Give me one more hint",
     ];
-    const msg = hintMessages[Math.min(hintCount, hintMessages.length - 1)];
+    const msg = hintMessages[Math.min(currentLevel, hintMessages.length - 1)];
     setHintCount((c) => c + 1);
-    await sendChat(msg, "hint");
+    await sendChat(msg, "hint", currentLevel);
   }
 
   return (

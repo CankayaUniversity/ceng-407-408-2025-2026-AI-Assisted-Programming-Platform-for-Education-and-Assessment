@@ -1,0 +1,40 @@
+{
+  "tag": "callback-functions",
+  "language": "c",
+  "title": "C Callback Functions",
+  "category": "C Functions",
+  "categoryOrder": 2,
+  "order": 9,
+  "sections": [
+    {
+      "heading": "Callback Function",
+      "body": "A callback function is a function that is passed as an argument to another function.\n\nThe receiving function can then call it back (run it) whenever it needs to.\n\nThis is a powerful way to make your code flexible and reusable - you can decide which function should run, without changing the main logic.\n\nIn C, callback functions are usually implemented using function pointers.",
+      "code": ""
+    },
+    {
+      "heading": "Simple Callback Example",
+      "body": "Here's a basic example that shows how one function can \"call back\" another:\n\nPassing a function as an argument to another function:\n\nIn this example:\n\n- sayHello() is a normal function that prints a message.\n- runCallback() receives a function pointer as a parameter.\n- When runCallback(sayHello) runs, it calls sayHello() inside itself.\n\nNote: The word \"callback\" comes from the fact that one function \"calls back\" another that was given to it earlier.",
+      "code": "    void sayHello() {\n\n      printf(\"Hello from the callback!\\n\");\n\n    }\n\n\n    void runCallback(void (*callback)()) {\n\n      printf(\"Before calling the callback...\\n\");\n\n      callback();\n\n      printf(\"After calling the callback.\\n\");\n\n    }\n\n\n    int main() {\n\n      runCallback(sayHello);\n\n      return 0;\n\n    }"
+    },
+    {
+      "heading": "Callback with Parameters",
+      "body": "You can also pass functions that take parameters - just make sure the \nfunction pointer type matches:\n\nPassing a function with parameters as a callback:\n\nHere, calculate() receives a function and two numbers, \nthen calls the function (in this case, addNumbers()) with those numbers as arguments.",
+      "code": "    void addNumbers(int a, int b) {\n\n      printf(\"The sum is: %d\\n\", a + b);\n\n    }\n\n\n    void calculate(void (*callback)(int, int), int x, int y) {\n\n      callback(x, y);\n\n    }\n\n\n    int main() {\n\n      calculate(addNumbers, 5, 3);\n\n      return 0;\n\n    }"
+    },
+    {
+      "heading": "Multiple Callbacks",
+      "body": "You can use callbacks to let a function behave differently depending on which function you pass in. \nThis is common in sorting, filtering, and event-handling code.\n\nUsing different callback functions to perform different actions:\n\nDepending on which function is passed, the program produces different output - without changing greet() itself.",
+      "code": "    void greetMorning() { printf(\"Good morning!\\n\"); }\n\n    void greetEvening() { printf(\"Good evening!\\n\"); }\n\n\n    void greet(void (*callback)()) {\n\n      callback();\n\n    }\n\n\n    int main() {\n\n      greet(greetMorning);\n\n      greet(greetEvening);\n\n      return 0;\n\n    }"
+    },
+    {
+      "heading": "Real-World Example: Using Callbacks in qsort()",
+      "body": "Many C standard library functions use callbacks. \nFor example, the qsort() function in <stdlib.h> uses a callback to compare elements while sorting.\n\nYou provide the comparison function, and qsort() calls it as needed. \nThis will sort the elements:\n\nHere, compare() is the callback function used by qsort() to decide how to order the numbers.",
+      "code": "    #include <stdio.h>\n\n    #include <stdlib.h>\n\n\n    int compare(const void *a, const void *b) {\n\n      return (*(int*)a - *(int*)b);\n\n    }\n\n\n    int main() {\n\n      int numbers[] = { 5, 2, 9, 1, 7 };\n\n      int size = sizeof(numbers) / sizeof(numbers[0]);\n\n\n      qsort(numbers, size, sizeof(int), compare);\n\n\n      for (int i = 0; i < size; i++) {\n\n        printf(\"%d \", numbers[i]);\n\n      }\n\n      return 0;\n\n    }"
+    },
+    {
+      "heading": "Summary",
+      "body": "- A callback function is a function passed as an argument to another function.\n- It allows one function to call another without knowing its name in advance.\n- Callbacks make code more flexible and reusable.\n- They are used in the C Standard Library (like qsort()).",
+      "code": ""
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "tag": "data-types-reallife",
+  "language": "c",
+  "title": "C Data Types Real-Life",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "order": 19,
+  "sections": [
+    {
+      "heading": "Real-Life Example",
+      "body": "Here's a real-life example of using different data types, to calculate and \noutput the total cost of a number of items:",
+      "code": "  // Create variables of different data types\nint items = 50;\nfloat\n  cost_per_item = 9.99;\nfloat total_cost = items * cost_per_item;\nchar\n  currency = '$';\n\n// Print variables\nprintf(\"Number of items: %d\\n\",\n  items);\nprintf(\"Cost per item: %.2f %c\\n\", cost_per_item, currency);\n\n  printf(\"Total cost = %.2f %c\\n\", total_cost, currency);"
+    }
+  ]
+}

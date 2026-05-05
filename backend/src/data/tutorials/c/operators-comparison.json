@@ -1,0 +1,20 @@
+{
+  "tag": "operators-comparison",
+  "language": "c",
+  "title": "C Comparison Operators",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "order": 26,
+  "sections": [
+    {
+      "heading": "Comparison Operators",
+      "body": "Comparison operators are used to compare two values (or variables). This is important in programming, because it helps us to find answers and make decisions.\n\nThe return value of a comparison is either 1 or 0, which means true (1) or false (0). These values are known as \nBoolean values, and you will learn more about them in the Booleans and If..Else chapter.\n\nIn the following example, we use the greater than operator (>) to find out if 5 is greater than 3:\n\nA list of all comparison operators:\n\nOperator | Name | Example | Description | Try it\n== | Equal to | x == y | Returns 1 if the values are equal | \n!= | Not equal | x != y | Returns 1 if the values are not equal | \n> | Greater than | x > y | Returns 1 if the first value is greater than the second value | \n< | Less than | x < y | Returns 1 if the first value is less than the second value | \n>= | Greater than or equal to | x >= y | Returns 1 if the first value is greater than, or equal to, the second value | \n<= | Less than or equal to | x <= y | Returns 1 if the first value is less than, or equal to, the second value |",
+      "code": "  int x = 5;\nint y = 3;\nprintf(\"%d\", x > y); // returns 1 (true) because 5 is greater than 3"
+    },
+    {
+      "heading": "Real-Life Examples",
+      "body": "Comparison operators are often used in real-world conditions, such as checking if a person is old enough to vote:\n\nAnother common use is checking if a password is long enough:",
+      "code": "int age = 18;\n\nprintf(\"%d\\n\", age >= 18); // 1 (true), old enough to vote\nprintf(\"%d\\n\", age < 18);  // 0 (false)\n\nint passwordLength = 5;\n\nprintf(\"%d\\n\", passwordLength >= 8); // 0 (false), too short\nprintf(\"%d\\n\", passwordLength < 8);  // 1 (true), needs more characters"
+    }
+  ]
+}

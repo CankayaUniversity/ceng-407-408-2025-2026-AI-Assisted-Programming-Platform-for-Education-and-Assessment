@@ -219,18 +219,29 @@ ${criteriaJson}
 
 INSTRUCTIONS
 ============
-Score the student's code on EACH rubric criterion.
+Score the student's code on EACH rubric criterion. Be an honest, rigorous grader — not a generous one.
 
-IMPORTANT — use the execution results as primary evidence:
-- If test results show "FAILED" or wrong output, the Correctness score must reflect that — do NOT award full marks based on code appearance alone.
-- If the code compiled successfully but produced wrong answers, award partial correctness credit based on how many tests passed.
-- If there is a compile error, correctness and code-quality scores should be low.
-- Performance/efficiency scores should reference actual execution time and memory where available.
+CALIBRATION — what scores mean:
+- 90-100% of maxScore : Excellent. Nearly identical to the reference solution. Very rare.
+- 70-89%              : Good. Minor issues only — small inefficiency, one edge case missed.
+- 50-69%              : Adequate. Core logic works but has clear weaknesses.
+- 30-49%              : Poor. Significant problems — wrong output on several tests, bad structure.
+- 10-29%              : Very poor. Mostly wrong, major logic errors, barely compiles.
+- 0-9%                : Nothing of value. Compile error, empty, or completely off-topic.
+
+CRITICAL RULES — you MUST follow these:
+- Execution results are ground truth. If tests FAILED, Correctness CANNOT be above 60% of its maxScore.
+- If ALL tests passed (allPassed = true), Correctness may be high, but other criteria must still be graded critically on their own merits.
+- If there is a compile error, Correctness = 0. Code Quality must also be very low (≤ 20% of its maxScore).
+- If the code has no comments, hardcoded values, poor variable names, or is a single unstructured block, Code Quality must reflect that.
+- If the solution uses an inefficient algorithm when the reference uses a clearly better one, Algorithm score must be reduced.
+- Do NOT give full marks unless the student's solution is genuinely excellent for that criterion.
+- Do NOT be influenced by the student submitting — the score must reflect actual quality, not effort.
 
 For each criterion:
 - Assign "suggested" as an integer between 0 and maxScore (inclusive).
-- Award partial credit fairly — a student who passes 3/5 tests should not get 0 for Correctness.
-- Write a concise 1-2 sentence "comment" that cites specific evidence (test counts, errors, code structure).
+- Award partial credit proportionally: passing k out of n tests → approximately k/n × maxScore for Correctness.
+- Write a concise 1-2 sentence "comment" citing specific evidence (test counts, actual errors, specific code patterns).
 - Do NOT reveal the reference solution.
 
 RESPONSE FORMAT
@@ -294,7 +305,7 @@ export async function suggestScore(
         prompt,
         stream:  false,
         keep_alive: -1,
-        options: { temperature: 0.2, top_p: 0.9, num_ctx: 8192 },
+        options: { temperature: 0.1, top_p: 0.85, num_ctx: 8192 },
       }),
       signal: controller.signal,
     });

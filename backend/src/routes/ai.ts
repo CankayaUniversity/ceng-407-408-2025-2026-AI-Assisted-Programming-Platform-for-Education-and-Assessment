@@ -122,17 +122,16 @@ function toPolicyAction(action: string): PolicyAction {
 }
 
 // ── Exam-mode guard (group-aware) ─────────────────────────────────────────────
-// Supports both legacy boolean values and the new { enabled, groupIds } format.
 async function isUserInExamMode(userId: number): Promise<boolean> {
   const flag = await prisma.systemFlag.findUnique({ where: { key: "exam_mode_enabled" } });
   if (!flag?.value) return false;
 
   const raw = flag.value as Record<string, unknown>;
-  const enabled = Boolean(raw.enabled ?? raw); // supports legacy boolean value
+  const enabled = Boolean(raw.enabled ?? raw);
   if (!enabled) return false;
 
   const groupIds = Array.isArray(raw.groupIds) ? (raw.groupIds as number[]) : [];
-  if (groupIds.length === 0) return true; // no groups specified → applies to everyone
+  if (groupIds.length === 0) return true;
 
   const membership = await prisma.studentGroupMembership.findFirst({
     where: { userId, groupId: { in: groupIds } },
@@ -140,11 +139,52 @@ async function isUserInExamMode(userId: number): Promise<boolean> {
   return membership !== null;
 }
 
+// ── Bug #11: Check if AI is disabled for the student's active assignment ──────
+async function isAiDisabledForProblem(userId: number, problemId: number): Promise<boolean> {
+  const enrollment = await prisma.assignmentEnrollment.findFirst({
+    where: {
+      userId,
+      assignment: {
+        problemId,
+        aiEnabled: false,
+      },
+    },
+  });
+  return enrollment !== null;
+}
+
 async function runValidator(input: MentorRequestInput, mentorReply: string) {
   return validateMentorReply({
     studentQuestion: input.studentQuestion ?? "",
     mentorReply,
     runStatus: input.runStatus ?? "",
+  });
+}
+
+// ── HintEvent creation (Bug #4 fix: wrapped in transaction to prevent race) ───
+async function createHintEvent(params: {
+  userId:    number;
+  problemId: number;
+  attemptId: number | null;
+  aiLogId:   number;
+  mode:      string;
+}) {
+  await prisma.$transaction(async (tx) => {
+    const lastHint = await tx.hintEvent.findFirst({
+      where: { userId: params.userId, problemId: params.problemId },
+      orderBy: [{ sequence: "desc" }, { createdAt: "desc" }],
+    });
+
+    await tx.hintEvent.create({
+      data: {
+        userId:    params.userId,
+        problemId: params.problemId,
+        attemptId: params.attemptId,
+        aiLogId:   params.aiLogId,
+        sequence:  (lastHint?.sequence ?? 0) + 1,
+        mode:      params.mode,
+      },
+    });
   });
 }
 
@@ -168,6 +208,26 @@ async function handleAiRequest(req: Request, res: Response) {
   const problemId = parseProblemId(body);
   const submissionId = parseSubmissionId(body);
   const mode = typeof body.mode === "string" ? body.mode.trim().toLowerCase() : "practice";
+
+  // Bug #11: block if student's assignment for this problem has aiEnabled = false
+  if (problemId !== undefined) {
+    if (await isAiDisabledForProblem(req.auth!.userId, problemId)) {
+      res.status(403).json({
+        success: false,
+        error: "AI Mentor is disabled for this assignment.",
+      });
+      return;
+    }
+  }
+
+  // Bug #5: warn when no problemId — can't create DB audit record without it
+  if (problemId === undefined) {
+    console.warn(
+      "[ai/chat] no problemId — audit log will be skipped. userId=%d question=%s",
+      req.auth!.userId,
+      (input.studentQuestion ?? "").slice(0, 100),
+    );
+  }
 
   const mentorStartedAt = Date.now();
   const result = await getMentorReply(input);
@@ -217,6 +277,7 @@ async function handleAiRequest(req: Request, res: Response) {
       data: {
         userId: req.auth!.userId,
         problemId: pid,
+        // Bug #6 fix: submissionId was missing in the non-stream path too; ensure it's set
         submissionId: submissionId ?? null,
         mode,
         promptVersion: PROMPT_VERSION,
@@ -234,24 +295,14 @@ async function handleAiRequest(req: Request, res: Response) {
       },
     });
 
+    // Bug #4 fix: use transaction to prevent sequence race condition
     if (mode === "hint" || mode === "tip") {
-      const lastHint = await prisma.hintEvent.findFirst({
-        where: {
-          userId: req.auth!.userId,
-          problemId: pid,
-        },
-        orderBy: [{ sequence: "desc" }, { createdAt: "desc" }],
-      });
-
-      await prisma.hintEvent.create({
-        data: {
-          userId: req.auth!.userId,
-          problemId: pid,
-          attemptId: linkedAttempt?.id ?? null,
-          aiLogId: aiLog.id,
-          sequence: (lastHint?.sequence ?? 0) + 1,
-          mode,
-        },
+      await createHintEvent({
+        userId:    req.auth!.userId,
+        problemId: pid,
+        attemptId: linkedAttempt?.id ?? null,
+        aiLogId:   aiLog.id,
+        mode,
       });
     }
 
@@ -284,7 +335,9 @@ async function handleAiRequest(req: Request, res: Response) {
   });
 }
 
-// ── SSE streaming chat endpoint ───────────────────────────────────────────
+// ── SSE streaming chat endpoint ───────────────────────────────────────────────
+// Bug #3 fix: buffer the full model output, run validator+policy BEFORE streaming
+// any text to the student. This prevents unvalidated content from reaching users.
 router.post("/chat/stream", async (req: Request, res: Response) => {
   const parsed = aiChatSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -297,35 +350,90 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
     return;
   }
 
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-  res.setHeader("X-Accel-Buffering", "no");
-  res.flushHeaders();
+  const body        = req.body as Record<string, unknown>;
+  const input       = parseMentorBody(body);
+  const problemId   = parseProblemId(body);
+  const submissionId = parseSubmissionId(body);   // Bug #6 fix: parse submissionId in stream path
+  const mode        = typeof body.mode === "string" ? body.mode.trim().toLowerCase() : "practice";
+  const isHint      = mode === "hint";
 
-  const body = req.body as Record<string, unknown>;
-  const input = parseMentorBody(body);
+  // Bug #11: block if student's assignment for this problem has aiEnabled = false
+  if (problemId !== undefined) {
+    if (await isAiDisabledForProblem(req.auth!.userId, problemId)) {
+      res.status(403).json({ error: "AI Mentor is disabled for this assignment." });
+      return;
+    }
+  }
 
-  let fullText = "";
-  let streamError = false;
-  const isHint = (typeof body.mode === "string" ? body.mode.trim().toLowerCase() : "") === "hint";
+  // Bug #5: warn when no problemId
+  if (problemId === undefined) {
+    console.warn(
+      "[ai/stream] no problemId — audit log will be skipped. userId=%d question=%s",
+      req.auth!.userId,
+      (input.studentQuestion ?? "").slice(0, 100),
+    );
+  }
+
+  // ── Step 1: collect full model response (do NOT send to client yet) ──────────
+  let rawText    = "";
+  let modelError = false;
 
   try {
     for await (const token of getMentorReplyStream(input)) {
-      if (res.writableEnded) break;
-      fullText += token;
-      res.write(`data: ${JSON.stringify({ token })}\n\n`);
-      // Hint mode: stop after the first complete sentence
-      if (isHint && /[.?!]/.test(fullText.trimEnd().slice(-1))) break;
-    }
-  } catch (err) {
-    streamError = true;
-    const fallback = buildMentorFallback(input);
-    fullText = fallback;
+      rawText += token;
 
-    if (!res.writableEnded) {
-      res.write(`data: ${JSON.stringify({ token: fallback })}\n\n`);
+      // Bug #10 fix: stop hint after the first complete sentence.
+      // Only trigger on sentence-end punctuation that is NOT mid-expression
+      // (e.g. list.append — the '.' comes before a word char, not at end).
+      if (isHint) {
+        const t = rawText.trimEnd();
+        // Require letter/digit before the punctuation and whitespace/end after
+        if (/[a-zA-Z0-9][.!?](\s|$)/.test(t.slice(-4))) break;
+      }
     }
+  } catch {
+    modelError = true;
+    rawText = buildMentorFallback(input);
+  }
+
+  if (!rawText.trim()) {
+    rawText = buildMentorFallback(input);
+  }
+
+  // ── Step 2: validate + apply policy ──────────────────────────────────────────
+  let textToStream = rawText;
+  let validator: Awaited<ReturnType<typeof runValidator>> | null = null;
+  let policy:    Awaited<ReturnType<typeof applyPolicyWithRetry>> | null = null;
+
+  try {
+    validator = await runValidator(input, rawText);
+    policy    = await applyPolicyWithRetry({
+      mentorReply:    rawText,
+      validator,
+      studentQuestion: input.studentQuestion,
+      originalInput:  input,
+    });
+    textToStream = policy.finalText;
+  } catch {
+    // If validation pipeline fails, use safe fallback
+    textToStream = buildMentorFallback(input);
+  }
+
+  // ── Step 3: now open the SSE stream and send the validated text ───────────────
+  res.setHeader("Content-Type",      "text/event-stream");
+  res.setHeader("Cache-Control",     "no-cache");
+  res.setHeader("Connection",        "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders();
+
+  // Word-by-word streaming for a natural UX feel
+  const words = textToStream.split(" ");
+  for (let i = 0; i < words.length; i++) {
+    if (res.writableEnded) break;
+    const chunk = (i === 0 ? "" : " ") + words[i];
+    res.write(`data: ${JSON.stringify({ token: chunk })}\n\n`);
+    // ~15 ms per word ≈ comfortable reading pace without feeling sluggish
+    await new Promise<void>((r) => setTimeout(r, 15));
   }
 
   if (!res.writableEnded) {
@@ -333,92 +441,65 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
     res.end();
   }
 
-  if (!streamError && fullText.trim()) {
-    const problemId = parseProblemId(body);
-    const mode = typeof body.mode === "string" ? body.mode.trim().toLowerCase() : "practice";
-
+  // ── Step 4: persist audit logs (background, non-blocking) ────────────────────
+  if (!modelError && problemId !== undefined) {
     Promise.resolve().then(async () => {
       try {
-        const validator = await runValidator(input, fullText);
+        const problem = await prisma.problem.findUnique({ where: { id: problemId } });
+        if (!problem) return;
 
-        const policy = await applyPolicyWithRetry({
-          mentorReply: fullText,
-          validator,
-          studentQuestion: input.studentQuestion,
-          originalInput: input,
+        const linkedAttempt = await prisma.submissionAttempt.findFirst({
+          where: { userId: req.auth!.userId, problemId: problem.id },
+          orderBy: { createdAt: "desc" },
         });
 
-        const problem =
-          problemId !== undefined
-            ? await prisma.problem.findUnique({ where: { id: problemId } })
-            : null;
-
-        if (problem) {
-          const linkedAttempt = await prisma.submissionAttempt.findFirst({
-            where: {
-              userId: req.auth!.userId,
-              problemId: problem.id,
+        const aiLog = await prisma.aiLog.create({
+          data: {
+            userId:          req.auth!.userId,
+            problemId:       problem.id,
+            submissionId:    submissionId ?? null,   // Bug #6 fix
+            mode,
+            promptVersion:   PROMPT_VERSION,
+            modelName:       process.env.OLLAMA_MODEL ?? "ai-mentor",
+            studentQuestion: input.studentQuestion ?? null,
+            responseText:    textToStream,
+            requestPayload:  body as object,
+            responsePayload: {
+              mentorRaw:   rawText,
+              validator,
+              policyAction: policy?.action,
+              streamed:     true,
             },
-            orderBy: { createdAt: "desc" },
+          },
+        });
+
+        await prisma.aIInteractionAudit.create({
+          data: {
+            userId:           req.auth!.userId,
+            problemId:        problem.id,
+            attemptId:        linkedAttempt?.id ?? null,
+            mentorModel:      process.env.OLLAMA_MODEL ?? "ai-mentor",
+            validatorModel:   VALIDATOR_MODEL,
+            mentorRaw:        rawText,
+            validatorJson:    (validator ?? {}) as object,
+            policyAction:     toPolicyAction(policy?.action ?? "allow"),
+            finalText:        textToStream,
+            rewriteCount:     policy?.rewriteCount ?? 0,
+            latencyMsMentor:  0,
+            latencyMsValidator: validator?.source === "ai" ? 0 : null,
+            errorCode:        null,
+          },
+        });
+
+        // Bug #4 fix: transaction prevents sequence race condition
+        if (mode === "hint" || mode === "tip") {
+          await createHintEvent({
+            userId:    req.auth!.userId,
+            problemId: problem.id,
+            attemptId: linkedAttempt?.id ?? null,
+            aiLogId:   aiLog.id,
+            mode,
           });
-
-          const aiLog = await prisma.aiLog.create({
-            data: {
-              userId: req.auth!.userId,
-              problemId: problem.id,
-              mode,
-              promptVersion: PROMPT_VERSION,
-              modelName: process.env.OLLAMA_MODEL ?? "ai-mentor",
-              studentQuestion: input.studentQuestion ?? null,
-              responseText: policy.finalText,
-              requestPayload: body as object,
-              responsePayload: {
-                mentorRaw: fullText,
-                validator,
-                policyAction: policy.action,
-                streamed: true,
-              },
-            },
-          });
-
-          await prisma.aIInteractionAudit.create({
-            data: {
-              userId: req.auth!.userId,
-              problemId: problem.id,
-              attemptId: linkedAttempt?.id ?? null,
-              mentorModel: process.env.OLLAMA_MODEL ?? "ai-mentor",
-              validatorModel: VALIDATOR_MODEL,
-              mentorRaw: fullText,
-              validatorJson: validator as object,
-              policyAction: toPolicyAction(policy.action),
-              finalText: policy.finalText,
-              rewriteCount: policy.rewriteCount,
-              latencyMsMentor: 0,
-              latencyMsValidator: validator.source === "ai" ? 0 : null,
-              errorCode: null,
-            },
-          });
-
-          if (mode === "hint" || mode === "tip") {
-            const lastHint = await prisma.hintEvent.findFirst({
-              where: {
-                userId: req.auth!.userId,
-                problemId: problem.id,
-              },
-              orderBy: [{ sequence: "desc" }, { createdAt: "desc" }],
-            });
-
-            await prisma.hintEvent.create({
-              data: {
-                userId: req.auth!.userId,
-                problemId: problem.id,
-                attemptId: linkedAttempt?.id ?? null,
-                aiLogId: aiLog.id,
-                sequence: (lastHint?.sequence ?? 0) + 1,
-                mode,
-              },
-            });
-          }
         }
       } catch (logErr) {
         console.error("[ai/stream] background log error:", logErr);

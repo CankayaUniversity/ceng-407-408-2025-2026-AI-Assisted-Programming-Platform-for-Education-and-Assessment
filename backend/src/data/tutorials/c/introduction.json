@@ -7,9 +7,34 @@
   "order": 1,
   "sections": [
     {
-      "heading": "Introduction",
-      "body": "What is C?\n\nC is a general-purpose programming language created by Dennis Ritchie at Bell Labs in 1972.\nIt is popular because it is fast, widely supported, and helps you understand how programs work \"under the hood\".\nThe main reason for its popularity is because it is a fundamental language in the field of computer science.\nC is closely connected to UNIX, because much of UNIX was written in C.\n\nWhat is C used for?\n\nC is often used to create programs that need to run fast and work closely with the computer.\nOperating systems, such as parts of Windows, Linux, and macOS\n  Programs inside devices like cars, TVs, and home electronics\n  Software that needs to be fast, including databases and system tools\n  Game engines and programs that handle graphics\n  Core libraries that other programming languages rely on\nFor curious learners:\nC has different language standards (like C90, C99, C11, C17, and newer versions). This tutorial focuses on modern, widely supported C, and we point out important differences when it matters.\n\nWhy Learn C?\n\nIt is one of the most widely used programming languages\n  If you know C, you will have no problem learning other popular programming languages such as Java, Python, C++, C#, etc, as the syntax is similar\n  It helps you understand memory, performance, and how computers handle data\n  C is very versatile; it can be used in both applications and technologies\n\nDifference between C and C++\n\nC++ was developed as an extension of C, and the syntax is often similar\n  C is mainly a procedural language (you build programs with functions)\n  C++ supports classes and objects (often used for object-oriented programming)\nNote: C can still organize data using structures, and you can build large programs in C too. C++ just offers additional features (like classes) on top.\n\nC Example\n\nC is often used in everyday programming tasks, like showing a message to a user:\n\nExample\n\nGet Started\n\nNow let's get you started!\nThis tutorial will teach you the basics of C, step by step.\nYou will learn how to write C programs, understand what the code means, and build small projects along the way.\nIt is not necessary to have any prior programming experience.",
-      "code": "#include <stdio.h>\n\nint main() {\n  char name[] = \"John\";\n\n  printf(\"Hello %s\", name);\n  return 0;\n}"
+      "heading": "What is C?",
+      "body": "C is a general-purpose programming language created by Dennis Ritchie at Bell Labs in 1972.\n\nIt is popular because it is fast, widely supported, and helps you understand how programs work \"under the hood\".\n\nThe main reason for its popularity is because it is a fundamental language in the field of computer science.\n\nC is closely connected to UNIX, because much of UNIX was written in C.",
+      "code": ""
+    },
+    {
+      "heading": "What is C used for?",
+      "body": "C is often used to create programs that need to run fast and work closely with the computer.\n\n- Operating systems, such as parts of Windows, Linux, and macOS\n- Programs inside devices like cars, TVs, and home electronics\n- Software that needs to be fast, including databases and system tools\n- Game engines and programs that handle graphics\n- Core libraries that other programming languages rely on\n\nFor curious learners:\nC has different language standards (like C90, C99, C11, C17, and newer versions). This tutorial focuses on modern, widely supported C, and we point out important differences when it matters.",
+      "code": ""
+    },
+    {
+      "heading": "Why Learn C?",
+      "body": "- It is one of the most widely used programming languages\n- If you know C, you will have no problem learning other popular programming languages such as Java, Python, C++, C#, etc, as the syntax is similar\n- It helps you understand memory, performance, and how computers handle data\n- C is very versatile; it can be used in both applications and technologies",
+      "code": ""
+    },
+    {
+      "heading": "Difference between C and C++",
+      "body": "- C++ was developed as an extension of C, and the syntax is often similar\n- C is mainly a procedural language (you build programs with functions)\n- C++ supports classes and objects (often used for object-oriented programming)\n\nNote: C can still organize data using structures, and you can build large programs in C too. C++ just offers additional features (like classes) on top.",
+      "code": ""
+    },
+    {
+      "heading": "C Example",
+      "body": "C is often used in everyday programming tasks, like showing a message to a user:\n\nResult:",
+      "code": "  #include <stdio.h>\n\nint main() {\n  char name[] = \"John\";\n\n  printf(\"Hello %s\", name);\n  return 0;\n}"
+    },
+    {
+      "heading": "Get Started",
+      "body": "Now let's get you started!\n\nThis tutorial will teach you the basics of C, step by step.\n\nYou will learn how to write C programs, understand what the code means, and build small projects along the way.\n\nIt is not necessary to have any prior programming experience.",
+      "code": ""
     }
   ]
 }

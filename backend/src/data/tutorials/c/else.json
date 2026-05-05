@@ -1,0 +1,20 @@
+{
+  "tag": "else",
+  "language": "c",
+  "title": "C Else Statement",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "order": 32,
+  "sections": [
+    {
+      "heading": "The else Statement",
+      "body": "Use the else statement to specify a block of code\nto be executed if the condition is false.\n\nIn the example below, the program checks the value of time.\nIf it is less than 18, it prints \"Good day\". Otherwise, it prints \"Good evening\":\n\nIn the example above, time (20) is greater than 18, so the condition is false. \nBecause of this, we move on to the else condition and print to the screen \"Good \nevening\". If time was less than 18, the program would print \"Good day\".",
+      "code": "if (condition) {\n\n  // block of code to be executed if the condition is true\n\n} else {\n\n  // block of code to be executed if the condition is false\n\n}\n\nint time = 20;\n\n\n\nif (time < 18) {\n\n  printf(\"Good day.\");\n\n} else {\n\n  printf(\"Good evening.\");\n\n}\n\n\n\n// Outputs \"Good evening.\""
+    },
+    {
+      "heading": "Using a Boolean Variable",
+      "body": "You can also store the condition in a boolean variable and use it in the if...else statement.\nThis can make the code easier to read:\n\nTip: A name like isDay makes it easy to understand what the condition means.",
+      "code": "int time = 20;\n\n\n\nbool isDay = time < 18;\n\n\n\nif (isDay) {\n\n  printf(\"Good day.\");\n\n} else {\n\n  printf(\"Good evening.\");\n\n}"
+    }
+  ]
+}

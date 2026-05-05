@@ -54,6 +54,7 @@ router.get("/", async (req: Request, res: Response) => {
             allowedLanguages: true,
             lateDeadline:     true,
             lateDeduction:    true,
+            aiEnabled:        true,
             problem: { select: { id: true, title: true, language: true, difficulty: true, description: true, tags: true } },
           },
         },
@@ -68,7 +69,7 @@ router.post("/", async (req: Request, res: Response) => {
   const { userId, role } = req.auth!;
   if (role !== "teacher") { res.status(403).json({ error: "Teachers only" }); return; }
 
-  const { title, description, problemId, dueDate, isPublished, allowedLanguages, lateDeadline, lateDeduction, mode } = req.body as {
+  const { title, description, problemId, dueDate, isPublished, allowedLanguages, lateDeadline, lateDeduction, mode, aiEnabled } = req.body as {
     title:             string;
     description?:      string;
     problemId:         number;
@@ -78,6 +79,7 @@ router.post("/", async (req: Request, res: Response) => {
     lateDeadline?:     string | null;
     lateDeduction?:    number;
     mode?:             string;
+    aiEnabled?:        boolean;
   };
 
   if (!title?.trim() || !problemId) {
@@ -100,6 +102,7 @@ router.post("/", async (req: Request, res: Response) => {
       allowedLanguages: allowedLanguages ?? [],
       lateDeadline:     lateDeadline ? new Date(lateDeadline) : null,
       lateDeduction:    lateDeduction ?? 0,
+      aiEnabled:        aiEnabled !== false, // default true; only false when explicitly passed
     },
     include: { problem: { select: { id: true, title: true, language: true } } },
   });
@@ -143,7 +146,7 @@ router.put("/:id", async (req: Request, res: Response) => {
   const id = parseId(req.params.id);
   if (!id) { res.status(400).json({ error: "Invalid ID" }); return; }
 
-  const { title, description, dueDate, isPublished, allowedLanguages, lateDeadline, lateDeduction, mode } = req.body as {
+  const { title, description, dueDate, isPublished, allowedLanguages, lateDeadline, lateDeduction, mode, aiEnabled } = req.body as {
     title?:             string;
     description?:       string;
     dueDate?:           string | null;
@@ -152,6 +155,7 @@ router.put("/:id", async (req: Request, res: Response) => {
     lateDeadline?:      string | null;
     lateDeduction?:     number;
     mode?:              string;
+    aiEnabled?:         boolean;
   };
 
   const validModes = ["practice", "homework", "exam"];
@@ -167,6 +171,7 @@ router.put("/:id", async (req: Request, res: Response) => {
       ...(lateDeadline     !== undefined ? { lateDeadline: lateDeadline ? new Date(lateDeadline) : null }        : {}),
       ...(lateDeduction    !== undefined ? { lateDeduction }                                                      : {}),
       ...(mode !== undefined && validModes.includes(mode) ? { mode }                                             : {}),
+      ...(aiEnabled        !== undefined ? { aiEnabled }                                                          : {}),
     },
   });
 

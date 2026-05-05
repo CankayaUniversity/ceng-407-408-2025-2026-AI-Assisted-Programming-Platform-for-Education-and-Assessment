@@ -1,0 +1,25 @@
+{
+  "tag": "else-if",
+  "language": "c",
+  "title": "C Else If",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "order": 33,
+  "sections": [
+    {
+      "heading": "The else if Statement",
+      "body": "Use the else if statement to specify a new condition to test\nif the first condition is false.\n\nYou can use else if to check multiple conditions, one after another.\n\nThe conditions are checked from top to bottom.\nAs soon as one condition is true, its block of code runs, and the rest are skipped.",
+      "code": "if (condition1) {\n\n  // block of code to be executed if condition1 is true\n\n} else if (condition2) {\n\n  // block of code to be executed if condition1 is false and condition2 is true\n\n} else {\n\n  // block of code to be executed if both conditions are false\n\n}"
+    },
+    {
+      "heading": "Example",
+      "body": "In the example below, we decide which message to print based on the value of\ntime:\n\nThe value of time is 16.\nThe first condition (time < 12) is false,\nbut the second condition (time < 18) is true.\nBecause of this, the code inside the else if block runs,\nand \"Good day.\" is printed.\n\nIf the value of time was 22, none of the conditions would be true,\nand the program would print \"Good evening.\" instead.",
+      "code": "int time = 16;\n\n\n\nif (time < 12) {\n\n  printf(\"Good morning.\");\n\n} else if (time < 18) {\n\n  printf(\"Good day.\");\n\n} else {\n\n  printf(\"Good evening.\");\n\n}\n\n\n\n// Outputs \"Good day.\""
+    },
+    {
+      "heading": "Using Boolean Variables",
+      "body": "Just like with if statements, you can store conditions in boolean variables\nand use them with else if:\n\nTip: Boolean variable names like isMorning and\nisDay make it easier to understand what each condition means.",
+      "code": "int time = 16;\n\n\n\nbool isMorning = time < 12;\n\nbool isDay = time < 18;\n\n\n\nif (isMorning) {\n\n  printf(\"Good morning.\");\n\n} else if (isDay) {\n\n  printf(\"Good day.\");\n\n} else {\n\n  printf(\"Good evening.\");\n\n}"
+    }
+  ]
+}

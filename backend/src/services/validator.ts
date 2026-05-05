@@ -317,6 +317,10 @@ block
   const model = getValidatorModelName();
   console.log("[validator] model:", model);
 
+  // Bug #12 fix: add 30-second timeout so a hung Ollama never freezes the request
+  const controller = new AbortController();
+  const timeoutId  = setTimeout(() => controller.abort(), 30_000);
+
   const res = await fetch(getOllamaGenerateUrl(), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -327,7 +331,8 @@ block
       keep_alive: -1,
       options: { temperature: 0, top_p: 0.1 },
     }),
-  });
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timeoutId)); // always clear timer whether fetch succeeds or throws
 
   if (!res.ok) {
     const raw = await res.text();

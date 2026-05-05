@@ -1,0 +1,70 @@
+{
+  "tag": "bitwise-operators",
+  "language": "c",
+  "title": "C Bitwise Operators",
+  "category": "C More",
+  "categoryOrder": 8,
+  "order": 6,
+  "sections": [
+    {
+      "heading": "C Bitwise Operators",
+      "body": "Note: This is a more advanced topic in C. \nIf you are new to programming, don't worry if it feels tricky at first - bitwise operators are mainly used in special cases like system programming, hardware control, or performance optimizations.\n\nIn C, bitwise operators let you work directly with the bits (the 1s and 0s) that make up numbers in binary form.\n\nEvery integer in a computer is stored in binary, which means it is represented using bits (binary digits) that are either 0 or 1. \nBitwise operators allow you to compare, combine, shift, or flip these bits.\n\nNote: Bitwise operations only work on integer types (such as int, char, or long).\n\nTip: If you are not yet familiar with binary numbers, check out these pages first:\n\n- Intro to Programming - Binary Numbers\n- Intro to Programming - Bits and Bytes",
+      "code": ""
+    },
+    {
+      "heading": "List of Bitwise Operators",
+      "body": "Operator | Name | Description\n& | AND | Sets each bit to 1 if both bits are 1\n| | OR | Sets each bit to 1 if at least one of the bits is 1\n^ | XOR | Sets each bit to 1 if only one of the bits is 1\n~ | NOT | Inverts all the bits\n<< | Left Shift | Shifts bits to the left (multiplies by powers of 2)\n>> | Right Shift | Shifts bits to the right (divides by powers of 2)",
+      "code": ""
+    },
+    {
+      "heading": "Binary Example",
+      "body": "Let's start with two integers:\n\nHere's how different bitwise operators work on these values:\n\nOperation | Binary Result | Decimal Result\na & b | 0010 | 2\na | b | 0111 | 7\na ^ b | 0101 | 5\n~a | ...1001 | -7 (on most systems)\na << 1 | 1100 | 12\na >> 1 | 0011 | 3",
+      "code": "int a = 6;  // 0110 in binary\nint b = 3;  // 0011 in binary"
+    },
+    {
+      "heading": "Decimal and Binary Values",
+      "body": "Here is a small reference table showing how decimal numbers look in binary (16-bit format):\n\nTip: Each step to the left doubles the value. For example, 0000000000000100 is 4 because the third bit from the right is set (22 = 4).",
+      "code": " 0 = 0000000000000000\n 1 = 0000000000000001\n 2 = 0000000000000010\n 3 = 0000000000000011\n 4 = 0000000000000100\n 5 = 0000000000000101\n 6 = 0000000000000110\n 7 = 0000000000000111\n 8 = 0000000000001000\n 9 = 0000000000001001\n10 = 0000000000001010\n11 = 0000000000001011\n12 = 0000000000001100"
+    },
+    {
+      "heading": "Bitwise AND (&)",
+      "body": "The & operator compares each bit and returns 1 only if both bits are 1.",
+      "code": "int a = 6;   // 0110\nint b = 3;   // 0011\n\nint result = a & b;\nprintf(\"Result: %d\\n\", result); // 2 (0010)"
+    },
+    {
+      "heading": "Bitwise OR (|)",
+      "body": "The | operator sets a bit to 1 if either bit is 1.",
+      "code": "int a = 6;   // 0110\nint b = 3;   // 0011\n\nint result = a | b;\nprintf(\"Result: %d\\n\", result); // 7 (0111)"
+    },
+    {
+      "heading": "Bitwise XOR (^)",
+      "body": "The ^ operator returns 1 only when the bits are different.",
+      "code": "int a = 6;   // 0110\nint b = 3;   // 0011\n\nint result = a ^ b;\nprintf(\"Result: %d\\n\", result); // 5 (0101)"
+    },
+    {
+      "heading": "Bitwise NOT (~)",
+      "body": "The ~ operator inverts each bit (0 becomes 1 and 1 becomes 0).\n\nNote: The result of ~ depends on how negative numbers are stored (usually two's complement). For example, 5 (00000101) becomes 11111010, which is interpreted as -6.",
+      "code": "int a = 5; // 00000101\n\nint result = ~a;\nprintf(\"Result: %d\\n\", result); // -6 on most systems"
+    },
+    {
+      "heading": "Left Shift (<<)",
+      "body": "The << operator shifts bits to the left and fills in 0s on the right. This is the same as multiplying by powers of 2.",
+      "code": "int a = 3; // 00000011\n\nint result = a << 2;\nprintf(\"Result: %d\\n\", result); // 12 (3 * 2^2)"
+    },
+    {
+      "heading": "Right Shift (>>)",
+      "body": "The >> operator shifts bits to the right. This is the same as dividing by powers of 2. On signed integers, the sign bit may be preserved depending on the system.",
+      "code": "int a = 12; // 00001100\n\nint result = a >> 2;\nprintf(\"Result: %d\\n\", result); // 3 (12 / 2^2)"
+    },
+    {
+      "heading": "Real-Life Example: Flags and Permissions",
+      "body": "Bitwise operators are often used to store multiple options in a single integer, using flags.\n\nIn this example, the user has both READ and WRITE permissions, but not EXEC.",
+      "code": "#define READ  1  // 0001\n#define WRITE 2  // 0010\n#define EXEC  4  // 0100\n\nint permissions = READ | WRITE;  // user can read and write\n\nif (permissions & READ) {\n  printf(\"Read allowed\\n\");\n}\nif (permissions & WRITE) {\n  printf(\"Write allowed\\n\");\n}\nif (permissions & EXEC) {\n  printf(\"Execute allowed\\n\");\n}"
+    },
+    {
+      "heading": "Summary",
+      "body": "- Bitwise operators work on individual bits of integers\n- &: AND - both bits must be 1\n- |: OR - either bit can be 1\n- ^: XOR - only one bit is 1\n- ~: NOT - flips all bits\n- <<: Left shift - multiplies by powers of 2\n- >>: Right shift - divides by powers of 2\n\nTip: Bitwise operations are useful for optimization, low-level hardware access, flags, and masks.",
+      "code": ""
+    }
+  ]
+}

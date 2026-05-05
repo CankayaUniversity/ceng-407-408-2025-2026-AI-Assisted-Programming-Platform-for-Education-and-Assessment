@@ -8,8 +8,48 @@
   "sections": [
     {
       "heading": "Debugging",
-      "body": "Debugging\n\nDebugging is the process of finding and fixing errors (bugs) in your program.\nBugs are mistakes that make your program crash, behave incorrectly, or give the wrong output.\nBefore you start debugging, make sure your code is clean and organized:\nUse proper indentation to keep the structure clear.\n  Give your variables clear, meaningful names that describe what they store.\nClean code is easier to read - and easier to debug!\nIn the sections below, we'll introduce several common debugging techniques.\n\n1. Print Debugging\n\nUse printf() to print values at different points\nin your code to see what's going wrong:\nIf you don't see \"After division\", the program crashed at x / y.\n\n2. Check Variable Values\n\nPrint variables to see if they are what you expect:\nExpected 15? That means the logic is wrong: try using\nx + y instead.\n\n3. Use a Debugger Tool\n\nIDEs like Visual Studio, Code::Blocks, and VS Code have built-in debuggers that work with C. These tools let you:\nPause your program using breakpoints\n  Step through your code line by line\n  Watch variables and see unexpected values as they change\nTip: Start with printf() debugging. Once you're comfortable, explore your IDE's debugger to get even better insights into your code.\n\n4. Learn from Error Messages\n\nThe C compiler and runtime errors often tell you what went wrong and where. For example:\nEasy solution: Fix the missing semicolon!\n\nDebugging with Safe Checks\n\nSome bugs, like dividing by zero (used in the first example of this page), are known to cause crashes.\nIf you know an operation could fail, you can check for it in advance and avoid the crash:\n\nExample\n\nNow, instead of crashing, the program prints an error message and continues running. This is an important part of writing safe, debuggable code.\n\nAnother Example - Out-of-Bounds Array Access\n\nAccessing elements outside the array is another common mistake.\nIn the example below, we use printf() to check the index value before using it:\n\nExample\n\nSummary\n\nUse printf() to print values and trace your code.\nRead error messages carefully - they often tell you what went wrong and where.\nAdd checks (like if (y != 0)) to avoid crashes before they happen.\nUse an IDE's debugger when you're ready for deeper debugging.\nDebugging helps you understand your program better and fix problems faster.\n\nError Handling\n\nWhile debugging is about finding and fixing mistakes in your code during development, error handling is a way to deal with problems while the program is running, and run specific code when something goes wrong.\nYou will learn about NULL Pointers and Error Handling in the next chapters.",
-      "code": "int x = 10;\nint y = 0;\nprintf(\"Before division\\n\"); // Debug output\n\n  int z = x / y; // Crashes (division by zero)\nprintf(\"After division\\n\"); //\n  Never runs\n\n// ─────────────────────────────────────\n\nint x = 10;\nint y = 5;\nint result = x - y;\n\nprintf(\"Result:\n  %d\\n\", result); // Result: 5\n\n// ─────────────────────────────────────\n\nint main() {\n\n      int x = 10;\n\n      int y = 0;\n\n      printf(\"Before division\\n\");\n\n      if (y != 0) { // // Check that y is not zero before dividing\n\n        int z = x / y;\n\n        printf(\"Result: %d\\n\", z);\n\n      } else {\n\n        printf(\"Error: Division by zero!\\n\"); // // Print error message instead of crashing\n\n      }\n\n      printf(\"After division\\n\");\n\n      return 0;\n\n    }\n\n// ─────────────────────────────────────\n\nint main() {\n\n      int numbers[3] = {10, 20, 30};\n\n      int index = 5;\n\n      printf(\"Index = %d\\n\", index);\n\n      if (index >= 0 && index < 3) { // Make sure the index is within the valid range (0 to 2)\n\n        printf(\"Value = %d\\n\", numbers[index]);\n\n      } else {\n\n        printf(\"Error: Index out of bounds!\\n\");\n\n      }\n\n      return 0;\n\n    }"
+      "body": "Debugging is the process of finding and fixing errors (bugs) in your program.\n\nBugs are mistakes that make your program crash, behave incorrectly, or give the wrong output.\n\nBefore you start debugging, make sure your code is clean and organized:\n\n- Use proper indentation to keep the structure clear.\n- Give your variables clear, meaningful names that describe what they store.\n\nClean code is easier to read - and easier to debug!\n\nIn the sections below, we'll introduce several common debugging techniques.",
+      "code": ""
+    },
+    {
+      "heading": "1. Print Debugging",
+      "body": "Use printf() to print values at different points \nin your code to see what's going wrong:\n\nIf you don't see \"After division\", the program crashed at x / y.",
+      "code": "  int x = 10;\nint y = 0;\nprintf(\"Before division\\n\"); // Debug output\n\n  int z = x / y; // Crashes (division by zero)\nprintf(\"After division\\n\"); //\n  Never runs"
+    },
+    {
+      "heading": "2. Check Variable Values",
+      "body": "Print variables to see if they are what you expect:\n\nExpected 15? That means the logic is wrong: try using \nx + y instead.",
+      "code": "  int x = 10;\nint y = 5;\nint result = x - y;\n\nprintf(\"Result:\n  %d\\n\", result); // Result: 5"
+    },
+    {
+      "heading": "3. Use a Debugger Tool",
+      "body": "IDEs like Visual Studio, Code::Blocks, and VS Code have built-in debuggers that work with C. These tools let you:\n\n- Pause your program using breakpoints\n- Step through your code line by line\n- Watch variables and see unexpected values as they change\n\nTip: Start with printf() debugging. Once you're comfortable, explore your IDE's debugger to get even better insights into your code.",
+      "code": ""
+    },
+    {
+      "heading": "4. Learn from Error Messages",
+      "body": "The C compiler and runtime errors often tell you what went wrong and where. For example:\n\nEasy solution: Fix the missing semicolon!",
+      "code": ""
+    },
+    {
+      "heading": "Debugging with Safe Checks",
+      "body": "Some bugs, like dividing by zero (used in the first example of this page), are known to cause crashes.\n\nIf you know an operation could fail, you can check for it in advance and avoid the crash:\n\nNow, instead of crashing, the program prints an error message and continues running. This is an important part of writing safe, debuggable code.",
+      "code": "    int main() {\n\n      int x = 10;\n\n      int y = 0;\n\n\n\n      printf(\"Before division\\n\");\n\n\n\n      if (y != 0) { // // Check that y is not zero before dividing\n\n        int z = x / y;\n\n        printf(\"Result: %d\\n\", z);\n\n      } else {\n\n        printf(\"Error: Division by zero!\\n\"); // // Print error message instead of crashing\n\n      }\n\n\n\n      printf(\"After division\\n\");\n\n      return 0;\n\n    }"
+    },
+    {
+      "heading": "Another Example - Out-of-Bounds Array Access",
+      "body": "Accessing elements outside the array is another common mistake.\n\nIn the example below, we use printf() to check the index value before using it:",
+      "code": "    int main() {\n\n      int numbers[3] = {10, 20, 30};\n\n      int index = 5;\n\n\n\n      printf(\"Index = %d\\n\", index);\n\n\n      if (index >= 0 && index < 3) { // Make sure the index is within the valid range (0 to 2)\n\n        printf(\"Value = %d\\n\", numbers[index]);\n\n      } else {\n\n        printf(\"Error: Index out of bounds!\\n\");\n\n      }\n\n\n\n      return 0;\n\n    }"
+    },
+    {
+      "heading": "Summary",
+      "body": "- Use printf() to print values and trace your code.\n- Read error messages carefully - they often tell you what went wrong and where.\n- Add checks (like if (y != 0)) to avoid crashes before they happen.\n- Use an IDE's debugger when you're ready for deeper debugging.\n- Debugging helps you understand your program better and fix problems faster.",
+      "code": ""
+    },
+    {
+      "heading": "Error Handling",
+      "body": "While debugging is about finding and fixing mistakes in your code during development, error handling is a way to deal with problems while the program is running, and run specific code when something goes wrong.\n\nYou will learn about NULL Pointers and Error Handling in the next chapters.",
+      "code": ""
     }
   ]
 }

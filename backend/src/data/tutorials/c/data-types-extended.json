@@ -1,0 +1,20 @@
+{
+  "tag": "data-types-extended",
+  "language": "c",
+  "title": "C Extended Types",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "order": 20,
+  "sections": [
+    {
+      "heading": "More Data Types",
+      "body": "Besides the basic types (int, \nfloat, double, \nchar), C also gives you \nextended keywords (short, \nlong, unsigned) \nto control how large the number is, or whether it can be negative:\n\nType | Size* | Range (commonly) | Format Specifier\nshort int | 2 bytes | -32,768 to 32,767 | %hd\nunsigned int | 2 or 4 bytes | 0 to 65,535 (2 bytes)\n 0 to 4,294,967,295 (4 bytes) | %u\nlong int | 4 or 8 bytes | -2,147,483,648 to 2,147,483,647 (4 bytes)\n -9,223,372,036,854,775,808 to 9,223,372,036,854,775,807 (8 bytes) | %ld\nlong long int | 8 bytes | -9,223,372,036,854,775,808 to 9,223,372,036,854,775,807 | %lld\nunsigned long int | 4 or 8 bytes | 0 to 4,294,967,295 (4 bytes)\n 0 to 18,446,744,073,709,551,615 (8 bytes) | %lu\nunsigned long long int | 8 bytes | 0 to 18,446,744,073,709,551,615 | %llu\nlong double | 8, 12, or 16 bytes | Implementation-dependent, but more precision than double | %Lf\n\nunsigned means the type can only store non-negative values (0 and up).\n\n*Note: The size of these types can differ between systems (for example, 2 or 4 bytes, or 4 or 8 bytes), depending on whether the computer is older or newer, 32-bit or 64-bit, and which compiler is used.\n\nHere is an example of how you can create and print these extended types:\n\nNote: These extended types are mostly used when you need very specific control over memory usage or number ranges.\n\nNote: For everyday programming, int, float, double, and char are usually enough.",
+      "code": "int normalInt = 1000;                       // standard int\ndouble normalDouble = 3.14;                 // standard double\n\nshort int small = -100;                     // smaller int\nunsigned int count = 25;                    // only positive int\nlong int big = 1234567890;                  // larger int\nlong long int veryBig = 9223372036854775807; // very large int\nunsigned long long int huge = 18446744073709551615U; // very large, only positive\nlong double precise = 3.141592653589793238L; // extended precision\n\nprintf(\"Normal int: %d\\n\", normalInt);\nprintf(\"Normal double: %lf\\n\", normalDouble);\nprintf(\"Small: %hd\\n\", small);\nprintf(\"Count: %u\\n\", count);\nprintf(\"Big: %ld\\n\", big);\nprintf(\"Very Big: %lld\\n\", veryBig);\nprintf(\"Huge: %llu\\n\", huge);\nprintf(\"Precise: %Lf\\n\", precise);"
+    },
+    {
+      "heading": "Check Size",
+      "body": "*The exact sizes depend on your system and compiler. Remember that you can check them with the sizeof operator:\n\nTip: When you really need exact control over the size of your numbers, you can use the fixed-width types, which you will learn about later.\n\nNote: This page is just to show you that C has other extended types, but for now \nwe will keep focusing on the basic types (int, float, double, char) in this tutorial.",
+      "code": "printf(\"Size of int: %zu bytes\\n\", sizeof(int));\nprintf(\"Size of double: %zu bytes\\n\", sizeof(double));\nprintf(\"Size of short int: %zu bytes\\n\", sizeof(short int));\nprintf(\"Size of unsigned int: %zu bytes\\n\", sizeof(unsigned int));\nprintf(\"Size of long int: %zu bytes\\n\", sizeof(long int));\nprintf(\"Size of long long int: %zu bytes\\n\", sizeof(long long int));\nprintf(\"Size of unsigned long long int: %zu bytes\\n\", sizeof(unsigned long long int));\nprintf(\"Size of long double: %zu bytes\\n\", sizeof(long double));"
+    }
+  ]
+}

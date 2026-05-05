@@ -1,0 +1,15 @@
+{
+  "tag": "booleans-reallife",
+  "language": "c",
+  "title": "C Booleans Real-Life",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "order": 30,
+  "sections": [
+    {
+      "heading": "Real Life Example",
+      "body": "Let's use booleans in a real-life example where we want to find out if a person is old enough to vote.\n\nIn the example below, we use the >= comparison operator to find out if the age (25) is greater than OR \nequal to the voting age limit, which is set \nto 18:\n\nCool, right? An even better approach (since we are on a roll now), would be to wrap the code above in an \nif...else statement, so we can perform \ndifferent actions depending on the result:\n\nOutput \"Old enough to vote!\" if myAge is greater than or equal to 18. Otherwise output \"Not old enough to vote.\":\n\nBooleans are the basis for all comparisons and conditions.\n\nYou will learn more about conditions (if...else) in the next chapter.",
+      "code": "  int myAge = 25;\nint votingAge = 18;\n\nprintf(\"%d\", myAge >=\n  votingAge); // Returns 1 (true), meaning 25 year olds are allowed to vote!\n\n  int myAge = 25;\nint votingAge = 18;\n\nif (myAge >= votingAge) {\n\n  printf(\"Old enough to vote!\");\n} else {\n  printf(\"Not old enough\n  to vote.\");\n}"
+    }
+  ]
+}

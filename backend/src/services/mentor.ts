@@ -368,7 +368,14 @@ function looksLikeSolution(text: string): boolean {
   const fencedBlocks = countFencedCodeBlocks(trimmed);
   const codeLikeLines = countCodeLikeLines(trimmed);
 
-  if (fencedBlocks >= 1) return true;
+  // Bug #7 fix: one small code block (≤ 7 lines) is fine as a syntax example;
+  // only flag when there are 2+ blocks OR one large block (looks like a full function).
+  if (fencedBlocks >= 2) return true;
+  if (fencedBlocks === 1) {
+    const blockMatch = trimmed.match(/```[\w]*\r?\n?([\s\S]*?)```/);
+    const blockLines = blockMatch?.[1]?.split(/\r?\n/).filter((l) => l.trim()).length ?? 0;
+    if (blockLines >= 8) return true; // single but substantial block → treat as solution
+  }
   if (codeLikeLines >= 4) return true;
 
   const hasWorkflow =

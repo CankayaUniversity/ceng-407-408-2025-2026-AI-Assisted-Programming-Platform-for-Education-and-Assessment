@@ -7,9 +7,39 @@
   "order": 4,
   "sections": [
     {
-      "heading": "Organize Code",
-      "body": "Organize Your Code - Modular Programming\n\nIn C programming, modular programming means splitting your code into smaller, reusable parts.\nThis makes your code easier to read, maintain, and debug.\nThe most common way to organize C programs is by using separate .c files and .h header files.\nEven though this approach is not required for small beginner programs, it is very useful for larger projects or more experienced programmers who want to keep their code clean and well-structured.\n\nWhy Use Header Files?\n\nTo declare functions that are defined in another file\n  To share variables, constants, or macros across files\n  To organize your code into logical modules\nTip: Header files usually contain function declarations, macros, and struct definitions.\n\nExample: Creating a Header File\n\nIn this example, you will learn how to create your own header file and use it to organize code across multiple files.\nLet's create a simple calculator module with a header file and a source file.\nStart by creating a header file named calc.h to declare the functions:\n\nExample Explained\n\nThe #ifndef, #define, and #endif lines are called an include guard.\nThey prevent the file from being included more than once by mistake, which can cause errors during compilation.\nThis is a common and recommended practice in all C header files.\nThis file itself contains declarations of two functions: add() and subtract().\n\nWriting the Function Definitions\n\nNext, write the function definitions inside your calc.c file:\nThis file defines the functions declared in calc.h.\n\nUsing the Module in main.c\n\nFinally, write the main program in main.c and include the header file to use the calculator functions:\n\nHow to Compile Multiple Files\n\nWhen your program is split across multiple files, you need to compile them together. For example:\nThis tells the compiler to build one executable named program from both main.c and calc.c.",
-      "code": "#ifndef CALC_H\n#define CALC_H\n\nint add(int x, int y);\nint subtract(int x, int y);\n\n#endif\n\n// ─────────────────────────────────────\n\n#include \"calc.h\"\n\nint add(int x, int y) {\n  return x + y;\n}\n\nint subtract(int x, int y) {\n  return x - y;\n}\n\n// ─────────────────────────────────────\n\n#include <stdio.h>\n#include \"calc.h\"\n\nint main() {\n  printf(\"5 + 5 = %d\\n\", add(5, 5));\n  printf(\"6 - 4 = %d\\n\", subtract(6, 4));\n  return 0;\n}\n\n// ─────────────────────────────────────\n\ngcc main.c calc.c -o program"
+      "heading": "Organize Your Code - Modular Programming",
+      "body": "In C programming, modular programming means splitting your code into smaller, reusable parts.\n\nThis makes your code easier to read, maintain, and debug.\n\nThe most common way to organize C programs is by using separate .c files and .h header files.\n\nEven though this approach is not required for small beginner programs, it is very useful for larger projects or more experienced programmers who want to keep their code clean and well-structured.",
+      "code": ""
+    },
+    {
+      "heading": "Why Use Header Files?",
+      "body": "- To declare functions that are defined in another file\n- To share variables, constants, or macros across files\n- To organize your code into logical modules\n\nTip: Header files usually contain function declarations, macros, and struct definitions.",
+      "code": ""
+    },
+    {
+      "heading": "Example: Creating a Header File",
+      "body": "In this example, you will learn how to create your own header file and use it to organize code across multiple files.\n\nLet's create a simple calculator module with a header file and a source file.\n\nStart by creating a header file named calc.h to declare the functions:\n\nThe calc.h file:",
+      "code": "#ifndef CALC_H\n#define CALC_H\n\nint add(int x, int y);\nint subtract(int x, int y);\n\n#endif"
+    },
+    {
+      "heading": "Example Explained",
+      "body": "The #ifndef, #define, and #endif lines are called an include guard.\n\nThey prevent the file from being included more than once by mistake, which can cause errors during compilation.\n\nThis is a common and recommended practice in all C header files.\n\nThis file itself contains declarations of two functions: add() and subtract().",
+      "code": ""
+    },
+    {
+      "heading": "Writing the Function Definitions",
+      "body": "Next, write the function definitions inside your calc.c file:\n\nThe calc.c file:\n\nThis file defines the functions declared in calc.h.",
+      "code": "#include \"calc.h\"\n\nint add(int x, int y) {\n  return x + y;\n}\n\nint subtract(int x, int y) {\n  return x - y;\n}"
+    },
+    {
+      "heading": "Using the Module in main.c",
+      "body": "Finally, write the main program in main.c and include the header file to use the calculator functions:\n\nThe main.c file:\n\nResult:",
+      "code": "#include <stdio.h>\n#include \"calc.h\"\n\nint main() {\n  printf(\"5 + 5 = %d\\n\", add(5, 5));\n  printf(\"6 - 4 = %d\\n\", subtract(6, 4));\n  return 0;\n}"
+    },
+    {
+      "heading": "How to Compile Multiple Files",
+      "body": "When your program is split across multiple files, you need to compile them together. For example:\n\nThis tells the compiler to build one executable named program from both main.c and calc.c.",
+      "code": "gcc main.c calc.c -o program"
     }
   ]
 }

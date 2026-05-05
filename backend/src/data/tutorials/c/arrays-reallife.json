@@ -1,0 +1,15 @@
+{
+  "tag": "arrays-reallife",
+  "language": "c",
+  "title": "C Arrays Real-Life",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "order": 49,
+  "sections": [
+    {
+      "heading": "Real-Life Example",
+      "body": "To demonstrate a practical example of using arrays, let's create a program that calculates the average of different ages:\n\nAnd in this example, we create a program that finds the lowest age among different ages:\n\nIn this example, we go through a list of numbers. \nWe skip negative values, but stop the loop completely if we find a zero:",
+      "code": "  // An array storing different ages\nint ages[] = {20, 22, 18, 35, 48, 26,\n  87, 70};\n\nfloat avg, sum = 0;\nint i;\n\n// Get the length of the\n  array\nint length = sizeof(ages) / sizeof(ages[0]);\n\n// Loop through\n  the elements of the array\nfor (i = 0; i <\n  length; i++) {\n  sum += ages[i];\n}\n\n// Calculate the average\n  by dividing the sum by the length\navg = sum / length;\n\n// Print the\n  average\nprintf(\"The average age is: %.2f\", avg);\n\n  // An array storing different ages\nint ages[] = {20, 22, 18, 35, 48, 26,\n  87, 70};\n\nint i;\n\n// Get the length of the array\nint length = sizeof(ages) /\n  sizeof(ages[0]);\n\n// Create a variable and assign the first array\n  element of ages to it\nint lowestAge = ages[0];\n\n// Loop through\n  the elements of the ages array to find the lowest age\nfor (i = 0; i <\n  length; i++) {\n  if (lowestAge > ages[i]) {\n\n  lowestAge = ages[i];\n  }\n}\n\nint myNumbers[] = {3, -1, 7, 0, 9};\nint length = sizeof(myNumbers) / sizeof(myNumbers[0]);\nint i;\n\nfor (i = 0; i < length; i++) {\n  if (myNumbers[i] < 0) {\n    continue; // skip negative numbers\n  }\n  if (myNumbers[i] == 0) {\n    break; // stop loop when zero is found\n  }\n  printf(\"%d\\n\", myNumbers[i]);\n}"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "tag": "conditions-logical",
+  "language": "c",
+  "title": "C Conditions & Logical",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "order": 36,
+  "sections": [
+    {
+      "heading": "Logical Operators in Conditions",
+      "body": "You can combine or reverse conditions using logical operators. \nThese work together with if, else, and else if to build more complex decisions.\n\n- && (AND) - all conditions must be true\n- || (OR) - at least one condition must be true\n- ! (NOT) - reverses a condition (true → false, false → true)",
+      "code": ""
+    },
+    {
+      "heading": "AND (&&)",
+      "body": "Use AND (&&) when both conditions must be true:\n\nTest if a is greater than b, and if c is greater than a:",
+      "code": "int a = 200;\nint b = 33;\nint c = 500;\n\nif (a > b && c > a) {\n  printf(\"Both conditions are true\\n\");\n}"
+    },
+    {
+      "heading": "OR (||)",
+      "body": "Use OR (||) when at least one of the conditions can be true:\n\nTest if a is greater than b, or if a is greater than c:",
+      "code": "int a = 200;\nint b = 33;\nint c = 500;\n\nif (a > b || a > c) {\n  printf(\"At least one condition is true\\n\");\n}"
+    },
+    {
+      "heading": "NOT (!)",
+      "body": "The NOT operator (!) reverses a condition:\n\n- If a condition is true, ! makes it false.\n- If a condition is false, ! makes it true.\n\nThis is useful when you want to check that something is not the case:\n\nTest if a is not greater than b:",
+      "code": "int a = 33;\nint b = 200;\n\nif (!(a > b)) {\n  printf(\"a is NOT greater than b\\n\");\n}"
+    },
+    {
+      "heading": "Real-Life Example",
+      "body": "In real programs, logical operators are often used for access control. \nFor example, to get access to a system, there are specific requirements:\n\nYou must be logged in, and then you either need to be an admin, \nor have a high security clearance (level 1 or 2):",
+      "code": "bool isLoggedIn = true;\nbool isAdmin = false;\nint securityLevel = 3; // 1 = highest\n\nif (isLoggedIn && (isAdmin || securityLevel <= 2)) {\n  printf(\"Access granted\\n\");\n} else {\n  printf(\"Access denied\\n\");\n}\n\n// Try changing securityLevel and isAdmin to test different outcomes:\n// securityLevel 1 = Access granted\n// securityLevel 2 = Access granted\n// securityLevel 3 = Access denied\n// securityLevel 4 = Access denied\n// If isAdmin = true, access is granted."
+    }
+  ]
+}

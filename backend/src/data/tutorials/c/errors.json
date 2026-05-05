@@ -8,8 +8,23 @@
   "sections": [
     {
       "heading": "Errors",
-      "body": "Errors\n\nEven experienced C developers make mistakes. The key is learning how to spot and fix them!\nThese pages cover common errors and helpful debugging tips to help you understand what's going wrong and how to fix it.\n\nCommon Compile-Time Errors\n\nCompile-time errors are mistakes that prevent your program from compiling.\n1) Missing semicolon:\n\nExample\n\n2) Using undeclared variables:\n\nExample\n\n3) Mismatched types (e.g. assigning a string to an int):\n\nExample\n\nCommon Runtime Errors\n\nRuntime errors occur when the program compiles but crashes or behaves unexpectedly.\n1) Dividing by zero:\n\nExample\n\n2) Accessing out-of-bounds array elements:\n\nExample\n\n3) Using freed memory:\n\nExample\n\nGood Habits to Avoid Errors\n\nAlways initialize your variables\n  Use meaningful variable names\n  Keep your code clean and use indentation to stay organized\n  Keep functions short and focused\n  Check if loops or conditions are running as expected\n  Read error messages carefully - they often tell you exactly where the problem is\nIn the next chapter, you will learn how to debug your code - how to find and fix bugs/errors in your C program.",
-      "code": "#include <stdio.h>\n\n    int main() {\n\n      int x = 5\n\n      printf(\"%d\", x);\n\n      return 0;\n\n    }\n\n// ─────────────────────────────────────\n\n#include <stdio.h>\n\n    int main() {\n\n      printf(\"%d\", myVar);\n\n      return 0;\n\n    }\n\n// ─────────────────────────────────────\n\n#include <stdio.h>\n\n    int main() {\n\n      int x = \"Hello\";\n\n      return 0;\n\n    }\n\n// ─────────────────────────────────────\n\n#include <stdio.h>\n\n    int main() {\n\n      int x = 10;\n\n      int y = 0;\n\n      int result = x / y;\n\n      printf(\"%d\\\\n\", result);  // not possible\n\n      return 0;\n\n    }\n\n// ─────────────────────────────────────\n\n#include <stdio.h>\n\n    int main() {\n\n      int numbers[3] = {1, 2, 3};\n\n      printf(\"%d\\\\n\", numbers[8]);  // element does not exist\n\n      return 0;\n\n    }\n\n// ─────────────────────────────────────\n\n#include <stdio.h>\n\n    #include <stdlib.h>\n\n    int main() {\n\n      int* ptr = malloc(sizeof(int));\n\n      *ptr = 10;\n\n      free(ptr);\n\n      printf(\"%d\\\\n\", *ptr); // Undefined behavior - accessing memory that was freed\n\n      return 0;\n\n    }"
+      "body": "Even experienced C developers make mistakes. The key is learning how to spot and fix them!\n\nThese pages cover common errors and helpful debugging tips to help you understand what's going wrong and how to fix it.",
+      "code": ""
+    },
+    {
+      "heading": "Common Compile-Time Errors",
+      "body": "Compile-time errors are mistakes that prevent your program from compiling.\n\n1) Missing semicolon:\n\nResult:\n\n2) Using undeclared variables:\n\nResult:\n\n3) Mismatched types (e.g. assigning a string to an int):\n\nResult:",
+      "code": "    #include <stdio.h>\n\n\n\n    int main() {\n\n      int x = 5\n\n      printf(\"%d\", x);\n\n      return 0;\n\n    }\n\n    #include <stdio.h>\n\n\n\n    int main() {\n\n      printf(\"%d\", myVar);\n\n      return 0;\n\n    }\n\n    #include <stdio.h>\n\n\n\n    int main() {\n\n      int x = \"Hello\";\n\n      return 0;\n\n    }"
+    },
+    {
+      "heading": "Common Runtime Errors",
+      "body": "Runtime errors occur when the program compiles but crashes or behaves unexpectedly.\n\n1) Dividing by zero:\n\n2) Accessing out-of-bounds array elements:\n\n3) Using freed memory:",
+      "code": "    #include <stdio.h>\n\n\n\n    int main() {\n\n      int x = 10;\n\n      int y = 0;\n\n      int result = x / y;\n\n      printf(\"%d\\\\n\", result);  // not possible\n\n      return 0;\n\n    }\n\n    #include <stdio.h>\n\n\n\n    int main() {\n\n      int numbers[3] = {1, 2, 3};\n\n      printf(\"%d\\\\n\", numbers[8]);  // element does not exist\n\n      return 0;\n\n    }\n\n    #include <stdio.h>\n\n    #include <stdlib.h>\n\n\n\n    int main() {\n\n      int* ptr = malloc(sizeof(int));\n\n      *ptr = 10;\n\n      free(ptr);\n\n      printf(\"%d\\\\n\", *ptr); // Undefined behavior - accessing memory that was freed\n\n      return 0;\n\n    }"
+    },
+    {
+      "heading": "Good Habits to Avoid Errors",
+      "body": "- Always initialize your variables\n- Use meaningful variable names\n- Keep your code clean and use indentation to stay organized\n- Keep functions short and focused\n- Check if loops or conditions are running as expected\n- Read error messages carefully - they often tell you exactly where the problem is\n\nIn the next chapter, you will learn how to debug your code - how to find and fix bugs/errors in your C program.",
+      "code": ""
     }
   ]
 }

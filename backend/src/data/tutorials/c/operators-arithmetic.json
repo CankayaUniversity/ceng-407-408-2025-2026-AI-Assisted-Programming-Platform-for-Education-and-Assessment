@@ -1,0 +1,20 @@
+{
+  "tag": "operators-arithmetic",
+  "language": "c",
+  "title": "C Arithmetic Operators",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "order": 24,
+  "sections": [
+    {
+      "heading": "Arithmetic Operators",
+      "body": "Arithmetic operators are used to perform common mathematical operations.\n\nOperator | Name | Description | Example | Try it\n+ | Addition | Adds together two values | x + y | \n- | Subtraction | Subtracts one value from another | x - y | \n* | Multiplication | Multiplies two values | x * y | \n/ | Division | Divides one value by another | x / y | \n% | Modulus | Returns the division remainder | x % y | \n++ | Increment | Increases the value of a variable by 1 | ++x | \n-- | Decrement | Decreases the value of a variable by 1 | --x |\n\nHere is an example using different arithmetic operators in one example:\n\nNote: When dividing two integers in C, the result will also be an integer. \nFor example, 10 / 3 gives 3. \nIf you want a decimal result, use float or double values, like 10.0 / 3.",
+      "code": "int x = 10;\nint y = 3;\n\nprintf(\"%d\\n\", x + y); // 13\nprintf(\"%d\\n\", x - y); // 7\nprintf(\"%d\\n\", x * y); // 30\nprintf(\"%d\\n\", x / y); // 3\nprintf(\"%d\\n\", x % y); // 1\n\nint z = 5;\n++z;\nprintf(\"%d\\n\", z); // 6\n--z;\nprintf(\"%d\\n\", z); // 5\n\nint a = 10;\nint b = 3;\nprintf(\"%d\\n\", a / b);   // Integer division, result is 3\n\ndouble c = 10.0;\ndouble d = 3.0;\nprintf(\"%f\\n\", c / d);   // Decimal division, result is 3.333..."
+    },
+    {
+      "heading": "Incrementing and Decrementing",
+      "body": "Incrementing and decrementing are very common in programming, especially when working with counters, loops, and arrays (which you will learn more about in later chapters).\n\nThe ++ operator increases a value by 1, while the -- operator decreases a value by 1:\n\nSometimes, you might both increment and decrement the same variable. Remember that if you increase a value and later decrease it, it will go up by one and then back down by one - ending up where it started:\n\nImagine you are building a program to count how many people enter and leave a room. \nYou can use ++ to increase the counter when someone enters, \nand -- to decrease it when someone leaves:",
+      "code": "int x = 5;\n\n++x; // Increment x by 1\nprintf(\"%d\\n\", x); // 6\n\nint x = 5;\n\n--x; // Decrement x by 1\nprintf(\"%d\\n\", x); // 4\n\nint x = 5;\n\n++x; // Increment x by 1 (x becomes 6)\n--x; // Decrement x by 1 (x becomes 5 again)\n\nprintf(\"%d\\n\", x); // 5\n\nint peopleInRoom = 0;\n\n// 3 people enter\npeopleInRoom++;\npeopleInRoom++;\npeopleInRoom++;\n\nprintf(\"%d\\n\", peopleInRoom); // 3\n\n// 1 person leaves\npeopleInRoom--;\n\nprintf(\"%d\\n\", peopleInRoom); // 2"
+    }
+  ]
+}

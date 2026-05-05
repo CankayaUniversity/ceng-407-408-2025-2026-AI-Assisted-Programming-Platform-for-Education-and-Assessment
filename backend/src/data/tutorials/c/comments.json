@@ -4,12 +4,22 @@
   "title": "C Comments",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 5,
+  "order": 7,
   "sections": [
     {
-      "heading": "Comments",
-      "body": "Comments in C\n\nComments are notes for humans. They help explain code and make it easier to read.\nThey can also be used to temporarily \"disable\" code while testing.\nComments can be single-line or multi-line.\nRemember: Comments are ignored by the compiler, so they do not affect your program's output.\n\nSingle-line Comments\n\nSingle-line comments start with two forward slashes (//).\nAny text between // and the end of the line is ignored by the compiler.\nThis example uses a single-line comment before a line of code:\n\nExample\n\nThis example uses a single-line comment at the end of a line of code:\n\nExample\n\nYou can also use // to disable a single line of code:\n\nExample\n\nMulti-line Comments\n\nMulti-line comments start with /* and end with */.\nAny text between /* and */ will be ignored by the compiler:\n\nExample\n\nSingle or multi-line comments?\nIt is up to you which you want to use. Normally, we use // for short comments and /* */ for longer comments.\nGood to know: Before C99 (released in 1999), you could only use multi-line comments in C.",
-      "code": "// This is a comment\nprintf(\"Hello World!\");\n\n// ─────────────────────────────────────\n\nprintf(\"Hello World!\"); // This is a comment\n\n// ─────────────────────────────────────\n\nprintf(\"This will run\");\n// printf(\"This will NOT run\");\n\n// ─────────────────────────────────────\n\n/* The code below will print the words Hello World!\nto the screen, and it is\n  amazing */\nprintf(\"Hello World!\");"
+      "heading": "Comments in C",
+      "body": "Comments are notes for humans. They help explain code and make it easier to read.\n\nThey can also be used to temporarily \"disable\" code while testing.\n\nComments can be single-line or multi-line.\n\nRemember: Comments are ignored by the compiler, so they do not affect your program's output.",
+      "code": ""
+    },
+    {
+      "heading": "Single-line Comments",
+      "body": "Single-line comments start with two forward slashes (//).\n\nAny text between // and the end of the line is ignored by the compiler.\n\nThis example uses a single-line comment before a line of code:\n\nThis example uses a single-line comment at the end of a line of code:\n\nYou can also use // to disable a single line of code:",
+      "code": "  // This is a comment\nprintf(\"Hello World!\");\n\n  printf(\"Hello World!\"); // This is a comment\n\n  printf(\"This will run\");\n// printf(\"This will NOT run\");"
+    },
+    {
+      "heading": "Multi-line Comments",
+      "body": "Multi-line comments start with /* and end with */.\n\nAny text between /* and */ will be ignored by the compiler:\n\nIt is up to you which you want to use. Normally, we use // for short comments and /* */ for longer comments.\n\nGood to know: Before C99 (released in 1999), you could only use multi-line comments in C.",
+      "code": "  /* The code below will print the words Hello World!\nto the screen, and it is\n  amazing */\nprintf(\"Hello World!\");"
     }
   ]
 }

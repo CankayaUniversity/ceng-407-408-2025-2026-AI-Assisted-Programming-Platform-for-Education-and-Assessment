@@ -9,6 +9,7 @@
 
 import { Router, type Response } from "express";
 import type { Request } from "express";
+import { Prisma }          from "@prisma/client";
 import { prisma }          from "../lib/prisma";
 import { requireAuth }     from "../middleware/requireAuth";
 import { requireRole }     from "../middleware/requireRole";
@@ -224,7 +225,7 @@ router.put("/:assignmentId/:userId", async (req: Request, res: Response) => {
   const gradeData = {
     score,
     maxScore,
-    breakdown:   breakdown != null ? (breakdown as object) : null,
+    breakdown:   breakdown != null ? (breakdown as object) : Prisma.JsonNull,
     feedback:    feedback ?? null,
     rubricId:    rubricId ?? null,
     aiSuggested,

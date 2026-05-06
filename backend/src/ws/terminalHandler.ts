@@ -204,26 +204,41 @@ export async function handleTerminalConnection(ws: WebSocket): Promise<void> {
       const stdinCompatFile = join(tmpDir, "__stdin_compat__.js");
       writeFileSync(stdinCompatFile, `
 // Auto-generated stdin compatibility shim — do not edit.
+// Patches fs.readFileSync so that reading from stdin works correctly inside
+// Docker containers where /dev/stdin is a closed character device (ENXIO) and
+// even fd-0 numeric reads may fail on non-blocking descriptors.
+// Both readFileSync('/dev/stdin') and readFileSync(0) are intercepted.
 (function() {
   var _fs = require('fs');
   var STDIN_PATHS = ['/dev/stdin', '/dev/fd/0', '/proc/self/fd/0'];
   var _orig = _fs.readFileSync.bind(_fs);
-  _fs.readFileSync = function readFileSync(p, opts) {
-    if (typeof p === 'string' && STDIN_PATHS.indexOf(p) !== -1) {
-      var enc = typeof opts === 'string' ? opts : (opts && opts.encoding) || null;
-      var chunks = [];
-      var buf = Buffer.allocUnsafe(4096);
-      var n;
-      try {
-        // eslint-disable-next-line no-empty
-        while ((n = _fs.readSync(0, buf, 0, 4096)) > 0) {
-          chunks.push(Buffer.from(buf.slice(0, n)));
-        }
-      } catch (e) {
-        if (e.code !== 'EAGAIN' && e.code !== 'EOF') throw e;
+
+  function readAllStdin(opts) {
+    var enc = typeof opts === 'string' ? opts : (opts && opts.encoding) || null;
+    var chunks = [];
+    var buf = Buffer.allocUnsafe(4096);
+    var n;
+    try {
+      while ((n = _fs.readSync(0, buf, 0, 4096)) > 0) {
+        chunks.push(Buffer.from(buf.slice(0, n)));
       }
-      var raw = Buffer.concat(chunks);
-      return enc ? raw.toString(enc) : raw;
+    } catch (e) {
+      // EAGAIN = fd non-blocking with no data; treat as EOF.
+      // EOF    = natural end of stream.
+      if (e.code !== 'EAGAIN' && e.code !== 'EOF') throw e;
+    }
+    var raw = Buffer.concat(chunks);
+    return enc ? raw.toString(enc) : raw;
+  }
+
+  _fs.readFileSync = function readFileSync(p, opts) {
+    // String paths: /dev/stdin, /dev/fd/0, /proc/self/fd/0
+    if (typeof p === 'string' && STDIN_PATHS.indexOf(p) !== -1) {
+      return readAllStdin(opts);
+    }
+    // Numeric fd 0 — common in competitive-programming code: readFileSync(0, 'utf8')
+    if (p === 0) {
+      return readAllStdin(opts);
     }
     return _orig(p, opts);
   };

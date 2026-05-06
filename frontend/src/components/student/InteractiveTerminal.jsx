@@ -104,8 +104,15 @@ export default function InteractiveTerminal({ wsUrl, onReady }) {
         onDoneRef.current?.();
         onDoneRef.current = null;
       } else if (data === "\x04") {
-        // Ctrl+D — send EOF (closes stdin pipe); lets programs that read
-        // until EOF (sys.stdin.read(), while input():, etc.) finish normally.
+        // Ctrl+D — flush any buffered (not-yet-sent) line, then close stdin.
+        // Without the flush, the last typed line would be lost if the user
+        // pressed Ctrl+D without pressing Enter first.
+        if (inputBuf.current.length > 0) {
+          const pending = inputBuf.current;
+          inputBuf.current = "";
+          term.write("\r\n");
+          ws.send(JSON.stringify({ type: "input", data: pending + "\n" }));
+        }
         term.write("^D\r\n");
         ws.send(JSON.stringify({ type: "eof" }));
       } else if (data.charCodeAt(0) >= 32) {
@@ -151,6 +158,21 @@ export default function InteractiveTerminal({ wsUrl, onReady }) {
         isRunning.current = false;
         onDoneRef.current?.();
         onDoneRef.current = null;
+      },
+
+      // Send EOF (Ctrl+D) — closes stdin so programs that read until EOF can finish.
+      // Flushes any buffered (not-yet-Enter'd) input first.
+      sendEof: () => {
+        const ws = wsRef.current;
+        if (!ws || ws.readyState !== WebSocket.OPEN) return;
+        if (inputBuf.current.length > 0) {
+          const pending = inputBuf.current;
+          inputBuf.current = "";
+          termRef.current?.write("\r\n");
+          ws.send(JSON.stringify({ type: "input", data: pending + "\n" }));
+        }
+        termRef.current?.write("^D\r\n");
+        ws.send(JSON.stringify({ type: "eof" }));
       },
     });
 

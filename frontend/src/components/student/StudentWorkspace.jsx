@@ -465,18 +465,70 @@ export default function StudentWorkspace({
           <Box
             sx={{
               mt: 2,
-              height: 200,
               border: 1,
               borderColor: "divider",
-              borderRadius: 0,
+              borderRadius: 2,
               overflow: "hidden",
               bgcolor: "#0f172a",
             }}
           >
-            <InteractiveTerminal
-              wsUrl={wsUrl("/ws/terminal")}
-              onReady={(writer) => { termWriterRef.current = writer; }}
-            />
+            {/* Terminal control bar — always visible so users know the controls */}
+            <Stack
+              direction="row"
+              alignItems="center"
+              spacing={1}
+              sx={{
+                px: 1.5, py: 0.75,
+                bgcolor: "rgba(255,255,255,0.04)",
+                borderBottom: "1px solid rgba(255,255,255,0.08)",
+              }}
+            >
+              <Typography variant="caption" sx={{ color: "#64748b", flexGrow: 1, fontSize: 11 }}>
+                {running ? "● Running — type input + Enter" : "Terminal"}
+              </Typography>
+              <Tooltip title="Send EOF (Ctrl+D) — signals end of input for programs that read until EOF">
+                <span>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    disabled={!running}
+                    onClick={() => termWriterRef.current?.sendEof?.()}
+                    sx={{
+                      fontSize: 11, py: 0.25, px: 1, minWidth: 0,
+                      color: "warning.main", borderColor: "warning.dark",
+                      "&:hover": { borderColor: "warning.main" },
+                      "&.Mui-disabled": { opacity: 0.3 },
+                    }}
+                  >
+                    EOF (Ctrl+D)
+                  </Button>
+                </span>
+              </Tooltip>
+              <Tooltip title="Stop process (Ctrl+C)">
+                <span>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    disabled={!running}
+                    onClick={() => termWriterRef.current?.kill?.()}
+                    sx={{
+                      fontSize: 11, py: 0.25, px: 1, minWidth: 0,
+                      color: "error.main", borderColor: "error.dark",
+                      "&:hover": { borderColor: "error.main" },
+                      "&.Mui-disabled": { opacity: 0.3 },
+                    }}
+                  >
+                    Stop (Ctrl+C)
+                  </Button>
+                </span>
+              </Tooltip>
+            </Stack>
+            <Box sx={{ height: 200 }}>
+              <InteractiveTerminal
+                wsUrl={wsUrl("/ws/terminal")}
+                onReady={(writer) => { termWriterRef.current = writer; }}
+              />
+            </Box>
           </Box>
 
           <Box sx={{ mt: 2 }}>

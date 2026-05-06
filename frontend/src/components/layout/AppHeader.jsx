@@ -4,6 +4,7 @@ import { useTheme } from "@mui/material/styles";
 import DarkModeIcon  from "@mui/icons-material/DarkMode";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import { useThemeMode } from "../../context/ThemeContext";
+import AdminApprovalBell from "./AdminApprovalBell";
 
 function getInitials(value = "") {
   return value
@@ -110,6 +111,8 @@ export default function AppHeader({
   const RightControls = (
     <Stack direction="row" spacing={1} alignItems="center">
       {ThemeToggle}
+      {/* Admin-only notification bell — self-hides for non-admin users */}
+      <AdminApprovalBell />
       {userLabel ? (
         <Avatar sx={{ width: 36, height: 36, bgcolor: "#5B4DFF", color: "common.white", fontWeight: 700, fontSize: 14 }}>
           {getInitials(userLabel)}

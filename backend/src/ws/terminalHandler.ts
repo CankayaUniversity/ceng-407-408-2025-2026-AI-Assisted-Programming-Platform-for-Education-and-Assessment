@@ -193,6 +193,43 @@ export async function handleTerminalConnection(ws: WebSocket): Promise<void> {
 
       writeFileSync(codeFile, code, "utf-8");
 
+      // ── Node.js /dev/stdin compatibility shim ────────────────────────
+      // In Docker containers the backend runs detached (no host stdin), so
+      // /dev/stdin is a closed character device rather than a symlink to
+      // /proc/self/fd/0.  Student code that calls
+      //   fs.readFileSync('/dev/stdin', 'utf8')
+      // therefore gets ENXIO.  We inject a tiny --require preload that
+      // patches fs.readFileSync to fall back to direct fd-0 reads, which
+      // DO go through the pipe we set up via child.stdin.write().
+      const stdinCompatFile = join(tmpDir, "__stdin_compat__.js");
+      writeFileSync(stdinCompatFile, `
+// Auto-generated stdin compatibility shim — do not edit.
+(function() {
+  var _fs = require('fs');
+  var STDIN_PATHS = ['/dev/stdin', '/dev/fd/0', '/proc/self/fd/0'];
+  var _orig = _fs.readFileSync.bind(_fs);
+  _fs.readFileSync = function readFileSync(p, opts) {
+    if (typeof p === 'string' && STDIN_PATHS.indexOf(p) !== -1) {
+      var enc = typeof opts === 'string' ? opts : (opts && opts.encoding) || null;
+      var chunks = [];
+      var buf = Buffer.allocUnsafe(4096);
+      var n;
+      try {
+        // eslint-disable-next-line no-empty
+        while ((n = _fs.readSync(0, buf, 0, 4096)) > 0) {
+          chunks.push(Buffer.from(buf.slice(0, n)));
+        }
+      } catch (e) {
+        if (e.code !== 'EAGAIN' && e.code !== 'EOF') throw e;
+      }
+      var raw = Buffer.concat(chunks);
+      return enc ? raw.toString(enc) : raw;
+    }
+    return _orig(p, opts);
+  };
+})();
+`.trim(), "utf-8");
+
       // ── Compile if needed ─────────────────────────────────────────────
       if (language === "c" || language === "cpp" || language === "c++") {
         send(ws, { type: "output", data: "\x1b[33mCompiling…\x1b[0m\r\n" });
@@ -249,7 +286,9 @@ export async function handleTerminalConnection(ws: WebSocket): Promise<void> {
         case "python":
           command = "python3"; args = ["-u", codeFile]; break;
         case "javascript": case "js": case "node":
-          command = "node";    args = [codeFile];        break;
+          // --require loads the stdin compat shim before the student's code runs,
+          // fixing readFileSync('/dev/stdin') in Docker (ENXIO on closed device).
+          command = "node"; args = ["--require", stdinCompatFile, codeFile]; break;
         case "c": case "cpp": case "c++":
           // stdbuf forces unbuffered I/O so printf without \n still appears immediately
           command = "stdbuf"; args = ["-i0", "-o0", "-e0", binFile]; break;
@@ -293,7 +332,8 @@ export async function handleTerminalConnection(ws: WebSocket): Promise<void> {
             data:
               "\x1b[33m[Hint] This platform runs JavaScript with Node.js, not in a browser.\r\n" +
               "       DOM APIs (document, window, alert, localStorage, etc.) are not available.\r\n" +
-              "       Use console.log() for output and process.stdin / readline for input.\x1b[0m\r\n",
+              "       Use console.log() for output and process.stdin / readline for input.\r\n" +
+              "       To read all stdin at once: const rl = require('readline').createInterface({input:process.stdin});\x1b[0m\r\n",
           });
         }
       });

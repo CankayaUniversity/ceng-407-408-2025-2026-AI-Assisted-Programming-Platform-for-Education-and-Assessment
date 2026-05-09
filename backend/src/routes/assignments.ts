@@ -114,8 +114,24 @@ router.post("/", async (req: Request, res: Response) => {
     include: { problem: { select: { id: true, title: true, language: true } } },
   });
 
-  // Fire-and-forget tutorial generation for each tag when published
+  // ── Auto-enroll all reachable students when published ───────────────────
   if (isPublished) {
+    const { isAdmin } = req.auth!;
+    // Admins reach every student; teachers reach only their assigned students.
+    const studentWhere = isAdmin
+      ? { role: { is: { name: "student" } } }
+      : { role: { is: { name: "student" } }, assignedTeacher: { teacherId: userId } };
+
+    const students = await prisma.user.findMany({ where: studentWhere, select: { id: true } });
+
+    if (students.length > 0) {
+      await prisma.assignmentEnrollment.createMany({
+        data:           students.map((s) => ({ assignmentId: assignment.id, userId: s.id })),
+        skipDuplicates: true,
+      });
+    }
+
+    // Fire-and-forget tutorial generation for each tag
     const prob = await prisma.problem.findUnique({
       where:  { id: problemId },
       select: { tags: true, language: true, difficulty: true, description: true },
@@ -147,11 +163,16 @@ router.get("/:id", async (req: Request, res: Response) => {
 
 // ── PUT /api/assignments/:id ─────────────────────────────────────────────────
 router.put("/:id", async (req: Request, res: Response) => {
-  const { role } = req.auth!;
+  const { userId, role } = req.auth!;
   if (role !== "teacher") { res.status(403).json({ error: "Teachers only" }); return; }
 
   const id = parseId(req.params.id);
   if (!id) { res.status(400).json({ error: "Invalid ID" }); return; }
+
+  // Ownership check — a teacher may only edit their own assignments
+  const existing = await prisma.assignment.findUnique({ where: { id }, select: { createdById: true } });
+  if (!existing) { res.status(404).json({ error: "Assignment not found" }); return; }
+  if (existing.createdById !== userId) { res.status(403).json({ error: "Not your assignment" }); return; }
 
   const { title, description, dueDate, startDate, examType, isPublished, allowedLanguages, lateDeadline, lateDeduction, mode, aiEnabled } = req.body as {
     title?:             string;
@@ -186,8 +207,23 @@ router.put("/:id", async (req: Request, res: Response) => {
     },
   });
 
-  // Fire-and-forget tutorial generation when assignment is being published
+  // ── Auto-enroll when publishing (or re-publishing) ───────────────────────
   if (isPublished === true) {
+    const { isAdmin } = req.auth!;
+    const studentWhere = isAdmin
+      ? { role: { is: { name: "student" } } }
+      : { role: { is: { name: "student" } }, assignedTeacher: { teacherId: userId } };
+
+    const students = await prisma.user.findMany({ where: studentWhere, select: { id: true } });
+
+    if (students.length > 0) {
+      await prisma.assignmentEnrollment.createMany({
+        data:           students.map((s) => ({ assignmentId: id!, userId: s.id })),
+        skipDuplicates: true,   // idempotent — re-publishing never double-enrols
+      });
+    }
+
+    // Fire-and-forget tutorial generation
     const prob = await prisma.problem.findUnique({
       where:  { id: assignment.problemId },
       select: { tags: true, language: true, difficulty: true, description: true },
@@ -202,11 +238,16 @@ router.put("/:id", async (req: Request, res: Response) => {
 
 // ── DELETE /api/assignments/:id ──────────────────────────────────────────────
 router.delete("/:id", async (req: Request, res: Response) => {
-  const { role } = req.auth!;
+  const { userId, role } = req.auth!;
   if (role !== "teacher") { res.status(403).json({ error: "Teachers only" }); return; }
 
   const id = parseId(req.params.id);
   if (!id) { res.status(400).json({ error: "Invalid ID" }); return; }
+
+  // Ownership check
+  const existing = await prisma.assignment.findUnique({ where: { id }, select: { createdById: true } });
+  if (!existing) { res.status(404).json({ error: "Assignment not found" }); return; }
+  if (existing.createdById !== userId) { res.status(403).json({ error: "Not your assignment" }); return; }
 
   await prisma.assignment.delete({ where: { id } });
   res.json({ success: true });

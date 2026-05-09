@@ -244,4 +244,54 @@ router.delete("/teacher-students/:studentId", requireAdmin, async (req, res) => 
   res.json({ success: true });
 });
 
+/**
+ * POST /api/admin/teacher-students/bulk
+ * Assign multiple students to a teacher in one request.
+ * Body: { teacherId: number, studentIds: number[] }
+ * Students already assigned to another teacher are re-assigned (upsert).
+ */
+router.post("/teacher-students/bulk", requireAdmin, async (req, res) => {
+  const { teacherId, studentIds } = req.body as { teacherId?: unknown; studentIds?: unknown };
+
+  if (!teacherId || !Array.isArray(studentIds) || studentIds.length === 0) {
+    res.status(400).json({ error: "teacherId and a non-empty studentIds[] are required" });
+    return;
+  }
+
+  const tid = Number(teacherId);
+  if (!Number.isInteger(tid) || tid <= 0) {
+    res.status(400).json({ error: "teacherId must be a positive integer" });
+    return;
+  }
+
+  const teacher = await prisma.user.findFirst({
+    where: { id: tid, role: { name: "teacher" } },
+  });
+  if (!teacher) {
+    res.status(404).json({ error: "Teacher not found" });
+    return;
+  }
+
+  const ids = (studentIds as unknown[])
+    .map(Number)
+    .filter((n) => Number.isInteger(n) && n > 0);
+
+  if (ids.length === 0) {
+    res.status(400).json({ error: "No valid student IDs provided" });
+    return;
+  }
+
+  await prisma.$transaction(
+    ids.map((sid) =>
+      prisma.teacherStudent.upsert({
+        where:  { studentId: sid },
+        update: { teacherId: tid },
+        create: { teacherId: tid, studentId: sid },
+      }),
+    ),
+  );
+
+  res.json({ success: true, assigned: ids.length });
+});
+
 export { router as adminRouter };

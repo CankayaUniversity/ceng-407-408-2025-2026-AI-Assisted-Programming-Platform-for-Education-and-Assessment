@@ -59,6 +59,25 @@ const EMPTY = {
   lateDeduction:    0,
 };
 
+// ── Date helpers ─────────────────────────────────────────────────────────────
+// datetime-local inputs expect "YYYY-MM-DDTHH:MM" in the user's LOCAL timezone.
+// JS's toISOString() always returns UTC — so we must format manually.
+
+function toLocalISO(isoStr) {
+  if (!isoStr) return "";
+  const d = new Date(isoStr);
+  if (isNaN(d.getTime())) return "";
+  const pad = (n) => String(n).padStart(2, "0");
+  return (
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+    `T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  );
+}
+
+function localNow() {
+  return toLocalISO(new Date());
+}
+
 export default function AssignmentModal({
   open,
   onClose,
@@ -97,17 +116,13 @@ export default function AssignmentModal({
         problemId:        assignment.problemId        ?? "",
         mode:             assignment.mode             ?? "homework",
         examType:         assignment.examType         ?? "unscheduled",
-        startDate:        assignment.startDate
-          ? new Date(assignment.startDate).toISOString().slice(0, 16)
-          : "",
-        dueDate:          assignment.dueDate
-          ? new Date(assignment.dueDate).toISOString().slice(0, 16)
-          : "",
+        // Use toLocalISO so the datetime-local input shows the teacher's local time,
+        // not the UTC representation of the stored ISO string.
+        startDate:        toLocalISO(assignment.startDate),
+        dueDate:          toLocalISO(assignment.dueDate),
         isPublished:      assignment.isPublished      ?? false,
         allowedLanguages: assignment.allowedLanguages ?? [],
-        lateDeadline:     assignment.lateDeadline
-          ? new Date(assignment.lateDeadline).toISOString().slice(0, 16)
-          : "",
+        lateDeadline:     toLocalISO(assignment.lateDeadline),
         lateDeduction:    assignment.lateDeduction    ?? 0,
       });
     } else {
@@ -137,6 +152,24 @@ export default function AssignmentModal({
     if (form.mode === "exam" && form.examType === "scheduled" && !form.startDate) {
       setError("A start date is required for scheduled exams."); return;
     }
+
+    // ── Past-date guard (new assignments only) ────────────────────────────
+    // When editing an existing assignment the teacher may not change every date,
+    // so we only reject a date that is BOTH set AND in the past AND is a new
+    // assignment (isEdit === false). Editing keeps whatever dates exist.
+    if (!isEdit) {
+      const nowMs = Date.now();
+      if (form.startDate && new Date(form.startDate).getTime() <= nowMs) {
+        setError("Start date/time must be in the future."); return;
+      }
+      if (form.dueDate && new Date(form.dueDate).getTime() <= nowMs) {
+        setError("Due date/time must be in the future."); return;
+      }
+      if (form.lateDeadline && new Date(form.lateDeadline).getTime() <= nowMs) {
+        setError("Late submission deadline must be in the future."); return;
+      }
+    }
+
     if (form.mode === "exam" && form.examType === "scheduled" && form.dueDate && form.startDate >= form.dueDate) {
       setError("Exam end date must be after the start date."); return;
     }
@@ -393,7 +426,7 @@ export default function AssignmentModal({
                     value={form.startDate}
                     onChange={(e) => set("startDate", e.target.value)}
                     fullWidth InputLabelProps={{ shrink: true }}
-                    inputProps={{ min: new Date().toISOString().slice(0, 16) }}
+                    inputProps={{ min: localNow() }}
                     helperText="Students cannot see exam content before this time."
                     sx={{ mt: 1.5 }}
                     error={!form.startDate}
@@ -412,7 +445,7 @@ export default function AssignmentModal({
               inputProps={{
                 min: form.mode === "exam" && form.examType === "scheduled" && form.startDate
                   ? form.startDate
-                  : new Date().toISOString().slice(0, 16),
+                  : localNow(),
               }}
               helperText={form.mode === "exam" && form.examType === "scheduled" ? "Students cannot submit after this time." : undefined}
             />
@@ -467,7 +500,7 @@ export default function AssignmentModal({
                   value={form.lateDeadline}
                   onChange={(e) => set("lateDeadline", e.target.value)}
                   fullWidth InputLabelProps={{ shrink: true }}
-                  inputProps={{ min: form.dueDate || new Date().toISOString().slice(0, 16) }}
+                  inputProps={{ min: form.dueDate || localNow() }}
                   helperText="Students may still submit after the due date until this deadline, with a point deduction."
                 />
                 <TextField

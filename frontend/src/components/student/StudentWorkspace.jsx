@@ -171,7 +171,7 @@ export default function StudentWorkspace({
       showPageTitle={false}
     >
       {/* ── Exam countdown banner ─────────────────────────────────────────── */}
-      {examMode && examTimeLeft !== null && (
+      {examMode && (
         <Box
           sx={{
             display: "flex",
@@ -181,14 +181,25 @@ export default function StudentWorkspace({
             py: 0.75,
             mb: 1.5,
             borderRadius: 2,
-            bgcolor: examTimeLeft < 300000 ? "error.main" : examTimeLeft < 1800000 ? "warning.main" : "primary.main",
+            bgcolor:
+              examTimeLeft === null
+                ? "warning.main"
+                : examTimeLeft < 300000
+                ? "error.main"
+                : examTimeLeft < 1800000
+                ? "warning.main"
+                : "primary.main",
             color: "#fff",
             fontWeight: 700,
             fontSize: 15,
           }}
         >
           <AccessTimeIcon fontSize="small" />
-          <span>Exam — Time Remaining: {fmtExamTime(examTimeLeft)}</span>
+          {examTimeLeft !== null ? (
+            <span>Exam — Time Remaining: {fmtExamTime(examTimeLeft)}</span>
+          ) : (
+            <span>Exam Mode — No time limit set</span>
+          )}
         </Box>
       )}
 

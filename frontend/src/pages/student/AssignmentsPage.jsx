@@ -1,33 +1,36 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
+  Button,
   Chip,
   CircularProgress,
   Dialog,
   DialogContent,
   DialogTitle,
   LinearProgress,
+  Menu,
+  MenuItem,
   Stack,
-  Tab,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Tabs,
   Tooltip,
   Typography,
 } from "@mui/material";
-import AccessTimeIcon  from "@mui/icons-material/AccessTime";
-import LockIcon        from "@mui/icons-material/Lock";
-import EventIcon       from "@mui/icons-material/Event";
-import WarningIcon     from "@mui/icons-material/Warning";
-import { useNavigate } from "react-router-dom";
+import AccessTimeIcon      from "@mui/icons-material/AccessTime";
+import LockIcon            from "@mui/icons-material/Lock";
+import EventIcon           from "@mui/icons-material/Event";
+import WarningIcon         from "@mui/icons-material/Warning";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import FilterListIcon      from "@mui/icons-material/FilterList";
+import { useNavigate }     from "react-router-dom";
 
-import AppLayout    from "../../components/layout/AppLayout";
-import SectionCard  from "../../components/common/SectionCard";
+import AppLayout   from "../../components/layout/AppLayout";
+import SectionCard from "../../components/common/SectionCard";
 import { API_BASE } from "../../apiBase";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -52,7 +55,7 @@ function formatTimeLeft(ms) {
 
 function formatCountdown(dueDate, lateDeadline) {
   const now  = Date.now();
-  const due  = dueDate   ? new Date(dueDate).getTime()   : null;
+  const due  = dueDate      ? new Date(dueDate).getTime()      : null;
   const late = lateDeadline ? new Date(lateDeadline).getTime() : null;
 
   if (!due) return null;
@@ -60,15 +63,15 @@ function formatCountdown(dueDate, lateDeadline) {
   const msRemaining = due - now;
 
   if (msRemaining > 0) {
-    const totalMins  = Math.floor(msRemaining / 60000);
-    const days       = Math.floor(totalMins / 1440);
-    const hours      = Math.floor((totalMins % 1440) / 60);
-    const mins       = totalMins % 60;
+    const totalMins = Math.floor(msRemaining / 60000);
+    const days      = Math.floor(totalMins / 1440);
+    const hours     = Math.floor((totalMins % 1440) / 60);
+    const mins      = totalMins % 60;
 
-    if (days > 1)  return { label: `${days}d ${hours}h left`,  status: "ok",  urgent: false };
-    if (days === 1) return { label: `1d ${hours}h left`,        status: "ok",  urgent: false };
-    if (hours > 1) return { label: `${hours}h ${mins}m left`,  status: "warn", urgent: true };
-    if (totalMins > 0) return { label: `${totalMins}m left`,   status: "warn", urgent: true };
+    if (days > 1)      return { label: `${days}d ${hours}h left`,  status: "ok",   urgent: false };
+    if (days === 1)    return { label: `1d ${hours}h left`,         status: "ok",   urgent: false };
+    if (hours > 1)     return { label: `${hours}h ${mins}m left`,  status: "warn", urgent: true  };
+    if (totalMins > 0) return { label: `${totalMins}m left`,       status: "warn", urgent: true  };
     return { label: "Due now", status: "warn", urgent: true };
   }
 
@@ -90,7 +93,7 @@ function DeadlineCell({ assignment }) {
     return <Typography variant="body2" color="text.secondary">No deadline</Typography>;
   }
 
-  const dueStr  = new Date(assignment.dueDate).toLocaleDateString(undefined, {
+  const dueStr = new Date(assignment.dueDate).toLocaleDateString(undefined, {
     month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
   });
 
@@ -126,7 +129,7 @@ function examState(a) {
   const now = Date.now();
   if (a.examType === "scheduled") {
     if (a.startDate && now < new Date(a.startDate).getTime()) return "not_started";
-    if (a.dueDate  && now > new Date(a.dueDate).getTime())   return "ended";
+    if (a.dueDate   && now > new Date(a.dueDate).getTime())   return "ended";
     return "active";
   }
   // unscheduled exam
@@ -166,7 +169,6 @@ function ExamRow({ a, idx, solvedSet }) {
   function handleClick() {
     if (!published || state === "ended") return;
     if (state === "not_started") { setDialogOpen(true); return; }
-    // active — navigate to problem
     navigate(`/problem/${problem.id}`, {
       state: {
         assignmentId:     a.id,
@@ -213,7 +215,6 @@ function ExamRow({ a, idx, solvedSet }) {
               <Chip label="Scheduled" size="small" color="error" variant="outlined" sx={{ fontSize: 10, height: 18 }} />
             )}
           </Stack>
-          {/* Hide problem content until exam is active */}
           {state === "active" && problem.title && a.title !== problem.title && (
             <Typography variant="caption" color="text.secondary">{problem.title}</Typography>
           )}
@@ -239,7 +240,6 @@ function ExamRow({ a, idx, solvedSet }) {
         </TableCell>
 
         <TableCell>
-          {/* Show time info based on state */}
           {state === "not_started" && startLabel && (
             <Stack spacing={0.25}>
               <Stack direction="row" alignItems="center" spacing={0.5}>
@@ -258,6 +258,9 @@ function ExamRow({ a, idx, solvedSet }) {
                     {timeLeftMs !== null ? `${formatTimeLeft(timeLeftMs)} remaining` : `Ends: ${endLabel}`}
                   </Typography>
                 </Stack>
+              )}
+              {!endLabel && (
+                <Typography variant="caption" color="text.secondary">No time limit</Typography>
               )}
             </Stack>
           )}
@@ -294,15 +297,15 @@ function ExamRow({ a, idx, solvedSet }) {
   );
 }
 
-// ── Assignment / Practice row (existing logic, kept as-is) ────────────────────
+// ── Assignment / Practice row ─────────────────────────────────────────────────
 
 function AssignmentRow({ a, idx, solvedSet }) {
   const navigate = useNavigate();
-  const problem    = a.problem ?? {};
-  const solved     = solvedSet.has(problem.id);
-  const langs      = a.allowedLanguages ?? [];
-  const published  = a.isPublished ?? false;
-  const isLate     = (() => {
+  const problem   = a.problem ?? {};
+  const solved    = solvedSet.has(problem.id);
+  const langs     = a.allowedLanguages ?? [];
+  const published = a.isPublished ?? false;
+  const isLate    = (() => {
     if (!a.dueDate) return false;
     const now = Date.now();
     return now > new Date(a.dueDate).getTime() &&
@@ -387,7 +390,9 @@ export default function AssignmentsPage({ currentUser, token, handleLogout, navI
   const [assignments, setAssignments] = useState([]);
   const [submissions, setSubmissions] = useState([]);
   const [loading,     setLoading]     = useState(true);
-  const [tab,         setTab]         = useState(0);  // 0=homework, 1=practice, 2=exams
+  const [tab,         setTab]         = useState(0);        // 0=homework, 1=practice, 2=exams
+  const [filterLang,  setFilterLang]  = useState("all");    // language filter
+  const [modeAnchor,  setModeAnchor]  = useState(null);     // mode-selector menu anchor
 
   useEffect(() => {
     if (!token) return;
@@ -395,12 +400,13 @@ export default function AssignmentsPage({ currentUser, token, handleLogout, navI
     const headers = { Authorization: `Bearer ${token}`, Accept: "application/json" };
 
     Promise.all([
-      fetch(`${API_BASE}/api/assignments`,      { headers }).then((r) => r.json()),
-      fetch(`${API_BASE}/api/student/history`,  { headers }).then((r) => r.json()),
+      fetch(`${API_BASE}/api/assignments`,     { headers }).then((r) => r.json()),
+      fetch(`${API_BASE}/api/student/history`, { headers }).then((r) => r.json()),
     ])
       .then(([assignRes, subRes]) => {
         setAssignments(assignRes?.data ?? []);
         setSubmissions(subRes?.data    ?? []);
+        setFilterLang("all");   // reset stale language filter when data reloads
       })
       .catch((err) => console.error("AssignmentsPage fetch failed:", err))
       .finally(() => setLoading(false));
@@ -412,21 +418,45 @@ export default function AssignmentsPage({ currentUser, token, handleLogout, navI
       .map((s) => s.problemId),
   );
 
-  const homework  = assignments.filter((a) => a.mode === "homework");
-  const practice  = assignments.filter((a) => a.mode === "practice");
-  const exams     = assignments.filter((a) => a.mode === "exam");
+  const homework = assignments.filter((a) => a.mode === "homework");
+  const practice = assignments.filter((a) => a.mode === "practice");
+  const exams    = assignments.filter((a) => a.mode === "exam");
 
   const tabData = [
-    { label: `Homework (${homework.length})`,  items: homework,  isExam: false },
-    { label: `Practice (${practice.length})`,  items: practice,  isExam: false },
-    { label: `Exams (${exams.length})`,        items: exams,     isExam: true  },
+    { label: `Homework (${homework.length})`,  shortLabel: "Homework",  items: homework,  isExam: false },
+    { label: `Practice (${practice.length})`,  shortLabel: "Practice",  items: practice,  isExam: false },
+    { label: `Exams (${exams.length})`,        shortLabel: "Exams",     items: exams,     isExam: true  },
   ];
 
   const current = tabData[tab];
-  const total   = current.items.length;
-  const solved  = current.isExam
-    ? 0
-    : current.items.filter((a) => solvedSet.has(a.problem?.id)).length;
+
+  // ── Available languages for current tab ──────────────────────────────────
+  const availableLangs = useMemo(() => {
+    const langs = new Set();
+    current.items.forEach((a) => {
+      (a.allowedLanguages ?? []).forEach((l) => langs.add(l));
+    });
+    return [...langs].sort();
+  }, [current.items]);
+
+  // ── Language filter: empty allowedLanguages = "any" → shown in all filters ─
+  const filteredItems = useMemo(() => {
+    if (filterLang === "all") return current.items;
+    return current.items.filter((a) => {
+      const langs = a.allowedLanguages ?? [];
+      return langs.length === 0 || langs.includes(filterLang);
+    });
+  }, [current.items, filterLang]);
+
+  // Reset language filter when mode tab changes
+  function switchTab(idx) {
+    setTab(idx);
+    setFilterLang("all");
+    setModeAnchor(null);
+  }
+
+  const total   = filteredItems.length;
+  const solved  = current.isExam ? 0 : filteredItems.filter((a) => solvedSet.has(a.problem?.id)).length;
   const progress = total > 0 && !current.isExam ? (solved / total) * 100 : 0;
 
   return (
@@ -439,20 +469,79 @@ export default function AssignmentsPage({ currentUser, token, handleLogout, navI
       maxWidth="lg"
       showPageTitle={false}
     >
-      <SectionCard title="Assignments">
-        <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2, borderBottom: 1, borderColor: "divider" }}>
-          {tabData.map((t, i) => (
-            <Tab key={i} label={t.label} />
-          ))}
-        </Tabs>
+      <SectionCard>
+        {/* ── Interactive header ──────────────────────────────────────────── */}
+        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2, flexWrap: "wrap", gap: 1 }}>
+          {/* Clickable mode selector */}
+          <Stack direction="row" alignItems="center" spacing={0.5}>
+            <Box sx={{ width: 3, height: 20, borderRadius: 2, bgcolor: "primary.main", flexShrink: 0 }} />
+            <Button
+              endIcon={<KeyboardArrowDownIcon />}
+              onClick={(e) => setModeAnchor(e.currentTarget)}
+              sx={{ fontWeight: 700, fontSize: "1.1rem", textTransform: "none", color: "text.primary", pl: 0.5 }}
+            >
+              {current.shortLabel}
+            </Button>
+          </Stack>
 
+          {/* Language filter chips (only when there are multiple languages) */}
+          {availableLangs.length > 0 && (
+            <Stack direction="row" alignItems="center" spacing={0.75} flexWrap="wrap" useFlexGap>
+              <FilterListIcon fontSize="small" sx={{ color: "text.secondary" }} />
+              <Chip
+                label="All"
+                size="small"
+                variant={filterLang === "all" ? "filled" : "outlined"}
+                color={filterLang === "all" ? "primary" : "default"}
+                onClick={() => setFilterLang("all")}
+                sx={{ cursor: "pointer" }}
+              />
+              {availableLangs.map((lang) => (
+                <Chip
+                  key={lang}
+                  label={lang}
+                  size="small"
+                  variant={filterLang === lang ? "filled" : "outlined"}
+                  color={filterLang === lang ? "primary" : "default"}
+                  onClick={() => setFilterLang(lang)}
+                  sx={{ cursor: "pointer", textTransform: "capitalize" }}
+                />
+              ))}
+            </Stack>
+          )}
+        </Box>
+
+        {/* Mode-selector dropdown menu */}
+        <Menu
+          anchorEl={modeAnchor}
+          open={Boolean(modeAnchor)}
+          onClose={() => setModeAnchor(null)}
+          anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+        >
+          {tabData.map((t, i) => (
+            <MenuItem
+              key={i}
+              selected={tab === i}
+              onClick={() => switchTab(i)}
+              sx={{ fontWeight: tab === i ? 700 : 400 }}
+            >
+              {t.label}
+            </MenuItem>
+          ))}
+        </Menu>
+
+        {/* ── Content ────────────────────────────────────────────────────── */}
         {loading ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
             <CircularProgress size={32} />
           </Box>
         ) : current.items.length === 0 ? (
           <Typography color="text.secondary" sx={{ py: 3, textAlign: "center" }}>
-            No {current.label.toLowerCase()} yet.
+            No {current.shortLabel.toLowerCase()} yet.
+          </Typography>
+        ) : filteredItems.length === 0 ? (
+          <Typography color="text.secondary" sx={{ py: 3, textAlign: "center" }}>
+            No {current.shortLabel.toLowerCase()} for language "{filterLang}".
           </Typography>
         ) : (
           <>
@@ -461,6 +550,7 @@ export default function AssignmentsPage({ currentUser, token, handleLogout, navI
                 <LinearProgress variant="determinate" value={progress} sx={{ height: 8, borderRadius: 4 }} />
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                   {solved} / {total} completed
+                  {filterLang !== "all" && ` · filtered by ${filterLang}`}
                 </Typography>
               </Box>
             )}
@@ -479,7 +569,7 @@ export default function AssignmentsPage({ currentUser, token, handleLogout, navI
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {current.items.map((a, idx) =>
+                  {filteredItems.map((a, idx) =>
                     current.isExam ? (
                       <ExamRow key={a.id} a={a} idx={idx} solvedSet={solvedSet} />
                     ) : (

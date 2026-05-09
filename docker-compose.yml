@@ -26,6 +26,15 @@ services:
       - "5000:5000"
     env_file:
       - .env
+    environment:
+      # Docker-outside-of-Docker paths for the interactive terminal sandbox
+      - RUNNER_TMP_HOST=/tmp/ai-runner      # path on the Docker HOST daemon
+      - RUNNER_TMP_CONTAINER=/runner-tmp    # same tree mounted inside backend
+    volumes:
+      # Docker socket — lets the backend call `docker run` on the host daemon
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Shared temp dir: backend writes code files here; Docker daemon mounts them
+      - /tmp/ai-runner:/runner-tmp
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
@@ -40,6 +49,24 @@ services:
       ollama:
         condition: service_healthy
     restart: unless-stopped
+
+  # Pre-pull all language runner images so students don't wait on first run.
+  # Runs once at stack startup, then exits.
+  runner-init:
+    image: docker:cli
+    container_name: runner-init
+    restart: "no"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    entrypoint: >
+      sh -c "
+        docker pull python:3.12-slim &&
+        docker pull node:20-slim &&
+        docker pull gcc:13 &&
+        docker pull eclipse-temurin:21-jdk-alpine &&
+        docker pull mcr.microsoft.com/dotnet/sdk:8.0-alpine &&
+        echo 'All runner images ready.'
+      "
 
   postgres:
     image: postgres:16
@@ -124,3 +151,5 @@ volumes:
   postgres_data:
   openwebui_data:
   ollama_data:
+  # NuGet package cache shared across C# runner containers so restore is fast
+  ai-runner-nuget:

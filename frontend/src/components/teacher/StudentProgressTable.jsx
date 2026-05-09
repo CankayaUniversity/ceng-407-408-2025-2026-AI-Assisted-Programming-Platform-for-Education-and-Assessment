@@ -7,7 +7,6 @@ import {
   InputAdornment,
   LinearProgress,
   MenuItem,
-  Select,
   Stack,
   Table,
   TableBody,
@@ -16,7 +15,6 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Tooltip,
   Typography,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
@@ -50,9 +48,6 @@ export default function StudentProgressTable({
   onStudentClick,
   studentGroupMap = {},
   showTeacherColumn = false,
-  teachers = [],
-  assigningStudentId = null,
-  onAssignTeacher,
 }) {
   const [search,      setSearch]      = useState("");
   const [filterYear,  setFilterYear]  = useState(0);   // 0 = all
@@ -190,40 +185,20 @@ export default function StudentProgressTable({
                     )}
                   </TableCell>
 
-                  {/* Teacher assignment column (admin only) */}
+                  {/* Teacher column (admin only) — read-only chip */}
                   {showTeacherColumn && (
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      {assigningStudentId === student.id ? (
-                        <CircularProgress size={18} />
+                    <TableCell>
+                      {student.assignedTeacher ? (
+                        <Chip
+                          icon={<PersonIcon style={{ fontSize: 13 }} />}
+                          label={student.assignedTeacher.name}
+                          size="small"
+                          variant="outlined"
+                          color="primary"
+                          sx={{ fontWeight: 600, fontSize: 12 }}
+                        />
                       ) : (
-                        <Tooltip title="Assign to a teacher">
-                          <Select
-                            size="small"
-                            displayEmpty
-                            value={student.assignedTeacher?.id ?? ""}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              onAssignTeacher?.(student.id, v === "" ? null : Number(v));
-                            }}
-                            sx={{ minWidth: 150, fontSize: 13 }}
-                            renderValue={(v) => {
-                              const numV = Number(v);
-                              return numV
-                                ? (teachers.find((t) => t.id === numV)?.name ?? "Unknown")
-                                : <em style={{ color: "#94a3b8" }}>Unassigned</em>;
-                            }}
-                          >
-                            <MenuItem value=""><em>— Unassigned —</em></MenuItem>
-                            {teachers.map((t) => (
-                              <MenuItem key={t.id} value={t.id}>
-                                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                                  <PersonIcon sx={{ fontSize: 16, color: "text.secondary" }} />
-                                  {t.name}
-                                </Box>
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </Tooltip>
+                        <Typography variant="caption" color="text.disabled">Unassigned</Typography>
                       )}
                     </TableCell>
                   )}

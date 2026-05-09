@@ -12,10 +12,13 @@ import {
   Divider,
   FormControl,
   FormControlLabel,
+  FormLabel,
   InputAdornment,
   InputLabel,
   ListSubheader,
   MenuItem,
+  Radio,
+  RadioGroup,
   Select,
   Stack,
   Switch,
@@ -47,6 +50,8 @@ const EMPTY = {
   description:      "",
   problemId:        "",
   mode:             "homework",
+  examType:         "unscheduled",   // "scheduled" | "unscheduled"
+  startDate:        "",
   dueDate:          "",
   isPublished:      false,
   allowedLanguages: [],
@@ -91,6 +96,10 @@ export default function AssignmentModal({
         description:      assignment.description      ?? "",
         problemId:        assignment.problemId        ?? "",
         mode:             assignment.mode             ?? "homework",
+        examType:         assignment.examType         ?? "unscheduled",
+        startDate:        assignment.startDate
+          ? new Date(assignment.startDate).toISOString().slice(0, 16)
+          : "",
         dueDate:          assignment.dueDate
           ? new Date(assignment.dueDate).toISOString().slice(0, 16)
           : "",
@@ -125,6 +134,12 @@ export default function AssignmentModal({
   async function handleSave() {
     if (!form.title.trim())  { setError("Title is required."); return; }
     if (!form.problemId)     { setError("Please select a problem."); return; }
+    if (form.mode === "exam" && form.examType === "scheduled" && !form.startDate) {
+      setError("A start date is required for scheduled exams."); return;
+    }
+    if (form.mode === "exam" && form.examType === "scheduled" && form.dueDate && form.startDate >= form.dueDate) {
+      setError("Exam end date must be after the start date."); return;
+    }
     if (form.lateDeadline && form.dueDate && form.lateDeadline <= form.dueDate) {
       setError("Late submission deadline must be after the due date."); return;
     }
@@ -145,6 +160,8 @@ export default function AssignmentModal({
         description:      form.description.trim() || null,
         problemId:        Number(form.problemId),
         mode:             form.mode,
+        examType:         form.mode === "exam" ? form.examType : null,
+        startDate:        form.mode === "exam" && form.examType === "scheduled" ? (form.startDate || null) : null,
         dueDate:          form.dueDate       || null,
         isPublished:      form.isPublished,
         allowedLanguages: form.allowedLanguages,
@@ -344,13 +361,60 @@ export default function AssignmentModal({
               </Typography>
             </Box>
 
+            {/* ── Exam type (only when mode = exam) ─────────────────────── */}
+            {form.mode === "exam" && (
+              <Box sx={{ border: 1, borderColor: "error.light", borderRadius: 2, p: 1.5 }}>
+                <FormControl component="fieldset">
+                  <FormLabel component="legend" sx={{ fontSize: 13, fontWeight: 700, mb: 0.5, color: "error.main" }}>
+                    Exam Type
+                  </FormLabel>
+                  <RadioGroup
+                    row
+                    value={form.examType}
+                    onChange={(e) => set("examType", e.target.value)}
+                  >
+                    <FormControlLabel
+                      value="unscheduled"
+                      control={<Radio size="small" color="error" />}
+                      label={<Typography variant="body2">Unscheduled — students can start any time before the deadline</Typography>}
+                    />
+                    <FormControlLabel
+                      value="scheduled"
+                      control={<Radio size="small" color="error" />}
+                      label={<Typography variant="body2">Scheduled — exam opens at a specific time and closes at the deadline</Typography>}
+                    />
+                  </RadioGroup>
+                </FormControl>
+
+                {form.examType === "scheduled" && (
+                  <TextField
+                    label="Exam Start Date & Time"
+                    type="datetime-local"
+                    value={form.startDate}
+                    onChange={(e) => set("startDate", e.target.value)}
+                    fullWidth InputLabelProps={{ shrink: true }}
+                    inputProps={{ min: new Date().toISOString().slice(0, 16) }}
+                    helperText="Students cannot see exam content before this time."
+                    sx={{ mt: 1.5 }}
+                    error={!form.startDate}
+                  />
+                )}
+              </Box>
+            )}
+
             {/* ── Deadline ──────────────────────────────────────────────── */}
             <TextField
-              label="Due Date (optional)"
+              label={form.mode === "exam" && form.examType === "scheduled" ? "Exam End Date & Time" : "Due Date (optional)"}
               type="datetime-local"
               value={form.dueDate}
               onChange={(e) => set("dueDate", e.target.value)}
               fullWidth InputLabelProps={{ shrink: true }}
+              inputProps={{
+                min: form.mode === "exam" && form.examType === "scheduled" && form.startDate
+                  ? form.startDate
+                  : new Date().toISOString().slice(0, 16),
+              }}
+              helperText={form.mode === "exam" && form.examType === "scheduled" ? "Students cannot submit after this time." : undefined}
             />
 
             {/* ── Allowed languages ─────────────────────────────────────── */}
@@ -403,6 +467,7 @@ export default function AssignmentModal({
                   value={form.lateDeadline}
                   onChange={(e) => set("lateDeadline", e.target.value)}
                   fullWidth InputLabelProps={{ shrink: true }}
+                  inputProps={{ min: form.dueDate || new Date().toISOString().slice(0, 16) }}
                   helperText="Students may still submit after the due date until this deadline, with a point deduction."
                 />
                 <TextField

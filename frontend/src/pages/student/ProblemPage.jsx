@@ -78,6 +78,31 @@ export default function ProblemPage() {
   // Assignment context passed via navigation state from student AssignmentsPage
   const assignmentAllowedLanguages = location.state?.allowedLanguages ?? [];   // [] = all
   const assignmentLateDeduction    = location.state?.lateDeduction    ?? 0;
+  const examDeadline               = location.state?.examDeadline     ?? null; // ISO string for scheduled exam end
+  // isExamSession is true when either the platform-wide exam mode flag is on,
+  // OR the student navigated here from an exam assignment row (location.state.examMode).
+  const isExamSession              = examMode || Boolean(location.state?.examMode);
+
+  // ── Exam countdown timer ──────────────────────────────────────────────────
+  const [examTimeLeft, setExamTimeLeft] = useState(null);
+  useEffect(() => {
+    if (!examDeadline) return;
+    function tick() {
+      const ms = new Date(examDeadline).getTime() - Date.now();
+      setExamTimeLeft(ms > 0 ? ms : 0);
+    }
+    tick();
+    const iv = setInterval(tick, 1000);
+    return () => clearInterval(iv);
+  }, [examDeadline]);
+
+  function fmtExamTime(ms) {
+    if (ms <= 0) return "Time's up!";
+    const h = Math.floor(ms / 3600000);
+    const m = Math.floor((ms % 3600000) / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    return [h > 0 && `${h}h`, `${m}m`, `${s}s`].filter(Boolean).join(" ");
+  }
 
   // Filter available languages to those the assignment allows (empty = all allowed)
   const availableLanguages = useMemo(
@@ -94,6 +119,13 @@ export default function ProblemPage() {
 
   // ── Other editor state ───────────────────────────────────────────────────
   const [selectedLanguage, setSelectedLanguage] = useState("python");
+
+  // Auto-lock language when assignment allows exactly one language
+  useEffect(() => {
+    if (availableLanguages.length === 1) {
+      setSelectedLanguage(availableLanguages[0].value);
+    }
+  }, [availableLanguages]);
   const [running,          setRunning]          = useState(false);
   const [chatInput,        setChatInput]        = useState("");
   const [chat,             setChat]             = useState([
@@ -534,6 +566,24 @@ export default function ProblemPage() {
     }
   }
 
+  // ── New Chat — clears local messages AND backend AI history ─────────────
+  async function handleNewChat() {
+    if (!selectedProblem) return;
+    // Reset UI immediately
+    setChat([{ role: "assistant", content: "Hi! Ask for hints about your code." }]);
+    setHintCount(0);
+    setChatInput("");
+    // Delete backend history so the model has no memory of previous messages
+    try {
+      await fetch(`${API_BASE}/api/student/history/ai?problemId=${selectedProblem.id}`, {
+        method:  "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch (err) {
+      console.warn("[newChat] Failed to clear AI history on server:", err.message);
+    }
+  }
+
   // ── Hint button handler ───────────────────────────────────────────────────
   async function sendHint() {
     if (!selectedProblem || chatLoading) return;
@@ -585,9 +635,12 @@ export default function ProblemPage() {
       sendHint={sendHint}
       hintCount={hintCount}
       chatLoading={chatLoading}
+      onNewChat={handleNewChat}
       submissions={submissions}
       submissionsLoading={submissionsLoading}
-      examMode={examMode}
+      examMode={isExamSession}
+      examTimeLeft={examTimeLeft}
+      fmtExamTime={fmtExamTime}
       // Flashcard props (manual trigger flow)
       hasSolvedProblem={hasSolvedProblem}
       flashcardExists={flashcardExists}

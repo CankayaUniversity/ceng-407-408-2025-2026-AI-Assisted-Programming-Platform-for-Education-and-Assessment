@@ -95,13 +95,17 @@ export default function ProblemForm({
   }
 
   function addTag(raw) {
-    const val = raw.trim();
-    if (!val) return;
-    if (form.tags.length >= 5) return; // enforce max 5 tags
-    setForm((prev) => ({
-      ...prev,
-      tags: prev.tags.includes(val) ? prev.tags : [...prev.tags, val],
-    }));
+    // Support comma-separated topics: "arrays, loops, functions" → 3 separate tags
+    const parts = raw.split(",").map((t) => t.trim()).filter(Boolean);
+    if (parts.length === 0) return;
+    setForm((prev) => {
+      let tags = [...prev.tags];
+      for (const val of parts) {
+        if (tags.length >= 5) break; // enforce max 5 tags
+        if (!tags.includes(val)) tags = [...tags, val];
+      }
+      return { ...prev, tags };
+    });
     setTagInput("");
   }
 

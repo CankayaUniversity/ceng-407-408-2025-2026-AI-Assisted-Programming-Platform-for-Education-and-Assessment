@@ -172,7 +172,7 @@ router.post("/verify-email", async (req, res) => {
     include: { role: true },
   });
 
-  const payload      = { userId: activated.id, email: activated.email, role: activated.role.name };
+  const payload      = { userId: activated.id, email: activated.email, role: activated.role.name, isAdmin: activated.isAdmin };
   const accessToken  = signAccessToken(payload);
   const refreshToken = signRefreshToken(payload);
 
@@ -261,7 +261,7 @@ router.post("/login", async (req, res) => {
     return;
   }
 
-  const payload      = { userId: user.id, email: user.email, role: user.role.name };
+  const payload      = { userId: user.id, email: user.email, role: user.role.name, isAdmin: user.isAdmin };
   const accessToken  = signAccessToken(payload);
   const refreshToken = signRefreshToken(payload);
 
@@ -293,9 +293,10 @@ router.post("/refresh", (req, res) => {
   try {
     const payload     = verifyRefreshToken(refreshToken);
     const accessToken = signAccessToken({
-      userId: payload.userId,
-      email:  payload.email,
-      role:   payload.role,
+      userId:  payload.userId,
+      email:   payload.email,
+      role:    payload.role,
+      isAdmin: payload.isAdmin,
     });
     res.json({ accessToken, tokenType: "Bearer" });
   } catch {

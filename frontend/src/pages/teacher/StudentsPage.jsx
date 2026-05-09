@@ -11,6 +11,8 @@ import {
   DialogTitle,
   Divider,
   IconButton,
+  MenuItem,
+  Select,
   Stack,
   Tab,
   Tabs,
@@ -167,7 +169,7 @@ function GroupModal({ open, onClose, onSave, allStudents, initialGroup }) {
                 )}
               </Typography>
               <Button size="small" onClick={toggleAll} variant="text">
-                {allVisibleSelected ? "Deselect visible" : "Select visible"}
+                {allVisibleSelected ? "Deselect all" : "Select all"}
               </Button>
             </Stack>
 
@@ -282,10 +284,14 @@ function GroupModal({ open, onClose, onSave, allStudents, initialGroup }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function StudentsPage({ currentUser, token, handleLogout, navItems }) {
+  const isAdmin = currentUser?.isAdmin === true;
+
   const [students,          setStudents]          = useState([]);
   const [studentsLoading,   setStudentsLoading]   = useState(true);
   const [groups,            setGroups]            = useState([]);
   const [groupsLoading,     setGroupsLoading]     = useState(true);
+  const [teachers,          setTeachers]          = useState([]);   // admin only
+  const [assigningStudentId, setAssigningStudentId] = useState(null); // which row is updating
 
   const [activeTab,         setActiveTab]         = useState(0);
   const [yearFilter,        setYearFilter]        = useState(0);   // 0 = all
@@ -315,21 +321,30 @@ export default function StudentsPage({ currentUser, token, handleLogout, navItem
       .then((body) => {
         const totalProblems = body.meta?.totalProblems ?? 1;
         const rows = (body.data ?? []).map((s) => ({
-          id:        s.id,
-          name:      s.name,
-          email:     s.email,
-          classYear: s.classYear ?? null,
-          completed: s.distinctProblemsSolved ?? 0,
-          total:     totalProblems,
-          progress:  totalProblems > 0
+          id:              s.id,
+          name:            s.name,
+          email:           s.email,
+          classYear:       s.classYear ?? null,
+          completed:       s.distinctProblemsSolved ?? 0,
+          total:           totalProblems,
+          progress:        totalProblems > 0
             ? Math.round(((s.distinctProblemsSolved ?? 0) / totalProblems) * 100)
             : 0,
+          assignedTeacher: s.assignedTeacher ?? null,  // { id, name, email } or null
         }));
         setStudents(rows);
       })
       .catch((err) => console.error("students fetch failed:", err))
       .finally(() => setStudentsLoading(false));
   }, [token, fetchJson]);
+
+  // ── Fetch teachers (admin only) ──────────────────────────────────────────
+  useEffect(() => {
+    if (!token || !isAdmin) return;
+    fetchJson("/api/admin/teachers")
+      .then((body) => setTeachers(body.data ?? []))
+      .catch((err) => console.error("teachers fetch failed:", err));
+  }, [token, isAdmin, fetchJson]);
 
   // ── Fetch groups ─────────────────────────────────────────────────────────
   const fetchGroups = useCallback(() => {
@@ -368,6 +383,46 @@ export default function StudentsPage({ currentUser, token, handleLogout, navItem
     }
     return map;
   }, [groups]);
+
+  // ── Admin: assign / unassign teacher ────────────────────────────────────
+  async function handleAssignTeacher(studentId, teacherId) {
+    setAssigningStudentId(studentId);
+    try {
+      if (!teacherId) {
+        // Unassign
+        await fetch(`${API_BASE}/api/admin/teacher-students/${studentId}`, {
+          method: "DELETE",
+          headers: authHeaders,
+        });
+      } else {
+        await fetch(`${API_BASE}/api/admin/teacher-students`, {
+          method: "POST",
+          headers: authHeaders,
+          body: JSON.stringify({ teacherId: Number(teacherId), studentId }),
+        });
+      }
+      // Refresh students list to reflect new assignment
+      const body = await fetchJson("/api/teacher/students");
+      const totalProblems = body.meta?.totalProblems ?? 1;
+      const rows = (body.data ?? []).map((s) => ({
+        id:              s.id,
+        name:            s.name,
+        email:           s.email,
+        classYear:       s.classYear ?? null,
+        completed:       s.distinctProblemsSolved ?? 0,
+        total:           totalProblems,
+        progress:        totalProblems > 0
+          ? Math.round(((s.distinctProblemsSolved ?? 0) / totalProblems) * 100)
+          : 0,
+        assignedTeacher: s.assignedTeacher ?? null,
+      }));
+      setStudents(rows);
+    } catch (err) {
+      console.error("assign teacher failed:", err);
+    } finally {
+      setAssigningStudentId(null);
+    }
+  }
 
   // ── Group CRUD ───────────────────────────────────────────────────────────
   async function handleSaveGroup({ name, memberIds }) {
@@ -505,12 +560,24 @@ export default function StudentsPage({ currentUser, token, handleLogout, navItem
           </Box>
         )}
 
+        {/* ── Admin info banner ─────────────────────────────────────── */}
+        {isAdmin && (
+          <Alert severity="info" sx={{ borderRadius: 2 }}>
+            You are viewing all students as admin. Use the <strong>Teacher</strong> column to assign each student to a teacher.
+            Non-admin teachers will only see their assigned students.
+          </Alert>
+        )}
+
         {/* ── Student table ─────────────────────────────────────────── */}
         <StudentProgressTable
           students={displayedStudents}
           loading={studentsLoading}
           onStudentClick={setSelectedStudent}
           studentGroupMap={studentGroupMap}
+          showTeacherColumn={isAdmin}
+          teachers={teachers}
+          assigningStudentId={assigningStudentId}
+          onAssignTeacher={handleAssignTeacher}
         />
 
       </Stack>

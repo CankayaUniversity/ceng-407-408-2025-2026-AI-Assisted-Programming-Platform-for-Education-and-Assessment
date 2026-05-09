@@ -28,6 +28,9 @@ import {
 } from "@mui/material";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import LightbulbIcon    from "@mui/icons-material/Lightbulb";
+import AddCommentIcon   from "@mui/icons-material/AddComment";
+import PrintIcon        from "@mui/icons-material/Print";
+import AccessTimeIcon   from "@mui/icons-material/AccessTime";
 import ArrowBackIcon      from "@mui/icons-material/ArrowBack";
 import MenuBookIcon       from "@mui/icons-material/MenuBook";
 import OpenInFullIcon     from "@mui/icons-material/OpenInFull";
@@ -93,6 +96,8 @@ export default function StudentWorkspace({
   submissions,
   submissionsLoading,
   examMode,
+  examTimeLeft = null,
+  fmtExamTime,
   lateDeduction = 0,
   // Flashcard (manual trigger) props
   hasSolvedProblem = false,
@@ -103,6 +108,7 @@ export default function StudentWorkspace({
   onFlashcardToastClose,
   token,
   tutorialLanguage = "c",
+  onNewChat,
 }) {
   const chatBottomRef = useChatScroll(chat);
 
@@ -156,14 +162,36 @@ export default function StudentWorkspace({
 
   return (
     <AppLayout
-      title="AI Mentor" 
+      title="AI Mentor"
       roleLabel="Student"
       userLabel={currentUser?.name || currentUser?.email}
       onLogout={handleLogout}
       navItems={navItems}
-      maxWidth="xl" 
+      maxWidth="xl"
       showPageTitle={false}
     >
+      {/* ── Exam countdown banner ─────────────────────────────────────────── */}
+      {examMode && examTimeLeft !== null && (
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 1,
+            py: 0.75,
+            mb: 1.5,
+            borderRadius: 2,
+            bgcolor: examTimeLeft < 300000 ? "error.main" : examTimeLeft < 1800000 ? "warning.main" : "primary.main",
+            color: "#fff",
+            fontWeight: 700,
+            fontSize: 15,
+          }}
+        >
+          <AccessTimeIcon fontSize="small" />
+          <span>Exam — Time Remaining: {fmtExamTime(examTimeLeft)}</span>
+        </Box>
+      )}
+
       <Box
         sx={{
           display: "grid",
@@ -303,11 +331,27 @@ export default function StudentWorkspace({
                       <Button startIcon={<ArrowBackIcon />} size="small" onClick={backToSections} sx={{ fontSize: 12 }}>
                         {selectedTutorial.title}
                       </Button>
-                      <Tooltip title={tutorialExpanded ? "Collapse" : "Expand"}>
-                        <IconButton size="small" onClick={() => setTutorialExpanded((v) => !v)}>
-                          {tutorialExpanded ? <CloseFullscreenIcon fontSize="small" /> : <OpenInFullIcon fontSize="small" />}
-                        </IconButton>
-                      </Tooltip>
+                      <Stack direction="row" spacing={0.5}>
+                        <Tooltip title="Export as PDF">
+                          <IconButton
+                            size="small"
+                            onClick={() => {
+                              // Store title for the print header, then trigger browser print
+                              document.title = `${selectedTutorial.title} — ${selectedSection.heading}`;
+                              window.print();
+                              // Restore title after a short delay
+                              setTimeout(() => { document.title = "AI Programming Platform"; }, 2000);
+                            }}
+                          >
+                            <PrintIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title={tutorialExpanded ? "Collapse" : "Expand"}>
+                          <IconButton size="small" onClick={() => setTutorialExpanded((v) => !v)}>
+                            {tutorialExpanded ? <CloseFullscreenIcon fontSize="small" /> : <OpenInFullIcon fontSize="small" />}
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
                     </Stack>
 
                     {/* Section heading */}
@@ -315,8 +359,11 @@ export default function StudentWorkspace({
                       {selectedSection.heading}
                     </Typography>
 
-                    {/* Content */}
-                    <Box sx={{ maxHeight: tutorialExpanded ? "none" : 480, overflowY: tutorialExpanded ? "visible" : "auto", pr: 0.5 }}>
+                    {/* Content — data-print-tutorial marks it for @media print */}
+                    <Box
+                      data-print-tutorial="true"
+                      sx={{ maxHeight: tutorialExpanded ? "none" : 480, overflowY: tutorialExpanded ? "visible" : "auto", pr: 0.5 }}
+                    >
                       {selectedSection.body && (
                         <Typography
                           variant="caption"
@@ -376,21 +423,32 @@ export default function StudentWorkspace({
                   {flashcardGenerating ? "Creating flashcards…" : "Create Flashcards"}
                 </Button>
               )}
-              <FormControl size="small" sx={{ minWidth: 160 }}>
-                <InputLabel id="language-select-label">Language</InputLabel>
-                <Select
-                  labelId="language-select-label"
-                  value={selectedLanguage}
-                  label="Language"
-                  onChange={(e) => setSelectedLanguage(e.target.value)}
-                >
-                  {languageOptions.map((opt) => (
-                    <MenuItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              {/* Hide selector when assignment locks to a single language */}
+              {languageOptions.length === 1 ? (
+                <Chip
+                  label={languageOptions[0].label}
+                  size="small"
+                  color="primary"
+                  variant="outlined"
+                  sx={{ fontWeight: 600, px: 1 }}
+                />
+              ) : (
+                <FormControl size="small" sx={{ minWidth: 160 }}>
+                  <InputLabel id="language-select-label">Language</InputLabel>
+                  <Select
+                    labelId="language-select-label"
+                    value={selectedLanguage}
+                    label="Language"
+                    onChange={(e) => setSelectedLanguage(e.target.value)}
+                  >
+                    {languageOptions.map((opt) => (
+                      <MenuItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
 
               <Button variant="contained" onClick={runRaw} disabled={running}>
                 {running ? "Running..." : "Run"}
@@ -536,7 +594,24 @@ export default function StudentWorkspace({
           </Box>
         </SectionCard>
 
-        <SectionCard title="AI Mentor Chat">
+        <SectionCard
+          title="AI Mentor Chat"
+          action={
+            onNewChat && !examMode ? (
+              <Tooltip title="Start a new conversation — AI will forget previous messages for this problem">
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<AddCommentIcon />}
+                  onClick={onNewChat}
+                  disabled={chatLoading}
+                >
+                  New Chat
+                </Button>
+              </Tooltip>
+            ) : null
+          }
+        >
           {examMode ? (
             <Alert severity="warning" sx={{ borderRadius: 2 }}>
               Exam mode is active. AI Mentor is currently disabled.

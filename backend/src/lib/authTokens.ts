@@ -32,11 +32,11 @@ function validatePayloadShape(decoded: unknown): JwtPayload {
   ) {
     throw new Error("Invalid token payload");
   }
-  const { userId, email, role } = decoded as Record<string, unknown>;
+  const { userId, email, role, isAdmin } = decoded as Record<string, unknown>;
   if (typeof userId !== "number" || typeof email !== "string" || typeof role !== "string") {
     throw new Error("Invalid token fields");
   }
-  return { userId, email, role };
+  return { userId, email, role, isAdmin: isAdmin === true };
 }
 
 // ── Access token (60 min) ─────────────────────────────────────────────────────

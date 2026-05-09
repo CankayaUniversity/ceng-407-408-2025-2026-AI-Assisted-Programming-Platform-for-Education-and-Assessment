@@ -1,20 +1,28 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
+  Alert,
   Box,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogContent,
+  DialogTitle,
   LinearProgress,
   Stack,
+  Tab,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
+  Tabs,
   Tooltip,
   Typography,
 } from "@mui/material";
 import AccessTimeIcon  from "@mui/icons-material/AccessTime";
+import LockIcon        from "@mui/icons-material/Lock";
+import EventIcon       from "@mui/icons-material/Event";
 import WarningIcon     from "@mui/icons-material/Warning";
 import { useNavigate } from "react-router-dom";
 
@@ -24,19 +32,22 @@ import { API_BASE } from "../../apiBase";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function modeChipProps(mode) {
-  switch ((mode ?? "homework").toLowerCase()) {
-    case "exam":     return { label: "Exam",     sx: { bgcolor: "#ef4444", color: "#fff", fontWeight: 700 } };
-    case "practice": return { label: "Practice", sx: { bgcolor: "#22c55e", color: "#fff", fontWeight: 700 } };
-    default:         return { label: "Homework", sx: { bgcolor: "#6366f1", color: "#fff", fontWeight: 700 } };
-  }
-}
-
 function difficultyColor(d) {
   const v = (d ?? "").toLowerCase();
   if (v.includes("hard"))   return "error";
   if (v.includes("medium")) return "warning";
   return "success";
+}
+
+function formatTimeLeft(ms) {
+  if (ms <= 0) return "0s";
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) return `${h}h ${m}m ${s}s`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
 }
 
 function formatCountdown(dueDate, lateDeadline) {
@@ -49,7 +60,6 @@ function formatCountdown(dueDate, lateDeadline) {
   const msRemaining = due - now;
 
   if (msRemaining > 0) {
-    // Still before due date
     const totalMins  = Math.floor(msRemaining / 60000);
     const days       = Math.floor(totalMins / 1440);
     const hours      = Math.floor((totalMins % 1440) / 60);
@@ -62,9 +72,8 @@ function formatCountdown(dueDate, lateDeadline) {
     return { label: "Due now", status: "warn", urgent: true };
   }
 
-  // Past due date
   if (late && now < late) {
-    const msLate   = late - now;
+    const msLate    = late - now;
     const totalMins = Math.floor(msLate / 60000);
     const days      = Math.floor(totalMins / 1440);
     const hours     = Math.floor((totalMins % 1440) / 60);
@@ -86,9 +95,8 @@ function DeadlineCell({ assignment }) {
   });
 
   const countdown = formatCountdown(assignment.dueDate, assignment.lateDeadline);
-
-  const colorMap = { ok: "success", warn: "warning", late: "warning", closed: "error" };
-  const color    = countdown ? colorMap[countdown.status] ?? "default" : "default";
+  const colorMap  = { ok: "success", warn: "warning", late: "warning", closed: "error" };
+  const color     = countdown ? colorMap[countdown.status] ?? "default" : "default";
 
   return (
     <Stack spacing={0.25}>
@@ -112,13 +120,274 @@ function DeadlineCell({ assignment }) {
   );
 }
 
+/** Determine exam state for a scheduled exam */
+function examState(a) {
+  if (a.mode !== "exam") return "open";
+  const now = Date.now();
+  if (a.examType === "scheduled") {
+    if (a.startDate && now < new Date(a.startDate).getTime()) return "not_started";
+    if (a.dueDate  && now > new Date(a.dueDate).getTime())   return "ended";
+    return "active";
+  }
+  // unscheduled exam
+  if (a.dueDate && now > new Date(a.dueDate).getTime()) return "ended";
+  return "active";
+}
+
+// ── Exam assignment row ───────────────────────────────────────────────────────
+
+function ExamRow({ a, idx, solvedSet }) {
+  const navigate = useNavigate();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [now, setNow] = useState(Date.now());
+
+  // Live clock for active scheduled exams
+  useEffect(() => {
+    if (examState(a) !== "active" || a.examType !== "scheduled") return;
+    const iv = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(iv);
+  }, [a]);
+
+  const state     = examState(a);
+  const problem   = a.problem ?? {};
+  const langs     = a.allowedLanguages ?? [];
+  const published = a.isPublished ?? false;
+  const solved    = solvedSet.has(problem.id);
+
+  const startLabel = a.startDate
+    ? new Date(a.startDate).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+    : null;
+  const endLabel = a.dueDate
+    ? new Date(a.dueDate).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+    : null;
+
+  const timeLeftMs = a.dueDate ? new Date(a.dueDate).getTime() - now : null;
+
+  function handleClick() {
+    if (!published || state === "ended") return;
+    if (state === "not_started") { setDialogOpen(true); return; }
+    // active — navigate to problem
+    navigate(`/problem/${problem.id}`, {
+      state: {
+        assignmentId:     a.id,
+        allowedLanguages: langs,
+        lateDeduction:    0,
+        examMode:         true,
+        examDeadline:     a.dueDate,
+      },
+    });
+  }
+
+  let statusChip;
+  if (!published) {
+    statusChip = <Chip label="Coming soon" size="small" variant="outlined" sx={{ fontSize: 10 }} />;
+  } else if (state === "not_started") {
+    statusChip = <Chip icon={<LockIcon />} label="Not started" size="small" color="default" variant="outlined" sx={{ fontSize: 10 }} />;
+  } else if (state === "ended") {
+    statusChip = <Chip label="Ended" size="small" color="error" variant="filled" sx={{ fontSize: 10 }} />;
+  } else {
+    statusChip = (
+      <Chip
+        label={solved ? "Submitted" : "In progress"}
+        size="small"
+        color={solved ? "success" : "warning"}
+        variant={solved ? "filled" : "outlined"}
+        sx={{ fontSize: 10 }}
+      />
+    );
+  }
+
+  return (
+    <>
+      <TableRow
+        hover={published && state !== "ended"}
+        onClick={handleClick}
+        sx={{ cursor: (published && state !== "ended") ? "pointer" : "default", opacity: published ? 1 : 0.65 }}
+      >
+        <TableCell>{idx + 1}</TableCell>
+
+        <TableCell>
+          <Stack direction="row" alignItems="center" spacing={0.75}>
+            <Typography variant="body2" fontWeight={600}>{a.title}</Typography>
+            {a.examType === "scheduled" && (
+              <Chip label="Scheduled" size="small" color="error" variant="outlined" sx={{ fontSize: 10, height: 18 }} />
+            )}
+          </Stack>
+          {/* Hide problem content until exam is active */}
+          {state === "active" && problem.title && a.title !== problem.title && (
+            <Typography variant="caption" color="text.secondary">{problem.title}</Typography>
+          )}
+          {state !== "active" && (
+            <Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
+              {state === "not_started" ? "Content hidden until exam starts" : "Exam content — exam ended"}
+            </Typography>
+          )}
+        </TableCell>
+
+        <TableCell>
+          {state === "active" ? (
+            (problem.tags ?? []).length === 0 ? (
+              <Typography variant="caption" color="text.secondary">—</Typography>
+            ) : (
+              <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                {(problem.tags ?? []).map((tag) => (
+                  <Chip key={tag} label={tag} size="small" variant="outlined" color="info" sx={{ fontSize: 11 }} />
+                ))}
+              </Stack>
+            )
+          ) : <Typography variant="caption" color="text.secondary">—</Typography>}
+        </TableCell>
+
+        <TableCell>
+          {/* Show time info based on state */}
+          {state === "not_started" && startLabel && (
+            <Stack spacing={0.25}>
+              <Stack direction="row" alignItems="center" spacing={0.5}>
+                <EventIcon fontSize="small" color="action" />
+                <Typography variant="caption">Starts: {startLabel}</Typography>
+              </Stack>
+              {endLabel && <Typography variant="caption" color="text.secondary">Ends: {endLabel}</Typography>}
+            </Stack>
+          )}
+          {state === "active" && (
+            <Stack spacing={0.25}>
+              {endLabel && (
+                <Stack direction="row" alignItems="center" spacing={0.5}>
+                  <AccessTimeIcon fontSize="small" color={timeLeftMs !== null && timeLeftMs < 3600000 ? "error" : "action"} />
+                  <Typography variant="caption" color={timeLeftMs !== null && timeLeftMs < 3600000 ? "error" : "text.secondary"}>
+                    {timeLeftMs !== null ? `${formatTimeLeft(timeLeftMs)} remaining` : `Ends: ${endLabel}`}
+                  </Typography>
+                </Stack>
+              )}
+            </Stack>
+          )}
+          {state === "ended" && endLabel && (
+            <Typography variant="caption" color="text.secondary">Ended: {endLabel}</Typography>
+          )}
+          {state === "open" && <DeadlineCell assignment={a} />}
+        </TableCell>
+
+        <TableCell>{statusChip}</TableCell>
+      </TableRow>
+
+      {/* "Exam not yet started" dialog */}
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <LockIcon color="error" />
+          Exam Not Yet Started
+        </DialogTitle>
+        <DialogContent>
+          <Typography gutterBottom>
+            <strong>{a.title}</strong> has not started yet.
+          </Typography>
+          {startLabel && (
+            <Alert severity="info" icon={<EventIcon />} sx={{ mt: 1 }}>
+              This exam will become available on <strong>{startLabel}</strong>.
+            </Alert>
+          )}
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
+            The exam content will be visible and the timer will start once the scheduled time arrives.
+          </Typography>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+// ── Assignment / Practice row (existing logic, kept as-is) ────────────────────
+
+function AssignmentRow({ a, idx, solvedSet }) {
+  const navigate = useNavigate();
+  const problem    = a.problem ?? {};
+  const solved     = solvedSet.has(problem.id);
+  const langs      = a.allowedLanguages ?? [];
+  const published  = a.isPublished ?? false;
+  const isLate     = (() => {
+    if (!a.dueDate) return false;
+    const now = Date.now();
+    return now > new Date(a.dueDate).getTime() &&
+      (!a.lateDeadline || now < new Date(a.lateDeadline).getTime());
+  })();
+
+  return (
+    <TableRow
+      hover={published}
+      onClick={() => {
+        if (!published) return;
+        navigate(`/problem/${problem.id}`, {
+          state: {
+            assignmentId:     a.id,
+            allowedLanguages: langs,
+            lateDeduction:    isLate ? (a.lateDeduction ?? 0) : 0,
+          },
+        });
+      }}
+      sx={{ cursor: published ? "pointer" : "default", opacity: published ? 1 : 0.65 }}
+    >
+      <TableCell>{idx + 1}</TableCell>
+
+      <TableCell>
+        <Typography variant="body2" fontWeight={600}>{a.title}</Typography>
+        {problem.title && a.title !== problem.title && (
+          <Typography variant="caption" color="text.secondary">{problem.title}</Typography>
+        )}
+      </TableCell>
+
+      <TableCell>
+        {(problem.tags ?? []).length === 0 ? (
+          <Typography variant="caption" color="text.secondary">—</Typography>
+        ) : (
+          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+            {(problem.tags ?? []).map((tag) => (
+              <Chip key={tag} label={tag} size="small" variant="outlined" color="info" sx={{ fontSize: 11 }} />
+            ))}
+          </Stack>
+        )}
+      </TableCell>
+
+      <TableCell>
+        <Chip label={problem.difficulty ?? "N/A"} size="small" color={difficultyColor(problem.difficulty)} variant="outlined" />
+      </TableCell>
+
+      <TableCell>
+        {langs.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">Any</Typography>
+        ) : (
+          <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+            {langs.map((l) => <Chip key={l} label={l} size="small" variant="outlined" sx={{ fontSize: 11 }} />)}
+          </Stack>
+        )}
+      </TableCell>
+
+      <TableCell><DeadlineCell assignment={a} /></TableCell>
+
+      <TableCell>
+        {!published ? (
+          <Chip label="Coming soon" size="small" color="default" variant="outlined" sx={{ fontSize: 10 }} />
+        ) : isLate ? (
+          <Tooltip title={a.lateDeduction > 0 ? `${a.lateDeduction}% deduction` : "No deduction"}>
+            <Chip label="Late" size="small" color="warning" variant="filled" />
+          </Tooltip>
+        ) : (
+          <Chip
+            label={solved ? "Solved" : "Not solved"}
+            size="small"
+            color={solved ? "success" : "default"}
+            variant={solved ? "filled" : "outlined"}
+          />
+        )}
+      </TableCell>
+    </TableRow>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function AssignmentsPage({ currentUser, token, handleLogout, navItems }) {
-  const navigate = useNavigate();
   const [assignments, setAssignments] = useState([]);
   const [submissions, setSubmissions] = useState([]);
   const [loading,     setLoading]     = useState(true);
+  const [tab,         setTab]         = useState(0);  // 0=homework, 1=practice, 2=exams
 
   useEffect(() => {
     if (!token) return;
@@ -137,17 +406,28 @@ export default function AssignmentsPage({ currentUser, token, handleLogout, navI
       .finally(() => setLoading(false));
   }, [token]);
 
-  // Submission records have a `status` field ("accepted" | "failed"),
-  // not `normalizedStatus` (which lives on SubmissionAttempt).
   const solvedSet = new Set(
     submissions
       .filter((s) => s.status === "accepted")
       .map((s) => s.problemId),
   );
 
-  const total    = assignments.length;
-  const solved   = assignments.filter((a) => solvedSet.has(a.problem?.id)).length;
-  const progress = total > 0 ? (solved / total) * 100 : 0;
+  const homework  = assignments.filter((a) => a.mode === "homework");
+  const practice  = assignments.filter((a) => a.mode === "practice");
+  const exams     = assignments.filter((a) => a.mode === "exam");
+
+  const tabData = [
+    { label: `Homework (${homework.length})`,  items: homework,  isExam: false },
+    { label: `Practice (${practice.length})`,  items: practice,  isExam: false },
+    { label: `Exams (${exams.length})`,        items: exams,     isExam: true  },
+  ];
+
+  const current = tabData[tab];
+  const total   = current.items.length;
+  const solved  = current.isExam
+    ? 0
+    : current.items.filter((a) => solvedSet.has(a.problem?.id)).length;
+  const progress = total > 0 && !current.isExam ? (solved / total) * 100 : 0;
 
   return (
     <AppLayout
@@ -160,30 +440,30 @@ export default function AssignmentsPage({ currentUser, token, handleLogout, navI
       showPageTitle={false}
     >
       <SectionCard title="Assignments">
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-          Your enrolled assignments. Click a row to start working.
-        </Typography>
+        <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2, borderBottom: 1, borderColor: "divider" }}>
+          {tabData.map((t, i) => (
+            <Tab key={i} label={t.label} />
+          ))}
+        </Tabs>
 
         {loading ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
             <CircularProgress size={32} />
           </Box>
-        ) : assignments.length === 0 ? (
+        ) : current.items.length === 0 ? (
           <Typography color="text.secondary" sx={{ py: 3, textAlign: "center" }}>
-            No assignments available yet.
+            No {current.label.toLowerCase()} yet.
           </Typography>
         ) : (
           <>
-            <Box sx={{ mb: 2 }}>
-              <LinearProgress
-                variant="determinate"
-                value={progress}
-                sx={{ height: 10, borderRadius: 5 }}
-              />
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                {solved} / {total} completed
-              </Typography>
-            </Box>
+            {!current.isExam && (
+              <Box sx={{ mb: 2 }}>
+                <LinearProgress variant="determinate" value={progress} sx={{ height: 8, borderRadius: 4 }} />
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                  {solved} / {total} completed
+                </Typography>
+              </Box>
+            )}
 
             <TableContainer sx={{ border: 1, borderColor: "divider", borderRadius: 2, overflow: "hidden" }}>
               <Table>
@@ -192,131 +472,26 @@ export default function AssignmentsPage({ currentUser, token, handleLogout, navI
                     <TableCell sx={{ fontWeight: 700 }}>#</TableCell>
                     <TableCell sx={{ fontWeight: 700 }}>Title</TableCell>
                     <TableCell sx={{ fontWeight: 700 }}>Topics</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Difficulty</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Languages</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Deadline</TableCell>
+                    {!current.isExam && <TableCell sx={{ fontWeight: 700 }}>Difficulty</TableCell>}
+                    {!current.isExam && <TableCell sx={{ fontWeight: 700 }}>Languages</TableCell>}
+                    <TableCell sx={{ fontWeight: 700 }}>{current.isExam ? "Time" : "Deadline"}</TableCell>
                     <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {assignments.map((a, idx) => {
-                    const problem    = a.problem ?? {};
-                    const solved     = solvedSet.has(problem.id);
-                    const langs      = a.allowedLanguages ?? [];
-                    const published  = a.isPublished ?? false;
-                    const isLate     = (() => {
-                      if (!a.dueDate) return false;
-                      const now = Date.now();
-                      return now > new Date(a.dueDate).getTime() &&
-                        (!a.lateDeadline || now < new Date(a.lateDeadline).getTime());
-                    })();
-
-                    return (
-                      <TableRow
-                        key={a.id}
-                        hover={published}
-                        onClick={() => {
-                          if (!published) return;
-                          navigate(`/problem/${problem.id}`, {
-                            state: {
-                              assignmentId:     a.id,
-                              allowedLanguages: langs,
-                              lateDeduction:    isLate ? (a.lateDeduction ?? 0) : 0,
-                            },
-                          });
-                        }}
-                        sx={{ cursor: published ? "pointer" : "default", opacity: published ? 1 : 0.65 }}
-                      >
-                        <TableCell>{idx + 1}</TableCell>
-
-                        <TableCell>
-                          <Stack direction="row" alignItems="center" spacing={0.75} flexWrap="wrap" useFlexGap>
-                            <Typography variant="body2" fontWeight={600}>{a.title}</Typography>
-                            <Chip
-                              {...modeChipProps(a.mode)}
-                              size="small"
-                              sx={{ fontSize: 10, height: 18, px: 0.25, ...modeChipProps(a.mode).sx }}
-                            />
-                          </Stack>
-                          {problem.title && a.title !== problem.title && (
-                            <Typography variant="caption" color="text.secondary">
-                              {problem.title}
-                            </Typography>
-                          )}
-                        </TableCell>
-
-                        {/* Topics */}
-                        <TableCell>
-                          {(problem.tags ?? []).length === 0 ? (
-                            <Typography variant="caption" color="text.secondary">—</Typography>
-                          ) : (
-                            <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                              {(problem.tags ?? []).map((tag) => (
-                                <Chip
-                                  key={tag}
-                                  label={tag}
-                                  size="small"
-                                  variant="outlined"
-                                  color="info"
-                                  sx={{ fontSize: 11, cursor: "default" }}
-                                />
-                              ))}
-                            </Stack>
-                          )}
-                        </TableCell>
-
-                        <TableCell>
-                          <Chip
-                            label={problem.difficulty ?? "N/A"}
-                            size="small"
-                            color={difficultyColor(problem.difficulty)}
-                            variant="outlined"
-                          />
-                        </TableCell>
-
-                        <TableCell>
-                          {langs.length === 0 ? (
-                            <Typography variant="body2" color="text.secondary">Any</Typography>
-                          ) : (
-                            <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
-                              {langs.map((l) => (
-                                <Chip key={l} label={l} size="small" variant="outlined" sx={{ fontSize: 11 }} />
-                              ))}
-                            </Stack>
-                          )}
-                        </TableCell>
-
-                        <TableCell>
-                          <DeadlineCell assignment={a} />
-                        </TableCell>
-
-                        <TableCell>
-                          {!published ? (
-                            <Chip label="Coming soon" size="small" color="default" variant="outlined"
-                              sx={{ fontSize: 10 }} />
-                          ) : isLate ? (
-                            <Tooltip title={a.lateDeduction > 0 ? `${a.lateDeduction}% deduction` : "No deduction"}>
-                              <Chip label="Late" size="small" color="warning" variant="filled" />
-                            </Tooltip>
-                          ) : (
-                            <Chip
-                              label={solved ? "Solved" : "Not solved"}
-                              size="small"
-                              color={solved ? "success" : "default"}
-                              variant={solved ? "filled" : "outlined"}
-                            />
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                  {current.items.map((a, idx) =>
+                    current.isExam ? (
+                      <ExamRow key={a.id} a={a} idx={idx} solvedSet={solvedSet} />
+                    ) : (
+                      <AssignmentRow key={a.id} a={a} idx={idx} solvedSet={solvedSet} />
+                    )
+                  )}
                 </TableBody>
               </Table>
             </TableContainer>
           </>
         )}
       </SectionCard>
-
     </AppLayout>
   );
 }

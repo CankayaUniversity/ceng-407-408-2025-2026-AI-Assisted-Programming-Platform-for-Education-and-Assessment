@@ -138,10 +138,14 @@ export default function EnrollModal({ open, onClose, onSaved, assignment, token 
 
       const toAdd = [...selected].filter((id) => !existing.has(id));
       if (toAdd.length > 0) {
-        await fetch(`${API_BASE}/api/assignments/${assignment.id}/enroll`, {
+        const enrollRes = await fetch(`${API_BASE}/api/assignments/${assignment.id}/enroll`, {
           method: "POST", headers,
           body: JSON.stringify({ studentIds: toAdd }),
         });
+        if (!enrollRes.ok) {
+          const errData = await enrollRes.json().catch(() => ({}));
+          throw new Error(errData.error || "Failed to enroll students");
+        }
       }
       onSaved();
     } catch (err) {

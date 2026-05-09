@@ -49,6 +49,8 @@ router.get("/", async (req: Request, res: Response) => {
             title:            true,
             description:      true,
             mode:             true,
+            examType:         true,
+            startDate:        true,
             dueDate:          true,
             isPublished:      true,
             allowedLanguages: true,
@@ -69,11 +71,13 @@ router.post("/", async (req: Request, res: Response) => {
   const { userId, role } = req.auth!;
   if (role !== "teacher") { res.status(403).json({ error: "Teachers only" }); return; }
 
-  const { title, description, problemId, dueDate, isPublished, allowedLanguages, lateDeadline, lateDeduction, mode, aiEnabled } = req.body as {
+  const { title, description, problemId, dueDate, startDate, examType, isPublished, allowedLanguages, lateDeadline, lateDeduction, mode, aiEnabled } = req.body as {
     title:             string;
     description?:      string;
     problemId:         number;
     dueDate?:          string;
+    startDate?:        string | null;
+    examType?:         string | null;
     isPublished?:      boolean;
     allowedLanguages?: string[];
     lateDeadline?:     string | null;
@@ -89,6 +93,7 @@ router.post("/", async (req: Request, res: Response) => {
 
   const validModes = ["practice", "homework", "exam"];
   const resolvedMode = validModes.includes(mode ?? "") ? mode! : "homework";
+  const resolvedExamType = resolvedMode === "exam" && examType ? examType : null;
 
   const assignment = await prisma.assignment.create({
     data: {
@@ -97,6 +102,8 @@ router.post("/", async (req: Request, res: Response) => {
       problemId,
       createdById:      userId,
       mode:             resolvedMode,
+      examType:         resolvedExamType,
+      startDate:        resolvedMode === "exam" && startDate ? new Date(startDate) : null,
       dueDate:          dueDate ? new Date(dueDate) : null,
       isPublished:      isPublished ?? false,
       allowedLanguages: allowedLanguages ?? [],
@@ -146,10 +153,12 @@ router.put("/:id", async (req: Request, res: Response) => {
   const id = parseId(req.params.id);
   if (!id) { res.status(400).json({ error: "Invalid ID" }); return; }
 
-  const { title, description, dueDate, isPublished, allowedLanguages, lateDeadline, lateDeduction, mode, aiEnabled } = req.body as {
+  const { title, description, dueDate, startDate, examType, isPublished, allowedLanguages, lateDeadline, lateDeduction, mode, aiEnabled } = req.body as {
     title?:             string;
     description?:       string;
     dueDate?:           string | null;
+    startDate?:         string | null;
+    examType?:          string | null;
     isPublished?:       boolean;
     allowedLanguages?:  string[];
     lateDeadline?:      string | null;
@@ -166,6 +175,8 @@ router.put("/:id", async (req: Request, res: Response) => {
       ...(title            !== undefined ? { title: title.trim() }                                                : {}),
       ...(description      !== undefined ? { description }                                                        : {}),
       ...(dueDate          !== undefined ? { dueDate: dueDate ? new Date(dueDate) : null }                       : {}),
+      ...(startDate        !== undefined ? { startDate: startDate ? new Date(startDate) : null }                 : {}),
+      ...(examType         !== undefined ? { examType: examType ?? null }                                         : {}),
       ...(isPublished      !== undefined ? { isPublished }                                                        : {}),
       ...(allowedLanguages !== undefined ? { allowedLanguages }                                                   : {}),
       ...(lateDeadline     !== undefined ? { lateDeadline: lateDeadline ? new Date(lateDeadline) : null }        : {}),
@@ -209,13 +220,19 @@ router.post("/:id/enroll", async (req: Request, res: Response) => {
   const id = parseId(req.params.id);
   if (!id) { res.status(400).json({ error: "Invalid ID" }); return; }
 
+  const { userId: teacherId, isAdmin } = req.auth!;
   const { studentIds, all } = req.body as { studentIds?: number[]; all?: boolean };
 
   let userIds: number[] = [];
 
   if (all) {
+    // Admin sees all students; non-admin teachers see only their assigned students
+    const studentWhere = isAdmin
+      ? { role: { is: { name: "student" } } }
+      : { role: { is: { name: "student" } }, assignedTeacher: { teacherId } };
+
     const students = await prisma.user.findMany({
-      where: { role: { is: { name: "student" } } },
+      where:  studentWhere,
       select: { id: true },
     });
     userIds = students.map((s) => s.id);

@@ -71,6 +71,24 @@ model User {
   createdGroups       StudentGroup[]          @relation("CreatedGroups")
   groupMemberships    StudentGroupMembership[]
   flashcards          Flashcard[]
+  // Teacher–student assignments
+  assignedStudents    TeacherStudent[]       @relation("TeacherStudents")
+  assignedTeacher     TeacherStudent?        @relation("StudentTeacher")
+}
+
+// ── TeacherStudent ────────────────────────────────────────────────────────────
+// Admin assigns each student to a teacher.  Non-admin teachers see only their
+// own students; the admin (isAdmin=true) sees all students.
+model TeacherStudent {
+  id         Int      @id @default(autoincrement())
+  teacherId  Int
+  studentId  Int      @unique   // each student belongs to exactly one teacher
+  assignedAt DateTime @default(now())
+
+  teacher    User @relation("TeacherStudents", fields: [teacherId], references: [id])
+  student    User @relation("StudentTeacher",  fields: [studentId], references: [id])
+
+  @@index([teacherId])
 }
 
 model Problem {
@@ -260,6 +278,8 @@ model Assignment {
   problemId        Int
   createdById      Int
   mode             String    @default("homework")   // practice | homework | exam
+  examType         String?                          // "scheduled" | "unscheduled" — only set when mode="exam"
+  startDate        DateTime?                        // exam start time (scheduled exams only)
   dueDate          DateTime?
   isPublished      Boolean   @default(false)
   allowedLanguages String[]  @default([])

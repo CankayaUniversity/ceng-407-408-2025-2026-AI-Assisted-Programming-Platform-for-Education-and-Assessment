@@ -7,6 +7,7 @@ import {
   InputAdornment,
   LinearProgress,
   MenuItem,
+  Select,
   Stack,
   Table,
   TableBody,
@@ -15,10 +16,12 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import GroupIcon  from "@mui/icons-material/Group";
+import PersonIcon from "@mui/icons-material/Person";
 
 import SectionCard        from "../common/SectionCard";
 import { YEAR_OPTIONS, yearLabel } from "../../lib/classYear";
@@ -41,7 +44,16 @@ function initials(name = '') {
 // Colour per year so it's easy to scan the table
 const YEAR_COLORS = { 1: "primary", 2: "secondary", 3: "success", 4: "warning", 5: "info" };
 
-export default function StudentProgressTable({ students, loading, onStudentClick, studentGroupMap = {} }) {
+export default function StudentProgressTable({
+  students,
+  loading,
+  onStudentClick,
+  studentGroupMap = {},
+  showTeacherColumn = false,
+  teachers = [],
+  assigningStudentId = null,
+  onAssignTeacher,
+}) {
   const [search,      setSearch]      = useState("");
   const [filterYear,  setFilterYear]  = useState(0);   // 0 = all
   const [filterRange, setFilterRange] = useState("all");
@@ -137,6 +149,9 @@ export default function StudentProgressTable({ students, loading, onStudentClick
                 <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>STUDENT</TableCell>
                 <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>EMAIL</TableCell>
                 <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>YEAR</TableCell>
+                {showTeacherColumn && (
+                  <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>TEACHER</TableCell>
+                )}
                 <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>GROUPS</TableCell>
                 <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>COMPLETED</TableCell>
                 <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>PROGRESS</TableCell>
@@ -174,6 +189,44 @@ export default function StudentProgressTable({ students, loading, onStudentClick
                       <Typography variant="caption" color="text.disabled">—</Typography>
                     )}
                   </TableCell>
+
+                  {/* Teacher assignment column (admin only) */}
+                  {showTeacherColumn && (
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      {assigningStudentId === student.id ? (
+                        <CircularProgress size={18} />
+                      ) : (
+                        <Tooltip title="Assign to a teacher">
+                          <Select
+                            size="small"
+                            displayEmpty
+                            value={student.assignedTeacher?.id ?? ""}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              onAssignTeacher?.(student.id, v === "" ? null : Number(v));
+                            }}
+                            sx={{ minWidth: 150, fontSize: 13 }}
+                            renderValue={(v) => {
+                              const numV = Number(v);
+                              return numV
+                                ? (teachers.find((t) => t.id === numV)?.name ?? "Unknown")
+                                : <em style={{ color: "#94a3b8" }}>Unassigned</em>;
+                            }}
+                          >
+                            <MenuItem value=""><em>— Unassigned —</em></MenuItem>
+                            {teachers.map((t) => (
+                              <MenuItem key={t.id} value={t.id}>
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                  <PersonIcon sx={{ fontSize: 16, color: "text.secondary" }} />
+                                  {t.name}
+                                </Box>
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </Tooltip>
+                      )}
+                    </TableCell>
+                  )}
 
                   <TableCell>
                     {(studentGroupMap[student.id] ?? []).length === 0 ? (

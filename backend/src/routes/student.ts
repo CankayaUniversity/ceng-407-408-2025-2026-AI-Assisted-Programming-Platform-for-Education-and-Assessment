@@ -47,6 +47,25 @@ router.get("/history/ai", async (req, res) => {
   res.json({ data: aiLogs });
 });
 
+// ── DELETE /api/student/history/ai?problemId=X ────────────────────────────
+// Clears the AI chat history for a specific problem so the AI starts fresh.
+router.delete("/history/ai", async (req, res) => {
+  const problemId = parseOptionalId(
+    typeof req.query.problemId === "string" ? req.query.problemId : undefined,
+  );
+
+  if (problemId === undefined) {
+    res.status(400).json({ error: "problemId query parameter is required" });
+    return;
+  }
+
+  await prisma.aiLog.deleteMany({
+    where: { userId: req.auth!.userId, problemId },
+  });
+
+  res.json({ success: true });
+});
+
 
 // ── GET /api/student/analytics ─────────────────────────────────────────────
 // Returns rich analytics data for the authenticated student.

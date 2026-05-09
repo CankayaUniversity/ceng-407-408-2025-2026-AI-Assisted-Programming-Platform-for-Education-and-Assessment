@@ -188,17 +188,22 @@ export default function AssignmentModal({
         : `${API_BASE}/api/assignments`;
       const method = isEdit ? "PUT" : "POST";
 
+      // Convert datetime-local strings (timezone-naive) to full ISO strings so
+      // Node.js on the backend receives the correct UTC time instead of treating
+      // the local time as UTC (which would shift by the teacher's UTC offset).
+      const toISO = (s) => s ? new Date(s).toISOString() : null;
+
       const body = {
         title:            form.title.trim(),
         description:      form.description.trim() || null,
         problemId:        Number(form.problemId),
         mode:             form.mode,
         examType:         form.mode === "exam" ? form.examType : null,
-        startDate:        form.mode === "exam" && form.examType === "scheduled" ? (form.startDate || null) : null,
-        dueDate:          form.dueDate       || null,
+        startDate:        form.mode === "exam" && form.examType === "scheduled" ? toISO(form.startDate) : null,
+        dueDate:          toISO(form.dueDate),
         isPublished:      form.isPublished,
         allowedLanguages: form.allowedLanguages,
-        lateDeadline:     form.lateDeadline  || null,
+        lateDeadline:     toISO(form.lateDeadline),
         lateDeduction:    Number(form.lateDeduction) || 0,
       };
 

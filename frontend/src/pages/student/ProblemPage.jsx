@@ -75,6 +75,33 @@ export default function ProblemPage() {
   const navigate  = useNavigate();
   const location  = useLocation();
 
+  // ── Student assignments (for the left-panel grouped list) ────────────────
+  const [studentAssignments, setStudentAssignments] = useState([]);
+  useEffect(() => {
+    if (!token) return;
+    fetch(`${API_BASE}/api/assignments`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    })
+      .then((r) => r.json())
+      .then((body) => setStudentAssignments(body?.data ?? []))
+      .catch(() => {});
+  }, [token]);
+
+  // Navigate to a problem with its assignment context (exam mode, allowed languages, etc.)
+  function selectAssignment(a) {
+    const problem = a.problem ?? {};
+    if (!problem.id) return;
+    navigate(`/problem/${problem.id}`, {
+      state: {
+        assignmentId:     a.id,
+        allowedLanguages: a.allowedLanguages ?? [],
+        lateDeduction:    0,
+        examMode:         a.mode === "exam",
+        examDeadline:     a.dueDate ?? null,
+      },
+    });
+  }
+
   // Assignment context passed via navigation state from student AssignmentsPage
   const assignmentAllowedLanguages = location.state?.allowedLanguages ?? [];   // [] = all
   const assignmentLateDeduction    = location.state?.lateDeduction    ?? 0;
@@ -608,6 +635,8 @@ export default function ProblemPage() {
       navItems={STUDENT_NAV}
       handleLogout={handleLogout}
       problems={problems}
+      assignments={studentAssignments}
+      onAssignmentSelect={selectAssignment}
       selectedId={selectedId}
       selectProblem={selectProblem}
       selectedLanguage={selectedLanguage}

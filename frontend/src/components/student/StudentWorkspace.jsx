@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
 import DOMPurify from "dompurify";
 import { marked } from "marked";
@@ -16,6 +16,7 @@ import {
   List,
   ListItemButton,
   ListItemText,
+  Menu,
   MenuItem,
   Select,
   Snackbar,
@@ -26,17 +27,20 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
-import LightbulbIcon    from "@mui/icons-material/Lightbulb";
-import AddCommentIcon   from "@mui/icons-material/AddComment";
-import PrintIcon        from "@mui/icons-material/Print";
-import AccessTimeIcon   from "@mui/icons-material/AccessTime";
-import ArrowBackIcon      from "@mui/icons-material/ArrowBack";
-import MenuBookIcon       from "@mui/icons-material/MenuBook";
-import OpenInFullIcon     from "@mui/icons-material/OpenInFull";
-import CloseFullscreenIcon from "@mui/icons-material/CloseFullscreen";
-import ExpandMoreIcon     from "@mui/icons-material/ExpandMore";
-import ExpandLessIcon     from "@mui/icons-material/ExpandLess";
+import CheckCircleOutlineIcon  from "@mui/icons-material/CheckCircleOutline";
+import LightbulbIcon           from "@mui/icons-material/Lightbulb";
+import AddCommentIcon          from "@mui/icons-material/AddComment";
+import PrintIcon               from "@mui/icons-material/Print";
+import AccessTimeIcon          from "@mui/icons-material/AccessTime";
+import ArrowBackIcon           from "@mui/icons-material/ArrowBack";
+import MenuBookIcon            from "@mui/icons-material/MenuBook";
+import OpenInFullIcon          from "@mui/icons-material/OpenInFull";
+import CloseFullscreenIcon     from "@mui/icons-material/CloseFullscreen";
+import ExpandMoreIcon          from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon          from "@mui/icons-material/ExpandLess";
+import KeyboardArrowDownIcon   from "@mui/icons-material/KeyboardArrowDown";
+import FilterListIcon          from "@mui/icons-material/FilterList";
+import LockIcon                from "@mui/icons-material/Lock";
 import { API_BASE }       from "../../apiBase";
 
 import SectionCard         from "../common/SectionCard";
@@ -61,12 +65,27 @@ function useChatScroll(chat) {
   return ref;
 }
 
+// ── exam state helper (mirrors AssignmentsPage) ───────────────────────────────
+function examState(a) {
+  if (a.mode !== "exam") return "open";
+  const now = Date.now();
+  if (a.examType === "scheduled") {
+    if (a.startDate && now < new Date(a.startDate).getTime()) return "not_started";
+    if (a.dueDate   && now > new Date(a.dueDate).getTime())   return "ended";
+    return "active";
+  }
+  if (a.dueDate && now > new Date(a.dueDate).getTime()) return "ended";
+  return "active";
+}
+
 export default function StudentWorkspace({
   currentUser,
   selectedProblem,
   navItems,
   handleLogout,
   problems,
+  assignments = [],
+  onAssignmentSelect,
   selectedId,
   selectProblem,
   selectedLanguage,
@@ -115,6 +134,43 @@ export default function StudentWorkspace({
   // ── Left panel tabs ───────────────────────────────────────────────────────
   const [leftTab,          setLeftTab]          = useState(0); // 0=assignments 1=tutorials
   const [tutorialList,     setTutorialList]     = useState(null);
+
+  // ── Assignment panel: mode selector + language filter ────────────────────
+  const [assignMode,       setAssignMode]       = useState(0);    // 0=homework 1=practice 2=exams
+  const [assignLang,       setAssignLang]       = useState("all");
+  const [assignModeAnchor, setAssignModeAnchor] = useState(null);
+
+  const assignModeDefs = useMemo(() => {
+    const hw  = assignments.filter((a) => a.mode === "homework");
+    const pr  = assignments.filter((a) => a.mode === "practice");
+    const ex  = assignments.filter((a) => a.mode === "exam");
+    return [
+      { label: `Homework (${hw.length})`,  short: "Homework",  items: hw  },
+      { label: `Practice (${pr.length})`,  short: "Practice",  items: pr  },
+      { label: `Exams (${ex.length})`,     short: "Exams",     items: ex  },
+    ];
+  }, [assignments]);
+
+  const currentMode     = assignModeDefs[assignMode];
+  const assignLangList  = useMemo(() => {
+    const set = new Set();
+    currentMode.items.forEach((a) => (a.allowedLanguages ?? []).forEach((l) => set.add(l)));
+    return [...set].sort();
+  }, [currentMode]);
+
+  const filteredAssignments = useMemo(() => {
+    if (assignLang === "all") return currentMode.items;
+    return currentMode.items.filter((a) => {
+      const langs = a.allowedLanguages ?? [];
+      return langs.length === 0 || langs.includes(assignLang);
+    });
+  }, [currentMode, assignLang]);
+
+  function switchAssignMode(idx) {
+    setAssignMode(idx);
+    setAssignLang("all");
+    setAssignModeAnchor(null);
+  }
   const [selectedTutorial, setSelectedTutorial] = useState(null); // { tag, title }
   const [tutorialContent,  setTutorialContent]  = useState(null); // full content object
   const [tutorialStatus,   setTutorialStatus]   = useState("idle");
@@ -224,21 +280,138 @@ export default function StudentWorkspace({
           <Box sx={{ p: 1.5 }}>
             {/* ── Assignments ── */}
             {leftTab === 0 && (
-              problems.length === 0
-                ? <Typography color="text.secondary" sx={{ p: 1 }}>No assignments available.</Typography>
-                : <List disablePadding>
-                    {problems.map((p) => {
-                      const isSelected = p.id === selectedId;
-                      const diffColor = p.difficulty === "Easy" ? "#22c55e" : p.difficulty === "Medium" ? "#f59e0b" : p.difficulty === "Hard" ? "#ef4444" : "#64748b";
-                      return (
-                        <ListItemButton key={p.id} selected={isSelected} onClick={() => selectProblem(p.id)}
-                          sx={{ mb: 1, border: 1, borderColor: isSelected ? "primary.main" : "divider", borderRadius: 2, alignItems: "flex-start", bgcolor: isSelected ? "rgba(99,102,241,0.08)" : "transparent" }}>
-                          <ListItemText primary={p.title} secondary={p.language || "n/a"} primaryTypographyProps={{ fontWeight: 600, fontSize: 14 }} />
-                          <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: diffColor, flexShrink: 0, mt: 1.2, ml: 1 }} />
-                        </ListItemButton>
-                      );
-                    })}
-                  </List>
+              assignments.length === 0 ? (
+                /* Fallback: no enrolled assignments yet — show raw problem list */
+                problems.length === 0
+                  ? <Typography color="text.secondary" sx={{ p: 1 }}>No assignments available.</Typography>
+                  : <List disablePadding>
+                      {problems.map((p) => {
+                        const isSelected = p.id === selectedId;
+                        const diffColor = p.difficulty === "Easy" ? "#22c55e" : p.difficulty === "Medium" ? "#f59e0b" : p.difficulty === "Hard" ? "#ef4444" : "#64748b";
+                        return (
+                          <ListItemButton key={p.id} selected={isSelected} onClick={() => selectProblem(p.id)}
+                            sx={{ mb: 1, border: 1, borderColor: isSelected ? "primary.main" : "divider", borderRadius: 2, alignItems: "flex-start", bgcolor: isSelected ? "rgba(99,102,241,0.08)" : "transparent" }}>
+                            <ListItemText primary={p.title} secondary={p.language || "n/a"} primaryTypographyProps={{ fontWeight: 600, fontSize: 14 }} />
+                            <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: diffColor, flexShrink: 0, mt: 1.2, ml: 1 }} />
+                          </ListItemButton>
+                        );
+                      })}
+                    </List>
+              ) : (
+                /* Grouped assignment panel */
+                <Box>
+                  {/* Mode selector button */}
+                  <Stack direction="row" alignItems="center" sx={{ mb: 1 }}>
+                    <Button
+                      endIcon={<KeyboardArrowDownIcon sx={{ fontSize: 16 }} />}
+                      onClick={(e) => setAssignModeAnchor(e.currentTarget)}
+                      size="small"
+                      sx={{ fontWeight: 700, textTransform: "none", color: "text.primary", pl: 0, fontSize: 13 }}
+                    >
+                      {currentMode.short}
+                    </Button>
+                  </Stack>
+
+                  <Menu
+                    anchorEl={assignModeAnchor}
+                    open={Boolean(assignModeAnchor)}
+                    onClose={() => setAssignModeAnchor(null)}
+                    anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+                  >
+                    {assignModeDefs.map((m, i) => (
+                      <MenuItem
+                        key={i}
+                        selected={assignMode === i}
+                        onClick={() => switchAssignMode(i)}
+                        sx={{ fontSize: 13, fontWeight: assignMode === i ? 700 : 400 }}
+                      >
+                        {m.label}
+                      </MenuItem>
+                    ))}
+                  </Menu>
+
+                  {/* Language filter chips */}
+                  {assignLangList.length > 0 && (
+                    <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mb: 1.25 }} alignItems="center">
+                      <FilterListIcon sx={{ fontSize: 13, color: "text.secondary" }} />
+                      <Chip
+                        label="All"
+                        size="small"
+                        variant={assignLang === "all" ? "filled" : "outlined"}
+                        color={assignLang === "all" ? "primary" : "default"}
+                        onClick={() => setAssignLang("all")}
+                        sx={{ cursor: "pointer", height: 18, fontSize: 10, "& .MuiChip-label": { px: 0.75 } }}
+                      />
+                      {assignLangList.map((lang) => (
+                        <Chip
+                          key={lang}
+                          label={lang}
+                          size="small"
+                          variant={assignLang === lang ? "filled" : "outlined"}
+                          color={assignLang === lang ? "primary" : "default"}
+                          onClick={() => setAssignLang(lang)}
+                          sx={{ cursor: "pointer", height: 18, fontSize: 10, "& .MuiChip-label": { px: 0.75 } }}
+                        />
+                      ))}
+                    </Stack>
+                  )}
+
+                  {/* Assignment list */}
+                  {filteredAssignments.length === 0 ? (
+                    <Typography color="text.secondary" variant="caption" sx={{ px: 0.5 }}>
+                      {assignLang !== "all"
+                        ? `No ${currentMode.short.toLowerCase()} for "${assignLang}".`
+                        : `No ${currentMode.short.toLowerCase()} yet.`}
+                    </Typography>
+                  ) : (
+                    <List disablePadding sx={{ maxHeight: 480, overflowY: "auto" }}>
+                      {filteredAssignments.map((a) => {
+                        const problem    = a.problem ?? {};
+                        const isSelected = problem.id === selectedId;
+                        const state      = examState(a);
+                        const isLocked   = a.mode === "exam" && state === "not_started";
+                        const isEnded    = a.mode === "exam" && state === "ended";
+                        const langs      = a.allowedLanguages ?? [];
+
+                        return (
+                          <ListItemButton
+                            key={a.id}
+                            selected={isSelected}
+                            disabled={isLocked || isEnded}
+                            onClick={() => onAssignmentSelect?.(a)}
+                            sx={{
+                              mb: 0.75,
+                              border: 1,
+                              borderColor: isSelected ? "primary.main" : "divider",
+                              borderRadius: 2,
+                              alignItems: "flex-start",
+                              bgcolor: isSelected ? "rgba(99,102,241,0.08)" : "transparent",
+                              opacity: isEnded ? 0.5 : 1,
+                            }}
+                          >
+                            <ListItemText
+                              primary={
+                                <Stack direction="row" alignItems="center" spacing={0.5}>
+                                  {isLocked && <LockIcon sx={{ fontSize: 12, color: "text.disabled" }} />}
+                                  <Typography variant="body2" fontWeight={600} fontSize={13} noWrap>
+                                    {a.title}
+                                  </Typography>
+                                </Stack>
+                              }
+                              secondary={
+                                langs.length > 0
+                                  ? langs.join(", ")
+                                  : (problem.language || "Any")
+                              }
+                              secondaryTypographyProps={{ fontSize: 11 }}
+                            />
+                          </ListItemButton>
+                        );
+                      })}
+                    </List>
+                  )}
+                </Box>
+              )
             )}
 
             {/* ── Tutorials ── */}
@@ -493,13 +666,28 @@ export default function StudentWorkspace({
             )}
           </Box>
 
-          {/* Problem description — collapsible */}
+          {/* Problem description — collapsible, markdown-rendered */}
           {selectedProblem?.description && descOpen && (
-            <Box sx={{ mb: 2, p: 2, bgcolor: "rgba(99,102,241,0.06)", border: 1, borderColor: "rgba(99,102,241,0.2)", borderRadius: 2 }}>
-              <Typography variant="body2" sx={{ lineHeight: 1.8, whiteSpace: "pre-wrap" }}>
-                {selectedProblem.description}
-              </Typography>
-            </Box>
+            <Box
+              sx={{
+                mb: 2, p: 2,
+                bgcolor: "rgba(99,102,241,0.06)",
+                border: 1, borderColor: "rgba(99,102,241,0.2)", borderRadius: 2,
+                // Markdown prose styles
+                "& p":        { margin: "0 0 0.6em", lineHeight: 1.8 },
+                "& p:last-child": { mb: 0 },
+                "& strong":   { fontWeight: 700 },
+                "& em":       { fontStyle: "italic" },
+                "& code":     { fontFamily: "monospace", fontSize: "0.85em", bgcolor: "rgba(0,0,0,0.12)", px: 0.5, borderRadius: 0.5 },
+                "& pre":      { bgcolor: "rgba(0,0,0,0.16)", p: 1.5, borderRadius: 1, overflowX: "auto", "& code": { bgcolor: "transparent", p: 0 } },
+                "& ul, & ol": { pl: 2.5, mb: 0.5 },
+                "& li":       { mb: 0.25 },
+                "& h1, & h2, & h3": { fontWeight: 700, mt: 1, mb: 0.5 },
+              }}
+              dangerouslySetInnerHTML={{
+                __html: DOMPurify.sanitize(marked.parse(selectedProblem.description)),
+              }}
+            />
           )}
 
           {/* Phase 7 — multi-file tab bar */}

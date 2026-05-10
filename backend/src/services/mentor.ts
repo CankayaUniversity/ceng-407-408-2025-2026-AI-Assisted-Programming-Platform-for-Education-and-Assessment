@@ -253,7 +253,7 @@ Idle rule:
     prompt += `
 
 HINT MODE — THIS OVERRIDES ALL OTHER RESPONSE RULES:
-- Ignore the "Allowed help" and "Response style" sections above.
+- Ignore the explanation guidelines in STEP 4 above.
 - The student clicked the Hint button. Give exactly ONE hint. Nothing more.
 - Do NOT answer their question directly.
 - Do NOT restate or paraphrase the problem description or assignment text.
@@ -378,9 +378,18 @@ function countCodeLikeLines(text: string): number {
 }
 
 function stripPseudocodeBlocks(text: string): string {
-  // Remove fenced blocks explicitly marked as pseudocode or plain text
-  // so they don't count toward the "looks like real code" heuristics.
-  return text.replace(/```(pseudocode|text|pseudo)\r?\n[\s\S]*?```/gi, "");
+  // Remove fenced blocks explicitly marked as pseudocode or plain text.
+  let result = text.replace(/```(pseudocode|text|pseudo)\r?\n[\s\S]*?```/gi, "");
+
+  // Also strip inline pseudocode lines — capitalised keywords (FOR, IF, WHILE, RETURN)
+  // are a strong signal of pseudocode notation rather than real code.
+  // Real code uses lowercase keywords in most languages.
+  result = result
+    .split(/\r?\n/)
+    .filter((line) => !/^\s*(FOR |IF |WHILE |RETURN |SET |ELSE|END |DO )/i.test(line) || /^\s*(for |if |while |return )\w/.test(line))
+    .join("\n");
+
+  return result;
 }
 
 function looksLikeSolution(text: string): boolean {

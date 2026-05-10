@@ -22,7 +22,7 @@ function userKey(req: Request): string {
   } catch {
     // invalid / expired token — fall through to IP
   }
-  return `ip:${ipKeyGenerator(req)}`;
+  return `ip:${ipKeyGenerator(req.ip ?? "")}`;
 }
 
 /**

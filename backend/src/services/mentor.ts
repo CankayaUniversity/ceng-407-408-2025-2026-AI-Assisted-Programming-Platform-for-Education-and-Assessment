@@ -206,6 +206,14 @@ ${normalizedMode}
 [STUDENT_MESSAGE]
 ${safeQuestion || "No message provided."}
 
+STEP 0 — GROUND YOURSELF IN THE ASSIGNMENT (do this silently first):
+Re-read the [ASSIGNMENT] section above.
+Identify exactly:
+- What the program must output or return (format, type, value)
+- What a correct result looks like for a simple example input
+Never assume what the correct output should be from general knowledge alone.
+If you are about to tell the student their output is wrong, verify that claim against the assignment description first. If the assignment is missing, ground yourself in what the student's code is actually doing before making any claims about correctness.
+
 STEP 1 — INFER STUDENT LEVEL (do this silently before writing your response):
 Look at the code quality and the way the student asks their question.
 - BEGINNER: very short or empty code, basic syntax errors, vague questions ("why doesn't it work?"), no functions or data structures, doesn't understand error messages.
@@ -479,11 +487,34 @@ function enforceIdleHint(text: string, runStatus: string | null | undefined): st
 
   const lower = text.toLowerCase();
 
+  // Already contains a "run the code" suggestion — don't duplicate it.
   if (lower.includes("cannot know yet") || lower.includes("run the code")) {
     return text;
   }
 
-  if (lower.includes("output") || lower.includes("pass") || lower.includes("runtime")) {
+  // Only append the hint when the model is making a specific assertion about
+  // what the code produces or whether tests pass at runtime.
+  // Mentioning the word "output" in a general explanation must NOT trigger this —
+  // e.g. "the student is printing the wrong output" is an analysis, not a runtime claim.
+  const assertsRuntimeResult = [
+    "the output is",
+    "it will output",
+    "it outputs",
+    "it will print",
+    "it prints",
+    "will print",
+    "it passes the test",
+    "it passes all",
+    "all tests pass",
+    "it will pass",
+    "test cases pass",
+    "it should output",
+    "returns correctly",
+    "works correctly",
+    "executes correctly",
+  ].some((phrase) => lower.includes(phrase));
+
+  if (assertsRuntimeResult) {
     return `${text}\n\nRun the code first to verify what actually happens.`;
   }
 

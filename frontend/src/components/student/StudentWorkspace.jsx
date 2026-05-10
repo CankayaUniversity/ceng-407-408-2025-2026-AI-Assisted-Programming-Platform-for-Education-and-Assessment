@@ -87,6 +87,7 @@ export default function StudentWorkspace({
   handleLogout,
   problems,
   assignments = [],
+  assignmentsLoading = false,
   onAssignmentSelect,
   selectedId,
   selectProblem,
@@ -279,11 +280,15 @@ export default function StudentWorkspace({
           ...(mentorZoomed
             ? {
                 position: "fixed",
-                inset: 0,
+                top: "60px",   // clear the fixed AppBar (minHeight: 60, zIndex: 1201)
+                left: 0,
+                right: 0,
+                bottom: 0,
                 zIndex: 1200,
                 bgcolor: "background.default",
                 p: 2,
                 gridTemplateColumns: "58fr 42fr",
+                gridTemplateRows: "1fr",
                 overflow: "hidden",
               }
             : {
@@ -337,8 +342,13 @@ export default function StudentWorkspace({
               <Box sx={{ p: 1.5 }}>
             {/* ── Assignments ── */}
             {leftTab === 0 && (
-              assignments.length === 0 ? (
-                /* Fallback: no enrolled assignments yet — show raw problem list */
+              assignmentsLoading ? (
+                /* Loading state — prevents flicker from empty→populated */
+                <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+                  <CircularProgress size={24} />
+                </Box>
+              ) : assignments.length === 0 ? (
+                /* Fallback: no enrolled assignments — show raw problem list */
                 problems.length === 0
                   ? <Typography color="text.secondary" sx={{ p: 1 }}>No assignments available.</Typography>
                   : <List disablePadding>
@@ -655,6 +665,8 @@ export default function StudentWorkspace({
           )}
         </Box>
 
+        {/* Scrollable wrapper — only active in zoom mode so content is never clipped */}
+        <Box sx={mentorZoomed ? { overflow: "auto" } : {}}>
         <SectionCard
           title={selectedProblem?.title || "Code Editor"}
           action={
@@ -860,7 +872,9 @@ export default function StudentWorkspace({
             </Box>
           )}
         </SectionCard>
+        </Box>{/* end editor scroll wrapper */}
 
+        <Box sx={mentorZoomed ? { overflow: "auto" } : {}}>
         <SectionCard
           title="AI Mentor Chat"
           action={
@@ -1044,6 +1058,7 @@ export default function StudentWorkspace({
             </>
           )}
         </SectionCard>
+        </Box>{/* end AI mentor scroll wrapper */}
       </Box>
 
       {/* ── Expanded tutorial overlay ────────────────────────────────────────── */}

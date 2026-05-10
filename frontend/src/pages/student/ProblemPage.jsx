@@ -76,15 +76,18 @@ export default function ProblemPage() {
   const location  = useLocation();
 
   // ── Student assignments (for the left-panel grouped list) ────────────────
-  const [studentAssignments, setStudentAssignments] = useState([]);
+  const [studentAssignments,        setStudentAssignments]        = useState([]);
+  const [studentAssignmentsLoading, setStudentAssignmentsLoading] = useState(true);
   useEffect(() => {
     if (!token) return;
+    setStudentAssignmentsLoading(true);
     fetch(`${API_BASE}/api/assignments`, {
       headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
     })
       .then((r) => r.json())
       .then((body) => setStudentAssignments(body?.data ?? []))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setStudentAssignmentsLoading(false));
   }, [token]);
 
   // Navigate to a problem with its assignment context (exam mode, allowed languages, etc.)
@@ -636,6 +639,7 @@ export default function ProblemPage() {
       handleLogout={handleLogout}
       problems={problems}
       assignments={studentAssignments}
+      assignmentsLoading={studentAssignmentsLoading}
       onAssignmentSelect={selectAssignment}
       selectedId={selectedId}
       selectProblem={selectProblem}

@@ -327,7 +327,9 @@ function AssignmentRow({ a, idx, solvedSet }) {
       }}
       sx={{ cursor: published ? "pointer" : "default", opacity: published ? 1 : 0.65 }}
     >
-      <TableCell>{idx + 1}</TableCell>
+      <TableCell sx={{ borderLeft: 4, borderLeftColor: `${difficultyColor(problem.difficulty)}.main`, pl: 1.5 }}>
+        {idx + 1}
+      </TableCell>
 
       <TableCell>
         <Typography variant="body2" fontWeight={600}>{a.title}</Typography>
@@ -404,9 +406,18 @@ export default function AssignmentsPage({ currentUser, token, handleLogout, navI
       fetch(`${API_BASE}/api/student/history`, { headers }).then((r) => r.json()),
     ])
       .then(([assignRes, subRes]) => {
-        setAssignments(assignRes?.data ?? []);
-        setSubmissions(subRes?.data    ?? []);
-        setFilterLang("all");   // reset stale language filter when data reloads
+        const data = assignRes?.data ?? [];
+        setAssignments(data);
+        setSubmissions(subRes?.data ?? []);
+        setFilterLang("all");
+
+        // Auto-switch to the first non-empty tab so students don't land on a
+        // blank "No homework yet" screen when only practice/exam assignments exist.
+        const hw = data.filter((a) => a.mode === "homework");
+        const pr = data.filter((a) => a.mode === "practice");
+        const ex = data.filter((a) => a.mode === "exam");
+        if (hw.length === 0 && pr.length > 0) setTab(1);
+        else if (hw.length === 0 && pr.length === 0 && ex.length > 0) setTab(2);
       })
       .catch((err) => console.error("AssignmentsPage fetch failed:", err))
       .finally(() => setLoading(false));

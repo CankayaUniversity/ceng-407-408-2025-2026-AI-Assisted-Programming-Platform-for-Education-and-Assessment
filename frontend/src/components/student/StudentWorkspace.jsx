@@ -33,6 +33,8 @@ import AddCommentIcon          from "@mui/icons-material/AddComment";
 import PrintIcon               from "@mui/icons-material/Print";
 import AccessTimeIcon          from "@mui/icons-material/AccessTime";
 import ArrowBackIcon           from "@mui/icons-material/ArrowBack";
+import ChevronLeftIcon         from "@mui/icons-material/ChevronLeft";
+import ChevronRightIcon        from "@mui/icons-material/ChevronRight";
 import MenuBookIcon            from "@mui/icons-material/MenuBook";
 import OpenInFullIcon          from "@mui/icons-material/OpenInFull";
 import CloseFullscreenIcon     from "@mui/icons-material/CloseFullscreen";
@@ -130,6 +132,17 @@ export default function StudentWorkspace({
   onNewChat,
 }) {
   const chatBottomRef = useChatScroll(chat);
+
+  // ── Layout state ──────────────────────────────────────────────────────────
+  const [leftPanelOpen, setLeftPanelOpen] = useState(true);
+  const [mentorZoomed,  setMentorZoomed]  = useState(false);
+
+  // Lock body scroll while the mentor zoom overlay is active so the page
+  // behind it doesn't jump when the user scrolls inside the overlay.
+  useEffect(() => {
+    document.body.style.overflow = mentorZoomed ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [mentorZoomed]);
 
   // ── Left panel tabs ───────────────────────────────────────────────────────
   const [leftTab,          setLeftTab]          = useState(0); // 0=assignments 1=tutorials
@@ -262,22 +275,66 @@ export default function StudentWorkspace({
       <Box
         sx={{
           display: "grid",
-          gap: 3,
-          gridTemplateColumns: { xs: "1fr", md: "minmax(260px, 320px) minmax(0, 1fr) minmax(280px, 360px)" },
-          alignItems: "start",
+          gap: mentorZoomed ? 2 : 3,
+          ...(mentorZoomed
+            ? {
+                position: "fixed",
+                inset: 0,
+                zIndex: 1200,
+                bgcolor: "background.default",
+                p: 2,
+                gridTemplateColumns: "58fr 42fr",
+                overflow: "hidden",
+              }
+            : {
+                gridTemplateColumns: leftPanelOpen
+                  ? { xs: "1fr", md: "minmax(260px, 320px) minmax(0, 1fr) minmax(280px, 360px)" }
+                  : { xs: "1fr", md: "40px minmax(0, 1fr) minmax(320px, 440px)" },
+                alignItems: "start",
+              }
+          ),
         }}
       >
         {/* ── Left panel: Assignments / Tutorials tabs ────────────────── */}
-        <Box sx={{ border: 1, borderColor: "divider", borderRadius: 3, overflow: "hidden", bgcolor: "background.paper" }}>
-          {/* Tab bar */}
-          <Tabs value={leftTab} onChange={(_, v) => setLeftTab(v)} variant="fullWidth"
-            sx={{ borderBottom: 1, borderColor: "divider", minHeight: 40 }}>
-            <Tab label="Assignments" sx={{ fontSize: 12, minHeight: 40, py: 0 }} />
-            <Tab label="Tutorials" sx={{ fontSize: 12, minHeight: 40, py: 0 }}
-              icon={<MenuBookIcon sx={{ fontSize: 14 }} />} iconPosition="start" />
-          </Tabs>
+        <Box
+          sx={
+            mentorZoomed
+              ? { display: "none" }
+              : leftPanelOpen
+                ? { border: 1, borderColor: "divider", borderRadius: 3, overflow: "hidden", bgcolor: "background.paper" }
+                : { display: "flex", flexDirection: "column", alignItems: "center", border: 1, borderColor: "divider", borderRadius: 2, bgcolor: "background.paper", py: 1 }
+          }
+        >
+          {leftPanelOpen ? (
+            <>
+              {/* Tab bar + collapse button */}
+              <Box sx={{ display: "flex", alignItems: "center", borderBottom: 1, borderColor: "divider" }}>
+                <Tabs
+                  value={leftTab}
+                  onChange={(_, v) => setLeftTab(v)}
+                  variant="fullWidth"
+                  sx={{ flex: 1, minHeight: 40 }}
+                >
+                  <Tab label="Assignments" sx={{ fontSize: 12, minHeight: 40, py: 0 }} />
+                  <Tab
+                    label="Tutorials"
+                    sx={{ fontSize: 12, minHeight: 40, py: 0 }}
+                    icon={<MenuBookIcon sx={{ fontSize: 14 }} />}
+                    iconPosition="start"
+                  />
+                </Tabs>
+                <Tooltip title="Collapse panel">
+                  <IconButton
+                    size="small"
+                    onClick={() => { setLeftPanelOpen(false); setAssignModeAnchor(null); }}
+                    sx={{ mr: 0.5, flexShrink: 0 }}
+                  >
+                    <ChevronLeftIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </Box>
 
-          <Box sx={{ p: 1.5 }}>
+              <Box sx={{ p: 1.5 }}>
             {/* ── Assignments ── */}
             {leftTab === 0 && (
               assignments.length === 0 ? (
@@ -586,7 +643,16 @@ export default function StudentWorkspace({
                 )}
               </Box>
             )}
-          </Box>
+              </Box>
+            </>
+          ) : (
+            /* Collapsed state — just the expand button */
+            <Tooltip title="Open panel" placement="right">
+              <IconButton size="small" onClick={() => setLeftPanelOpen(true)}>
+                <ChevronRightIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
         </Box>
 
         <SectionCard
@@ -701,7 +767,7 @@ export default function StudentWorkspace({
           />
 
           {/* Monaco editor — rounded bottom corners only */}
-          <Box sx={{ height: 380, overflow: "hidden", border: 1, borderTop: 0, borderColor: "divider", borderRadius: "0 0 12px 12px" }}>
+          <Box sx={{ height: mentorZoomed ? "44vh" : 380, overflow: "hidden", border: 1, borderTop: 0, borderColor: "divider", borderRadius: "0 0 12px 12px" }}>
             <Editor
               key={`${monacoLanguage(selectedLanguage)}-${activeFileId}`}
               height="100%"
@@ -780,7 +846,7 @@ export default function StudentWorkspace({
                 </span>
               </Tooltip>
             </Stack>
-            <Box sx={{ height: 200 }}>
+            <Box sx={{ height: mentorZoomed ? "30vh" : 340 }}>
               <InteractiveTerminal
                 wsUrl={wsUrl("/ws/terminal")}
                 onReady={(writer) => { termWriterRef.current = writer; }}
@@ -788,27 +854,39 @@ export default function StudentWorkspace({
             </Box>
           </Box>
 
-          <Box sx={{ mt: 2 }}>
-            <SubmissionHistory submissions={submissions} loading={submissionsLoading} />
-          </Box>
+          {!mentorZoomed && (
+            <Box sx={{ mt: 2 }}>
+              <SubmissionHistory submissions={submissions} loading={submissionsLoading} />
+            </Box>
+          )}
         </SectionCard>
 
         <SectionCard
           title="AI Mentor Chat"
           action={
-            onNewChat && !examMode ? (
-              <Tooltip title="Start a new conversation — AI will forget previous messages for this problem">
-                <Button
-                  size="small"
-                  variant="outlined"
-                  startIcon={<AddCommentIcon />}
-                  onClick={onNewChat}
-                  disabled={chatLoading}
-                >
-                  New Chat
-                </Button>
+            <Stack direction="row" spacing={1} alignItems="center">
+              {onNewChat && !examMode && (
+                <Tooltip title="Start a new conversation — AI will forget previous messages for this problem">
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<AddCommentIcon />}
+                    onClick={onNewChat}
+                    disabled={chatLoading}
+                  >
+                    New Chat
+                  </Button>
+                </Tooltip>
+              )}
+              <Tooltip title={mentorZoomed ? "Exit full-screen focus" : "Full-screen focus mode"}>
+                <IconButton size="small" onClick={() => setMentorZoomed((v) => !v)}>
+                  {mentorZoomed
+                    ? <CloseFullscreenIcon fontSize="small" />
+                    : <OpenInFullIcon fontSize="small" />
+                  }
+                </IconButton>
               </Tooltip>
-            ) : null
+            </Stack>
           }
         >
           {examMode ? (
@@ -820,8 +898,8 @@ export default function StudentWorkspace({
               <Box
                 ref={chatBottomRef}
                 sx={{
-                  minHeight: 420,
-                  maxHeight: 520,
+                  minHeight: mentorZoomed ? "calc(100vh - 280px)" : 420,
+                  maxHeight: mentorZoomed ? "calc(100vh - 280px)" : 520,
                   overflow: "auto",
                   border: 1,
                   borderColor: "divider",

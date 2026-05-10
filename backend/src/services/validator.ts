@@ -348,9 +348,9 @@ block
   const model = getValidatorModelName();
   console.log("[validator] model:", model);
 
-  // Bug #12 fix: add 30-second timeout so a hung Ollama never freezes the request
+  // 120-second timeout — allows Ollama time to swap/load models in VRAM if needed
   const controller = new AbortController();
-  const timeoutId  = setTimeout(() => controller.abort(), 30_000);
+  const timeoutId  = setTimeout(() => controller.abort(), 120_000);
 
   const res = await fetch(getOllamaGenerateUrl(), {
     method: "POST",

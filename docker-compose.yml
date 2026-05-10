@@ -98,7 +98,7 @@ services:
       timeout: 5s
       start_period: 30s
       retries: 5
-    
+
     deploy:
      resources:
        reservations:
@@ -118,11 +118,13 @@ services:
       - ollama_data:/root/.ollama
     entrypoint: >
       sh -c "
-        ollama pull ${OLLAMA_MODEL:-qwen2.5-coder:14b} &&
-        ollama pull ${OLLAMA_VALIDATOR_MODEL:-qwen2.5:3b-instruct}
+        ollama pull $$OLLAMA_MODEL &&
+        ollama pull $$OLLAMA_VALIDATOR_MODEL
       "
     environment:
       - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3-coder:30b}
+      - OLLAMA_VALIDATOR_MODEL=${OLLAMA_VALIDATOR_MODEL:-qwen2.5:3b-instruct}
 
   openwebui:
     image: ghcr.io/open-webui/open-webui:main

@@ -1,4 +1,4 @@
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import type { Request } from "express";
 import jwt from "jsonwebtoken";
 
@@ -22,7 +22,7 @@ function userKey(req: Request): string {
   } catch {
     // invalid / expired token — fall through to IP
   }
-  return `ip:${req.ip ?? "unknown"}`;
+  return `ip:${ipKeyGenerator(req)}`;
 }
 
 /**

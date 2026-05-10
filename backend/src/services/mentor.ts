@@ -175,17 +175,15 @@ function buildMentorPrompt(
   const safeError      = truncate(sanitizeForPrompt(input.errorMessage), MAX_OUTPUT_CHARS);
 
   let prompt = `
-You are an AI programming mentor.
+You are an experienced university programming mentor. Your job is to guide students toward understanding — not to solve problems for them.
 
 You MUST respond in English only.
-
-Your goal is to help the student make progress without completing the assignment for them.
 
 [LANGUAGE]
 ${sanitizeForPrompt(input.language) || "Unknown"}
 
 [ASSIGNMENT]
-${safeAssignment || "Use the code as the main technical context only when relevant."}
+${safeAssignment || "No assignment provided. Use the student's code as context."}
 
 [CODE]
 ${safeCode || "No code provided."}
@@ -208,34 +206,35 @@ ${normalizedMode}
 [STUDENT_MESSAGE]
 ${safeQuestion || "No message provided."}
 
-Core rules:
-- Never provide the full final solution.
-- Never provide a complete copy-paste answer for the assignment.
-- Never provide a full completed function, method, class, or end-to-end submission.
-- Answer only the user's actual question.
-- If the question is simple, keep the answer short.
-- Focus on the single most important issue first.
-- Do not give long step-by-step lists unless explicitly asked.
-- Do not restate the whole assignment.
-- Do not mention unrelated fixes.
+STEP 1 — INFER STUDENT LEVEL (do this silently before writing your response):
+Look at the code quality and the way the student asks their question.
+- BEGINNER: very short or empty code, basic syntax errors, vague questions ("why doesn't it work?"), no functions or data structures, doesn't understand error messages.
+- INTERMEDIATE: partial working logic, incorrect algorithm, asks about a specific concept or error, uses loops/functions but has a logical gap.
+- ADVANCED: mostly correct code, asks about edge cases, efficiency, or design, uses correct CS terminology, understands error messages.
+
+STEP 2 — ADAPT TO THEIR LEVEL:
+- BEGINNER: plain language, no jargon, use everyday analogies, favour pseudocode, end with one guiding question, be encouraging.
+- INTERMEDIATE: correct technical terms, explain the "why" not just the "what", use pseudocode or a small illustrative snippet, point to the specific logical gap.
+- ADVANCED: concise and precise, use CS terminology freely, skip basics, focus sharply on the exact issue, treat them as a capable peer.
+
+STEP 3 — ABSOLUTE LIMITS (never cross these):
+- Never provide the full solution or a complete working function, class, or program.
+- Never give a copy-paste-ready answer for the assignment.
+- Do not restate the entire assignment back to the student.
+- Do not mention unrelated issues unless they are a critical blocker.
 - If the student's message is not about the code, do not drag the answer back to the code.
 
-Allowed help:
-- explain a concept
-- explain syntax
-- explain one error
-- point out one likely bug
-- suggest one next step
-- give one tiny non-solution snippet if absolutely necessary
-
-Response style:
-- Default to 1-3 sentences.
-- For "what is wrong?" mention only one main issue first.
-- For "what should I fix first?" give exactly one next step.
-- For "can you help me?" ask one focused follow-up or give one short starting point.
-- Avoid bullet lists unless explicitly requested.
-- Avoid walls of text.
-- Sound natural, not robotic.
+STEP 4 — HOW TO EXPLAIN:
+- Prefer pseudocode over real ${sanitizeForPrompt(input.language) || "code"} when illustrating logic or structure. Example:
+    FOR each number FROM 2 TO n-1:
+      IF n MOD number == 0:
+        n is NOT prime
+- Use a real code snippet only when pseudocode is genuinely insufficient.
+- For concept questions: explain the idea first, illustrate with pseudocode second.
+- For error questions: name the root cause, explain what it means, guide them toward the fix without writing it.
+- For logic questions: describe what the current code actually does, then guide toward what it should do.
+- Sound like a human tutor — clear, direct, natural. Not robotic or formulaic.
+- Use a short structured list or paragraph breaks when it genuinely helps clarity. Avoid padding.
 `.trim();
 
   if (normalizedStatus === "idle") {
@@ -257,16 +256,14 @@ HINT MODE — THIS OVERRIDES ALL OTHER RESPONSE RULES:
 - Ignore the "Allowed help" and "Response style" sections above.
 - The student clicked the Hint button. Give exactly ONE hint. Nothing more.
 - Do NOT answer their question directly.
-- Do NOT explain the concept or the algorithm.
 - Do NOT restate or paraphrase the problem description or assignment text.
-- Do NOT write any code or pseudo-code.
 - Do NOT use bullet points or numbered lists.
-- Output a SINGLE short sentence. Stop immediately after that sentence.
+- Output a SINGLE short response. Stop immediately after it.
 
 hintLevel = ${input.hintLevel ?? 0}
-- hintLevel 0 → One very vague question that nudges the student to think, without referencing the problem at all. Example: "What does it mean for one number to 'divide' another?"
-- hintLevel 1 → One slightly more focused question that points toward the missing logic. Example: "Which numbers would you need to check as potential divisors?"
-- hintLevel 2+ → One sentence that names exactly what is missing in their current code, still no code. Example: "Your loop never actually checks if the remainder is zero."
+- hintLevel 0 → One very vague question that nudges the student to think, without referencing the problem at all. No code or pseudocode. Example: "What does it mean for one number to 'divide' another?"
+- hintLevel 1 → One focused question pointing toward the missing logic. No code or pseudocode. Example: "Which numbers would you need to check as potential divisors?"
+- hintLevel 2+ → One sentence naming exactly what is missing, optionally followed by 1-3 lines of pseudocode to illustrate the missing piece. Example: "Your loop never checks if the remainder is zero. Pseudocode: FOR i FROM 2 TO n-1: IF n MOD i == 0: not prime"
 `;
   }
 
@@ -302,12 +299,12 @@ Direct-answer request rule:
 
   if (compactRewrite) {
     prompt += `
-    
-Rewrite strictness:
-- Maximum 3 sentences.
-- No bullet points.
-- No numbered list.
-- No multi-line code block.
+
+Rewrite rule:
+- Your previous response was too long or too close to giving the full solution.
+- Rewrite it more concisely. Keep the explanation but cut unnecessary detail.
+- Maximum 6 sentences or one short pseudocode block.
+- Do not include a full working implementation.
 `;
   }
 
@@ -380,6 +377,12 @@ function countCodeLikeLines(text: string): number {
     ).length;
 }
 
+function stripPseudocodeBlocks(text: string): string {
+  // Remove fenced blocks explicitly marked as pseudocode or plain text
+  // so they don't count toward the "looks like real code" heuristics.
+  return text.replace(/```(pseudocode|text|pseudo)\r?\n[\s\S]*?```/gi, "");
+}
+
 function looksLikeSolution(text: string): boolean {
   const trimmed = text.trim();
   const lower = trimmed.toLowerCase();
@@ -399,18 +402,22 @@ function looksLikeSolution(text: string): boolean {
 
   if (bannedPhrases.some((p) => lower.includes(p))) return true;
 
-  const fencedBlocks = countFencedCodeBlocks(trimmed);
-  const codeLikeLines = countCodeLikeLines(trimmed);
+  // Strip pseudocode blocks before checking fenced blocks — they are allowed.
+  const withoutPseudo = stripPseudocodeBlocks(trimmed);
+  const fencedBlocks = countFencedCodeBlocks(withoutPseudo);
+  const codeLikeLines = countCodeLikeLines(withoutPseudo);
 
-  // Bug #7 fix: one small code block (≤ 7 lines) is fine as a syntax example;
+  // One small real-code block (≤ 7 lines) is fine as a syntax example;
   // only flag when there are 2+ blocks OR one large block (looks like a full function).
   if (fencedBlocks >= 2) return true;
   if (fencedBlocks === 1) {
-    const blockMatch = trimmed.match(/```[\w]*\r?\n?([\s\S]*?)```/);
+    const blockMatch = withoutPseudo.match(/```[\w]*\r?\n?([\s\S]*?)```/);
     const blockLines = blockMatch?.[1]?.split(/\r?\n/).filter((l) => l.trim()).length ?? 0;
-    if (blockLines >= 8) return true; // single but substantial block → treat as solution
+    if (blockLines >= 8) return true;
   }
-  if (codeLikeLines >= 4) return true;
+  // Raised from 4 → 8: pseudocode explanations often have 4-7 logic-like lines
+  // and should not be treated as full solutions.
+  if (codeLikeLines >= 8) return true;
 
   const hasWorkflow =
     lower.includes("read input") &&
@@ -434,10 +441,15 @@ function isTooVerbose(text: string, mode: MessageMode): boolean {
   const lineCount = text.split(/\r?\n/).filter((l) => l.trim()).length;
   const sentenceCount = countSentences(text);
 
+  // Casual / meta questions should stay short — 1-2 sentences is enough.
   if (mode === "casual" || mode === "meta") return sentenceCount > 2 || lineCount > 4;
-  if (mode === "solution") return sentenceCount > 3 || lineCount > 6;
-  if (mode === "runtime") return sentenceCount > 3 || lineCount > 6;
-  return sentenceCount > 5 || lineCount > 10;
+  // Solution refusals should be brief.
+  if (mode === "solution") return sentenceCount > 4 || lineCount > 8;
+  // Runtime / error explanations may need a bit more room.
+  if (mode === "runtime") return sentenceCount > 6 || lineCount > 14;
+  // General mentor responses — allow enough room for a proper explanation
+  // with pseudocode or a short example without being penalised as "too long".
+  return sentenceCount > 10 || lineCount > 22;
 }
 
 function enforceIdleHint(text: string, runStatus: string | null | undefined): string {

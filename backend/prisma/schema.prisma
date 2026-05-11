@@ -71,6 +71,7 @@ model User {
   createdGroups       StudentGroup[]          @relation("CreatedGroups")
   groupMemberships    StudentGroupMembership[]
   flashcards          Flashcard[]
+  examViolations      ExamViolation[]
   // Teacher–student assignments
   assignedStudents    TeacherStudent[]       @relation("TeacherStudents")
   assignedTeacher     TeacherStudent?        @relation("StudentTeacher")
@@ -433,6 +434,25 @@ model StudentGroupMembership {
 
   @@unique([groupId, userId])
   @@index([userId])
+}
+
+// ── ExamViolation ─────────────────────────────────────────────────────────────
+// Server-side audit log for security violations during exam sessions.
+// The frontend logs each tab-switch / fullscreen-exit / window-blur event here.
+model ExamViolation {
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  assignmentId  Int?
+  problemId     Int?
+  type          String   // "tab_switch" | "fullscreen_exit" | "window_blur"
+  count         Int      @default(1)   // violation number in this session (1, 2, 3)
+  autoSubmitted Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, assignmentId])
+  @@index([createdAt])
 }
 
 // ── Tutorial ──────────────────────────────────────────────────────────────────

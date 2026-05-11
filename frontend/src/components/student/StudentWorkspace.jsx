@@ -9,6 +9,11 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Divider,
   FormControl,
   IconButton,
@@ -43,6 +48,8 @@ import ExpandLessIcon          from "@mui/icons-material/ExpandLess";
 import KeyboardArrowDownIcon   from "@mui/icons-material/KeyboardArrowDown";
 import FilterListIcon          from "@mui/icons-material/FilterList";
 import LockIcon                from "@mui/icons-material/Lock";
+import WarningAmberIcon        from "@mui/icons-material/WarningAmber";
+import CheckIcon               from "@mui/icons-material/Check";
 import { API_BASE }       from "../../apiBase";
 
 import SectionCard         from "../common/SectionCard";
@@ -122,6 +129,16 @@ export default function StudentWorkspace({
   examTimeLeft = null,
   fmtExamTime,
   lateDeduction = 0,
+  // Exam security props
+  examLocked = false,
+  examViolations = 0,
+  violationSnackbarOpen = false,
+  violationSnackbarMsg = "",
+  onViolationSnackbarClose,
+  finishExamDialogOpen = false,
+  onFinishExamRequest,
+  onFinishExamConfirm,
+  onFinishExamCancel,
   // Flashcard (manual trigger) props
   hasSolvedProblem = false,
   flashcardExists = false,
@@ -247,29 +264,45 @@ export default function StudentWorkspace({
           sx={{
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
             gap: 1,
             py: 0.75,
+            px: 2,
             mb: 1.5,
             borderRadius: 2,
-            bgcolor:
-              examTimeLeft === null
-                ? "warning.main"
-                : examTimeLeft < 300000
-                ? "error.main"
-                : examTimeLeft < 1800000
-                ? "warning.main"
-                : "primary.main",
+            bgcolor: examLocked
+              ? "error.dark"
+              : examTimeLeft === null
+              ? "warning.main"
+              : examTimeLeft < 300000
+              ? "error.main"
+              : examTimeLeft < 1800000
+              ? "warning.main"
+              : "primary.main",
             color: "#fff",
             fontWeight: 700,
             fontSize: 15,
           }}
         >
-          <AccessTimeIcon fontSize="small" />
-          {examTimeLeft !== null ? (
-            <span>Exam — Time Remaining: {fmtExamTime(examTimeLeft)}</span>
-          ) : (
-            <span>Exam Mode — No time limit set</span>
+          {/* Left: timer */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            {examLocked ? <LockIcon fontSize="small" /> : <AccessTimeIcon fontSize="small" />}
+            {examLocked ? (
+              <span>Exam Locked — submission recorded</span>
+            ) : examTimeLeft !== null ? (
+              <span>Exam — Time Remaining: {fmtExamTime(examTimeLeft)}</span>
+            ) : (
+              <span>Exam Mode — No time limit set</span>
+            )}
+          </Box>
+
+          {/* Right: violation indicator */}
+          {!examLocked && examViolations > 0 && (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 13, opacity: 0.95 }}>
+              <WarningAmberIcon sx={{ fontSize: 16 }} />
+              <span>Violations: {examViolations}/3</span>
+            </Box>
           )}
         </Box>
       )}
@@ -672,8 +705,21 @@ export default function StudentWorkspace({
           title={selectedProblem?.title || "Code Editor"}
           action={
             <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
-              {/* Create Flashcards button — shown after solving, hidden once generated */}
-              {hasSolvedProblem && !flashcardExists && (
+              {/* Exam: "Finish Exam" button appears when all tests pass (not locked) */}
+              {examMode && hasSolvedProblem && !examLocked && (
+                <Button
+                  variant="contained"
+                  size="small"
+                  color="success"
+                  startIcon={<CheckIcon />}
+                  onClick={onFinishExamRequest}
+                  sx={{ fontWeight: 700, whiteSpace: "nowrap" }}
+                >
+                  Finish Exam
+                </Button>
+              )}
+              {/* Non-exam: Create Flashcards button — shown after solving, hidden once generated */}
+              {!examMode && hasSolvedProblem && !flashcardExists && (
                 <Button
                   variant="outlined"
                   size="small"
@@ -696,7 +742,7 @@ export default function StudentWorkspace({
                   sx={{ fontWeight: 600, px: 1 }}
                 />
               ) : (
-                <FormControl size="small" sx={{ minWidth: 160 }}>
+                <FormControl size="small" sx={{ minWidth: 160 }} disabled={examLocked}>
                   <InputLabel id="language-select-label">Language</InputLabel>
                   <Select
                     labelId="language-select-label"
@@ -713,15 +759,26 @@ export default function StudentWorkspace({
                 </FormControl>
               )}
 
-              <Button variant="contained" onClick={runRaw} disabled={running}>
+              <Button variant="contained" onClick={runRaw} disabled={running || examLocked}>
                 {running ? "Running..." : "Run"}
               </Button>
-              <Button variant="contained" onClick={runTests} disabled={running || !selectedProblem}>
+              <Button variant="contained" onClick={runTests} disabled={running || !selectedProblem || examLocked}>
                 Submit
               </Button>
             </Stack>
           }
         >
+          {/* Exam locked banner */}
+          {examMode && examLocked && (
+            <Alert
+              severity="error"
+              icon={<LockIcon fontSize="inherit" />}
+              sx={{ mb: 1.5, borderRadius: 2, fontWeight: 600 }}
+            >
+              This exam has been locked. No further edits are allowed.
+            </Alert>
+          )}
+
           {/* Late submission warning */}
           {lateDeduction > 0 && (
             <Alert severity="warning" sx={{ mb: 1.5, borderRadius: 2 }}>
@@ -769,14 +826,14 @@ export default function StudentWorkspace({
             />
           )}
 
-          {/* Phase 7 — multi-file tab bar */}
+          {/* Phase 7 — multi-file tab bar (locked during exam lock) */}
           <EditorTabBar
             files={files}
             activeId={activeFileId}
             onSelect={onFileSelect}
-            onAdd={onFileAdd}
-            onClose={onFileClose}
-            onRename={onFileRename}
+            onAdd={examLocked    ? undefined       : onFileAdd}
+            onClose={examLocked  ? () => {}        : onFileClose}
+            onRename={examLocked ? () => {}        : onFileRename}
           />
 
           {/* Monaco editor — rounded bottom corners only */}
@@ -793,6 +850,7 @@ export default function StudentWorkspace({
                 fontSize:             13,
                 automaticLayout:      true,
                 scrollBeyondLastLine: false,
+                readOnly:             examLocked,
               }}
             />
           </Box>
@@ -1168,6 +1226,55 @@ export default function StudentWorkspace({
           </Button>
         </Alert>
       </Snackbar>
+
+      {/* ── Exam violation warning snackbar ──────────────────────────────── */}
+      <Snackbar
+        open={violationSnackbarOpen}
+        autoHideDuration={8000}
+        onClose={onViolationSnackbarClose}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert
+          onClose={onViolationSnackbarClose}
+          severity={violationSnackbarMsg.startsWith("3rd") || violationSnackbarMsg.startsWith("Time") ? "error" : "warning"}
+          icon={<WarningAmberIcon fontSize="inherit" />}
+          sx={{ width: "100%", fontWeight: 600 }}
+        >
+          {violationSnackbarMsg}
+        </Alert>
+      </Snackbar>
+
+      {/* ── Finish Exam confirmation dialog ──────────────────────────────── */}
+      <Dialog
+        open={finishExamDialogOpen}
+        onClose={onFinishExamCancel}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          Finish Exam?
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to finish the exam? Once confirmed, the editor will be
+            locked and no further changes can be made.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={onFinishExamCancel} variant="outlined">
+            No, continue
+          </Button>
+          <Button
+            onClick={onFinishExamConfirm}
+            variant="contained"
+            color="success"
+            startIcon={<CheckIcon />}
+            autoFocus
+          >
+            Yes, finish exam
+          </Button>
+        </DialogActions>
+      </Dialog>
     </AppLayout>
   );
 }

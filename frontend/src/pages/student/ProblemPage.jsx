@@ -106,6 +106,7 @@ export default function ProblemPage() {
   }
 
   // Assignment context passed via navigation state from student AssignmentsPage
+  const assignmentId               = location.state?.assignmentId     ?? null;
   const assignmentAllowedLanguages = location.state?.allowedLanguages ?? [];   // [] = all
   const assignmentLateDeduction    = location.state?.lateDeduction    ?? 0;
   const examDeadline               = location.state?.examDeadline     ?? null; // ISO string for scheduled exam end
@@ -134,6 +135,149 @@ export default function ProblemPage() {
     return [h > 0 && `${h}h`, `${m}m`, `${s}s`].filter(Boolean).join(" ");
   }
 
+  // ── Exam security: lock + violation tracking ─────────────────────────────
+  // Persisted in localStorage so a page-refresh inside an exam restores the
+  // correct state without losing context.
+  const examLockKey = isExamSession && currentUser?.id && assignmentId
+    ? `exam_lock_u${currentUser.id}_a${assignmentId}` : null;
+  const examViolKey = isExamSession && currentUser?.id && assignmentId
+    ? `exam_viol_u${currentUser.id}_a${assignmentId}` : null;
+
+  const [examLocked, setExamLocked] = useState(() => {
+    if (!isExamSession) return false;
+    try { return localStorage.getItem(`exam_lock_u${currentUser?.id}_a${assignmentId}`) === "1"; }
+    catch { return false; }
+  });
+
+  const [examViolations, setExamViolations] = useState(() => {
+    if (!isExamSession) return 0;
+    try { return parseInt(localStorage.getItem(`exam_viol_u${currentUser?.id}_a${assignmentId}`) ?? "0", 10); }
+    catch { return 0; }
+  });
+
+  const [violationSnackbarOpen, setViolationSnackbarOpen] = useState(false);
+  const [violationSnackbarMsg,  setViolationSnackbarMsg]  = useState("");
+  const [finishExamDialogOpen,  setFinishExamDialogOpen]  = useState(false);
+
+  // Stable refs so event listeners always read the latest values without
+  // needing to be re-registered every render.
+  const examLockedRef    = useRef(examLocked);
+  const examViolCountRef = useRef(examViolations);
+  const violDebounceRef  = useRef(null);  // 1 s debounce prevents double-fire
+
+  useEffect(() => { examLockedRef.current = examLocked; },        [examLocked]);
+  useEffect(() => { examViolCountRef.current = examViolations; }, [examViolations]);
+
+  // Enter fullscreen when exam session starts (gracefully ignored by Safari)
+  useEffect(() => {
+    if (!isExamSession || examLockedRef.current) return;
+    if (document.fullscreenElement) return; // already fullscreen
+    document.documentElement.requestFullscreen().catch((e) =>
+      console.warn("[exam] Fullscreen request denied:", e.message),
+    );
+  }, [isExamSession]); // run once on exam entry
+
+  // Core violation handler — called by all three event listeners
+  const recordViolation = useRef(null);
+  recordViolation.current = (type) => {
+    if (!isExamSession || examLockedRef.current) return;
+    if (violDebounceRef.current) return; // skip double-fire within 1 s
+
+    // Arm debounce so the sibling event (blur after visibilitychange) is ignored
+    violDebounceRef.current = setTimeout(() => { violDebounceRef.current = null; }, 1000);
+
+    const newCount = examViolCountRef.current + 1;
+    examViolCountRef.current = newCount;
+    setExamViolations(newCount);
+    if (examViolKey) { try { localStorage.setItem(examViolKey, String(newCount)); } catch {} }
+
+    const isAutoSubmit = newCount >= 3;
+    const remaining    = 3 - newCount;
+    setViolationSnackbarMsg(
+      isAutoSubmit
+        ? "3rd violation detected. Your exam has been automatically submitted and locked."
+        : `Warning: Violation ${newCount}/3 — ${remaining} more will auto-submit your exam.`,
+    );
+    setViolationSnackbarOpen(true);
+
+    // POST to audit log (fire-and-forget)
+    fetch(`${API_BASE}/api/exam/violation`, {
+      method:  "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type,
+        assignmentId: assignmentId ?? undefined,
+        problemId:    selectedProblem?.id,
+        count:        newCount,
+        autoSubmitted: isAutoSubmit,
+      }),
+    }).catch(() => {});
+
+    if (isAutoSubmit) {
+      examLockedRef.current = true;
+      setExamLocked(true);
+      if (examLockKey) { try { localStorage.setItem(examLockKey, "1"); } catch {} }
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      // Auto-submit current code via the normal test-run path
+      runTests().catch(() => {});
+    }
+  };
+
+  // Attach / detach event listeners for the three violation types
+  useEffect(() => {
+    if (!isExamSession) return;
+
+    function onVisibilityChange() {
+      if (document.hidden) recordViolation.current("tab_switch");
+    }
+    function onBlur() {
+      recordViolation.current("window_blur");
+    }
+    function onFullscreenChange() {
+      if (!document.fullscreenElement && !examLockedRef.current) {
+        recordViolation.current("fullscreen_exit");
+        // Re-request fullscreen after a short delay so the browser has settled
+        setTimeout(() => {
+          if (!examLockedRef.current && !document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(() => {});
+          }
+        }, 600);
+      }
+    }
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("blur",               onBlur);
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("blur",               onBlur);
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+      if (violDebounceRef.current) clearTimeout(violDebounceRef.current);
+    };
+  }, [isExamSession]); // stable: listeners never need re-registration
+
+  // Auto-submit when countdown reaches zero
+  useEffect(() => {
+    if (!isExamSession || examLockedRef.current || examTimeLeft !== 0) return;
+    examLockedRef.current = true;
+    setExamLocked(true);
+    if (examLockKey) { try { localStorage.setItem(examLockKey, "1"); } catch {} }
+    setViolationSnackbarMsg("Time's up! Your exam has been automatically submitted.");
+    setViolationSnackbarOpen(true);
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    runTests().catch(() => {});
+  }, [examTimeLeft]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Called when teacher clicks "Yes" in the Finish Exam confirmation dialog
+  function lockAndFinish() {
+    examLockedRef.current = true;
+    setExamLocked(true);
+    if (examLockKey) { try { localStorage.setItem(examLockKey, "1"); } catch {} }
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    setFinishExamDialogOpen(false);
+  }
+
   // Filter available languages to those the assignment allows (empty = all allowed)
   const availableLanguages = useMemo(
     () =>
@@ -157,6 +301,7 @@ export default function ProblemPage() {
     }
   }, [availableLanguages]);
   const [running,          setRunning]          = useState(false);
+  const runningRef = useRef(false); // mirrors `running` for synchronous checks in event handlers
   const [chatInput,        setChatInput]        = useState("");
   const [chat,             setChat]             = useState([
     { role: "assistant", content: "Hi! Ask for hints about your code." },
@@ -365,6 +510,8 @@ export default function ProblemPage() {
   // ── Code execution ───────────────────────────────────────────────────────
   async function runTests() {
     if (!selectedProblem) return;
+    if (runningRef.current) return; // prevent concurrent runs (e.g. auto-submit during a run)
+    runningRef.current = true;
     setRunning(true);
     termClear();
     termWrite("\x1b[33mRunning tests…\x1b[0m\r\n");
@@ -425,6 +572,7 @@ export default function ProblemPage() {
     } catch (err) {
       termWrite(`\x1b[31m[error] ${err.message}\x1b[0m\r\n`);
     } finally {
+      runningRef.current = false;
       setRunning(false);
     }
   }
@@ -709,6 +857,16 @@ export default function ProblemPage() {
       examMode={isExamSession}
       examTimeLeft={examTimeLeft}
       fmtExamTime={fmtExamTime}
+      // Exam security
+      examLocked={examLocked}
+      examViolations={examViolations}
+      violationSnackbarOpen={violationSnackbarOpen}
+      violationSnackbarMsg={violationSnackbarMsg}
+      onViolationSnackbarClose={() => setViolationSnackbarOpen(false)}
+      finishExamDialogOpen={finishExamDialogOpen}
+      onFinishExamRequest={() => setFinishExamDialogOpen(true)}
+      onFinishExamConfirm={lockAndFinish}
+      onFinishExamCancel={() => setFinishExamDialogOpen(false)}
       // Flashcard props (manual trigger flow)
       hasSolvedProblem={hasSolvedProblem}
       flashcardExists={flashcardExists}

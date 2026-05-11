@@ -397,11 +397,12 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
       rawText += token;
 
       // Bug #10 fix: stop hint after the first complete sentence.
-      // Only trigger on sentence-end punctuation that is NOT mid-expression
-      // (e.g. list.append — the '.' comes before a word char, not at end).
-      if (isHint) {
+      // Only apply for level 0 and 1 — level 2+ requires a full sentence PLUS
+      // pseudocode, so cutting at the first sentence-end would drop the code block.
+      if (isHint && (input.hintLevel ?? 0) < 2) {
         const t = rawText.trimEnd();
         // Require letter/digit before the punctuation and whitespace/end after
+        // (guards against mid-expression dots like list.append)
         if (/[a-zA-Z0-9][.!?](\s|$)/.test(t.slice(-4))) break;
       }
     }

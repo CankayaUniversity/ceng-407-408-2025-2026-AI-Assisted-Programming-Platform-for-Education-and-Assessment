@@ -60,6 +60,7 @@ const VALID_RUN_STATUSES = [
   "accepted",
   "wrong_answer",
   "runtime_error",
+  "run_success",          // interactive terminal: exit code 0, no judge verdict
   "compile_error",
   "time_limit_exceeded",
   "memory_limit_exceeded",
@@ -85,6 +86,15 @@ export const aiChatSchema = z.object({
   // Only accept known chat modes
   mode:               z.enum(VALID_CHAT_MODES).optional().nullable(),
   hintLevel:          z.number().int().min(0).max(10).optional().nullable(),
+  // Conversation history — last N turns injected into the mentor prompt so the
+  // model can build on previous exchanges instead of answering from scratch each time.
+  // Capped at 20 entries (10 turns) with 2 000-char per message to bound prompt size.
+  conversationHistory: z.array(
+    z.object({
+      role:    z.enum(["user", "assistant"]),
+      content: z.string().max(2_000),
+    }),
+  ).max(20).optional().nullable(),
 });
 
 // ── Assignments ───────────────────────────────────────────────────────────────

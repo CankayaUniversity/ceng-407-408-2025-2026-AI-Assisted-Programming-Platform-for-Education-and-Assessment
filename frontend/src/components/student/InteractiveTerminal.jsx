@@ -12,14 +12,19 @@ import "@xterm/xterm/css/xterm.css";
  * - Enter sends the buffered line to process stdin.
  * - Ctrl+C sends a kill message.
  */
-export default function InteractiveTerminal({ wsUrl, onReady }) {
+export default function InteractiveTerminal({ wsUrl, onReady, onRunResult }) {
   const containerRef  = useRef(null);
   const termRef       = useRef(null);
   const wsRef         = useRef(null);
   const inputBuf      = useRef("");          // current line being typed
+  const outputBuf     = useRef("");          // accumulated stdout for mentor context
   const isRunning     = useRef(false);
   const onDoneRef     = useRef(null);
+  const onRunResultRef = useRef(onRunResult);
   const unmounted     = useRef(false);
+
+  // Keep the ref in sync with the prop without re-running the effect
+  onRunResultRef.current = onRunResult;
 
   useEffect(() => {
     unmounted.current = false;
@@ -51,17 +56,34 @@ export default function InteractiveTerminal({ wsUrl, onReady }) {
         try {
           const msg = JSON.parse(event.data);
           if (msg.type === "output") {
+            // Buffer for mentor context (cap at 2 KB to stay within prompt limits)
+            if (outputBuf.current.length < 2_000) {
+              outputBuf.current += msg.data;
+            }
             // Replace bare \n with \r\n so xterm renders correctly
             term.write(msg.data.replace(/\r?\n/g, "\r\n"));
           } else if (msg.type === "done") {
             isRunning.current = false;
             const color = msg.exitCode === 0 ? "\x1b[32m" : "\x1b[31m";
             term.write(`\r\n${color}[exited ${msg.exitCode}]\x1b[0m\r\n`);
+            // Notify parent with collected output so AI mentor gets execution context
+            onRunResultRef.current?.({
+              exitCode: msg.exitCode,
+              stdout:   outputBuf.current,
+              stderr:   null,
+            });
+            outputBuf.current = "";
             onDoneRef.current?.();
             onDoneRef.current = null;
           } else if (msg.type === "error") {
             isRunning.current = false;
             term.write(`\r\n\x1b[31m[Error: ${msg.message}]\x1b[0m\r\n`);
+            onRunResultRef.current?.({
+              exitCode: -1,
+              stdout:   outputBuf.current,
+              stderr:   msg.message,
+            });
+            outputBuf.current = "";
             onDoneRef.current?.();
             onDoneRef.current = null;
           }
@@ -138,6 +160,7 @@ export default function InteractiveTerminal({ wsUrl, onReady }) {
           return;
         }
         inputBuf.current  = "";
+        outputBuf.current = "";   // reset output buffer for new run
         isRunning.current = true;
         onDoneRef.current = onDone ?? null;
         term.reset();
@@ -156,6 +179,11 @@ export default function InteractiveTerminal({ wsUrl, onReady }) {
           ws.send(JSON.stringify({ type: "kill" }));
         }
         isRunning.current = false;
+        // Report whatever was collected before kill — lets mentor know the partial output
+        if (outputBuf.current) {
+          onRunResultRef.current?.({ exitCode: -1, stdout: outputBuf.current, stderr: "killed", killed: true });
+          outputBuf.current = "";
+        }
         onDoneRef.current?.();
         onDoneRef.current = null;
       },

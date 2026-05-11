@@ -2,7 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { PolicyAction } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/requireAuth";
-import { getMentorReply, getMentorReplyStream, type MentorRequestInput } from "../services/mentor";
+import { getMentorReply, getMentorReplyStream, looksLikeSolution, enforceIdleHint, type MentorRequestInput } from "../services/mentor";
 import { applyPolicyWithRetry } from "../services/policy";
 import { validateMentorReply } from "../services/validator";
 import { aiChatSchema } from "../lib/schemas";
@@ -56,6 +56,20 @@ function parseMentorBody(body: Record<string, unknown>): MentorRequestInput {
     language: typeof body.language === "string" ? body.language : null,
     mode: typeof body.mode === "string" ? body.mode : null,
     hintLevel: typeof body.hintLevel === "number" ? body.hintLevel : null,
+    conversationHistory: Array.isArray(body.conversationHistory)
+      ? (body.conversationHistory as Array<Record<string, unknown>>)
+          .filter(
+            (m) =>
+              (m.role === "user" || m.role === "assistant") &&
+              typeof m.content === "string" &&
+              m.content.trim().length > 0,
+          )
+          .map((m) => ({
+            role: m.role as "user" | "assistant",
+            content: (m.content as string).slice(0, 2_000),
+          }))
+          .slice(0, 20) // max 20 entries = 10 full turns
+      : null,
   };
 }
 
@@ -319,7 +333,7 @@ async function handleAiRequest(req: Request, res: Response) {
         finalText: policy.finalText,
         rewriteCount: policy.rewriteCount,
         latencyMsMentor,
-        latencyMsValidator: validator.source === "ai" ? latencyMsValidator : null,
+        latencyMsValidator: null,
         errorCode: result.success ? null : (result.error ?? "mentor_error"),
       },
     });
@@ -400,7 +414,20 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
     rawText = buildMentorFallback(input);
   }
 
-  // ── Step 2: validate + apply policy ──────────────────────────────────────────
+  // ── Step 2: mentor.ts post-processing (mirrors getMentorReply non-stream path) ─
+  // Apply the same checks the non-stream path runs so both paths behave identically.
+  if (!modelError) {
+    // 2a. Inline solution-leak deflection (8-line single block / 2+ blocks / banned phrases)
+    if (looksLikeSolution(rawText)) {
+      rawText =
+        "I can't write the complete solution, but I can point to the specific issue. " +
+        "What part is giving you the most trouble right now — is it a logic error, a missing step, or something else?";
+    }
+    // 2b. Append "Run the code first" note when model asserts runtime results at idle
+    rawText = enforceIdleHint(rawText, input.runStatus);
+  }
+
+  // ── Step 3: validate + apply policy ──────────────────────────────────────────
   let textToStream = rawText;
   let validator: Awaited<ReturnType<typeof runValidator>> | null = null;
   let policy:    Awaited<ReturnType<typeof applyPolicyWithRetry>> | null = null;
@@ -419,7 +446,7 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
     textToStream = buildMentorFallback(input);
   }
 
-  // ── Step 3: now open the SSE stream and send the validated text ───────────────
+  // ── Step 4: now open the SSE stream and send the validated text ───────────────
   res.setHeader("Content-Type",      "text/event-stream");
   res.setHeader("Cache-Control",     "no-cache");
   res.setHeader("Connection",        "keep-alive");
@@ -441,7 +468,7 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
     res.end();
   }
 
-  // ── Step 4: persist audit logs (background, non-blocking) ────────────────────
+  // ── Step 5: persist audit logs (background, non-blocking) ────────────────────
   // Run even on model error so hint events and the audit trail are never lost.
   if (problemId !== undefined) {
     Promise.resolve().then(async () => {
@@ -487,7 +514,7 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
             finalText:        textToStream,
             rewriteCount:     policy?.rewriteCount ?? 0,
             latencyMsMentor:  0,
-            latencyMsValidator: validator?.source === "ai" ? 0 : null,
+            latencyMsValidator: null,
             errorCode:        null,
           },
         });

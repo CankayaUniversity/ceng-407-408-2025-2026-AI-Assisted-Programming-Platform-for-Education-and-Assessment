@@ -108,6 +108,7 @@ export default function StudentWorkspace({
   setCode,
   // Phase 6 — xterm writer ref (owned by ProblemPage)
   termWriterRef,
+  onTerminalRunResult,
   chat,
   chatInput,
   setChatInput,
@@ -763,7 +764,7 @@ export default function StudentWorkspace({
                 "& h1, & h2, & h3": { fontWeight: 700, mt: 1, mb: 0.5 },
               }}
               dangerouslySetInnerHTML={{
-                __html: DOMPurify.sanitize(marked.parse(selectedProblem.description)),
+                __html: DOMPurify.sanitize(/** @type {string} */ (marked.parse(selectedProblem.description))),
               }}
             />
           )}
@@ -779,7 +780,7 @@ export default function StudentWorkspace({
           />
 
           {/* Monaco editor — rounded bottom corners only */}
-          <Box sx={{ height: mentorZoomed ? "44vh" : 380, overflow: "hidden", border: 1, borderTop: 0, borderColor: "divider", borderRadius: "0 0 12px 12px" }}>
+          <Box sx={{ height: mentorZoomed ? "52vh" : 460, overflow: "hidden", border: 1, borderTop: 0, borderColor: "divider", borderRadius: "0 0 12px 12px" }}>
             <Editor
               key={`${monacoLanguage(selectedLanguage)}-${activeFileId}`}
               height="100%"
@@ -858,10 +859,11 @@ export default function StudentWorkspace({
                 </span>
               </Tooltip>
             </Stack>
-            <Box sx={{ height: mentorZoomed ? "30vh" : 340 }}>
+            <Box sx={{ height: mentorZoomed ? "20vh" : 220 }}>
               <InteractiveTerminal
                 wsUrl={wsUrl("/ws/terminal")}
                 onReady={(writer) => { termWriterRef.current = writer; }}
+                onRunResult={onTerminalRunResult}
               />
             </Box>
           </Box>
@@ -981,7 +983,7 @@ export default function StudentWorkspace({
                               <span>
                                 <span
                                   dangerouslySetInnerHTML={{
-                                    __html: DOMPurify.sanitize(marked.parse(m.content || "")),
+                                    __html: DOMPurify.sanitize(/** @type {string} */ (marked.parse(m.content || ""))),
                                   }}
                                 />
                                 {m.streaming && (

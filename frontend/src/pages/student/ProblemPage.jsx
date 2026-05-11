@@ -490,7 +490,23 @@ export default function ProblemPage() {
     const writer = termWriterRef.current;
     if (!writer) return;
     setRunning(true);
+    // Clear stale run result so mentor knows a fresh run is starting
+    setLastRunResult(null);
     writer.run(selectedLanguage, allCode, token, () => setRunning(false));
+  }
+
+  /**
+   * Called by InteractiveTerminal when a process finishes (exit / error / kill).
+   * Stores the collected stdout so the AI mentor receives accurate execution context
+   * on the next chat message — the same way Submit already does via Judge0.
+   */
+  function handleTerminalRunResult({ exitCode, stdout, stderr, killed }) {
+    if (killed) return; // user stopped it — don't claim a meaningful result
+    setLastRunResult({
+      status: exitCode === 0 ? "run_success" : "runtime_error",
+      stdout: (stdout ?? "").slice(0, 1_000),
+      stderr: stderr ?? null,
+    });
   }
 
   // ── AI chat (SSE streaming) ───────────────────────────────────────────────
@@ -522,22 +538,39 @@ export default function ProblemPage() {
     setChatLoading(true);
 
     try {
+      // Build conversation history from the current chat state (captured before
+      // we pushed the new user message + streaming bubble, so it contains only
+      // the previous completed exchanges).  We exclude the greeting message and
+      // any still-streaming bubbles, then cap at 10 turns (20 entries).
+      const historySnapshot = chat
+        .filter(
+          (m) =>
+            (m.role === "user" || m.role === "assistant") &&
+            !m.streaming &&
+            m.content?.trim() &&
+            m.content !== "Hi! Ask for hints about your code.",
+        )
+        .slice(-20)
+        .map((m) => ({ role: m.role, content: m.content }));
+
       const res = await fetch(`${API_BASE}/api/ai/chat/stream`, {
         method:  "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          problemId:       selectedProblem.id,
-          assignmentText:  selectedProblem.description,
-          studentCode:     allCode,
-          studentQuestion: message,
+          problemId:           selectedProblem.id,
+          assignmentText:      selectedProblem.description,
+          studentCode:         allCode,
+          studentQuestion:     message,
           // Bug #1 fix: send real run status and execution output instead of hardcoded "idle"
-          runStatus:       lastRunResult?.status ?? "idle",
-          stdout:          lastRunResult?.stdout  ?? null,
-          stderr:          lastRunResult?.stderr  ?? null,
-          language:        selectedLanguage,
+          runStatus:           lastRunResult?.status ?? "idle",
+          stdout:              lastRunResult?.stdout  ?? null,
+          stderr:              lastRunResult?.stderr  ?? null,
+          language:            selectedLanguage,
           mode,
           // Bug #8 fix: use explicitly passed hintLevel to avoid closure stale-value bug
-          hintLevel:       mode === "hint" ? (overrideHintLevel ?? hintCount) : undefined,
+          hintLevel:           mode === "hint" ? (overrideHintLevel ?? hintCount) : undefined,
+          // Conversation history so the mentor can build on previous exchanges
+          conversationHistory: historySnapshot.length > 0 ? historySnapshot : undefined,
         }),
       });
 
@@ -567,6 +600,7 @@ export default function ProblemPage() {
                 return next;
               });
             }
+            if (data.done) break;
           } catch { /* ignore malformed SSE lines */ }
         }
       }
@@ -661,6 +695,7 @@ export default function ProblemPage() {
       setCode={setCode}
       // Phase 6 — terminal ref
       termWriterRef={termWriterRef}
+      onTerminalRunResult={handleTerminalRunResult}
       chat={chat}
       chatInput={chatInput}
       setChatInput={setChatInput}

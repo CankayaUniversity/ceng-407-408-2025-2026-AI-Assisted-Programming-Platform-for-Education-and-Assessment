@@ -168,6 +168,19 @@ export default function ProblemPage() {
   useEffect(() => { examLockedRef.current = examLocked; },        [examLocked]);
   useEffect(() => { examViolCountRef.current = examViolations; }, [examViolations]);
 
+  // When the student navigates away from the exam problem (isExamSession flips to false),
+  // clear the lock so Run/Submit work normally on non-exam problems.
+  // The localStorage keys are scoped to the assignment so the lock is still there
+  // if the student comes back to the same exam problem.
+  useEffect(() => {
+    if (!isExamSession) {
+      setExamLocked(false);
+      examLockedRef.current = false;
+      setExamViolations(0);
+      examViolCountRef.current = 0;
+    }
+  }, [isExamSession]);
+
   // Enter fullscreen when exam session starts (gracefully ignored by Safari)
   useEffect(() => {
     if (!isExamSession || examLockedRef.current) return;

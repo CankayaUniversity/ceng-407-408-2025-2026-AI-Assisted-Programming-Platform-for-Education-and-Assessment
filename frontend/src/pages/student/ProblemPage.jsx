@@ -333,6 +333,16 @@ export default function ProblemPage() {
   const [flashcardGenerating, setFlashcardGenerating] = useState(false);  // true while polling after button click
   const [flashcardToastOpen,  setFlashcardToastOpen]  = useState(false);  // "ready" snackbar
   const flashcardPollRef = useRef(null);
+
+  // Stop flashcard polling on component unmount to prevent state-update-on-dead-component warnings
+  useEffect(() => {
+    return () => {
+      if (flashcardPollRef.current) {
+        clearInterval(flashcardPollRef.current);
+        flashcardPollRef.current = null;
+      }
+    };
+  }, []);
   const [selectedId,       setSelectedId]       = useState(problemId);
 
   // ── Phase 6: xterm.js terminal writer ref ───────────────────────────────
@@ -709,7 +719,8 @@ export default function ProblemPage() {
             (m.role === "user" || m.role === "assistant") &&
             !m.streaming &&
             m.content?.trim() &&
-            m.content !== "Hi! Ask for hints about your code.",
+            m.content !== "Hi! Ask for hints about your code." &&
+            !m.content.startsWith("[error]"),  // exclude failed-request error bubbles
         )
         .slice(-20)
         .map((m) => ({ role: m.role, content: m.content }));

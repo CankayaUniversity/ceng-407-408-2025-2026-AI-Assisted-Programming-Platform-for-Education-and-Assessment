@@ -8,6 +8,7 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
+  IconButton,
   LinearProgress,
   Menu,
   MenuItem,
@@ -21,19 +22,42 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import AccessTimeIcon      from "@mui/icons-material/AccessTime";
-import LockIcon            from "@mui/icons-material/Lock";
-import EventIcon           from "@mui/icons-material/Event";
-import WarningIcon         from "@mui/icons-material/Warning";
+import AccessTimeIcon        from "@mui/icons-material/AccessTime";
+import LockIcon              from "@mui/icons-material/Lock";
+import EventIcon             from "@mui/icons-material/Event";
+import WarningIcon           from "@mui/icons-material/Warning";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import FilterListIcon      from "@mui/icons-material/FilterList";
-import { useNavigate }     from "react-router-dom";
+import FilterListIcon        from "@mui/icons-material/FilterList";
+import HistoryIcon           from "@mui/icons-material/History";
+import CloseIcon             from "@mui/icons-material/Close";
+import { useNavigate }       from "react-router-dom";
 
 import AppLayout   from "../../components/layout/AppLayout";
 import SectionCard from "../../components/common/SectionCard";
+import { SubmissionTimelineDialog } from "../../components/student/SubmissionHistory";
 import { API_BASE } from "../../apiBase";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+function subStatusColor(status) {
+  const s = (status ?? "").toLowerCase();
+  if (s === "accepted" || s === "pass") return "success";
+  if (s.includes("error") || s === "fail") return "error";
+  if (s === "wrong_answer") return "warning";
+  return "default";
+}
+
+function subFormatStatus(status) {
+  return (status ?? "Unknown").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function subFormatDate(iso) {
+  if (!iso) return "-";
+  return new Date(iso).toLocaleString(undefined, {
+    day: "2-digit", month: "short", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
+}
 
 function difficultyColor(d) {
   const v = (d ?? "").toLowerCase();
@@ -139,7 +163,7 @@ function examState(a) {
 
 // ── Exam assignment row ───────────────────────────────────────────────────────
 
-function ExamRow({ a, idx, solvedSet }) {
+function ExamRow({ a, idx, solvedSet, onHistoryClick }) {
   const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [now, setNow] = useState(Date.now());
@@ -270,7 +294,22 @@ function ExamRow({ a, idx, solvedSet }) {
           {state === "open" && <DeadlineCell assignment={a} />}
         </TableCell>
 
-        <TableCell>{statusChip}</TableCell>
+        <TableCell>
+          <Stack direction="row" alignItems="center" spacing={0.5}>
+            {statusChip}
+            <Tooltip title="View submission history">
+              <span>
+                <IconButton
+                  size="small"
+                  onClick={(e) => { e.stopPropagation(); onHistoryClick(a); }}
+                  sx={{ opacity: 0.6, "&:hover": { opacity: 1, color: "primary.main" } }}
+                >
+                  <HistoryIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </span>
+            </Tooltip>
+          </Stack>
+        </TableCell>
       </TableRow>
 
       {/* "Exam not yet started" dialog */}
@@ -299,7 +338,7 @@ function ExamRow({ a, idx, solvedSet }) {
 
 // ── Assignment / Practice row ─────────────────────────────────────────────────
 
-function AssignmentRow({ a, idx, solvedSet }) {
+function AssignmentRow({ a, idx, solvedSet, onHistoryClick }) {
   const navigate = useNavigate();
   const problem   = a.problem ?? {};
   const solved    = solvedSet.has(problem.id);
@@ -367,20 +406,33 @@ function AssignmentRow({ a, idx, solvedSet }) {
       <TableCell><DeadlineCell assignment={a} /></TableCell>
 
       <TableCell>
-        {!published ? (
-          <Chip label="Coming soon" size="small" color="default" variant="outlined" sx={{ fontSize: 10 }} />
-        ) : isLate ? (
-          <Tooltip title={a.lateDeduction > 0 ? `${a.lateDeduction}% deduction` : "No deduction"}>
-            <Chip label="Late" size="small" color="warning" variant="filled" />
+        <Stack direction="row" alignItems="center" spacing={0.5}>
+          {!published ? (
+            <Chip label="Coming soon" size="small" color="default" variant="outlined" sx={{ fontSize: 10 }} />
+          ) : isLate ? (
+            <Tooltip title={a.lateDeduction > 0 ? `${a.lateDeduction}% deduction` : "No deduction"}>
+              <Chip label="Late" size="small" color="warning" variant="filled" />
+            </Tooltip>
+          ) : (
+            <Chip
+              label={solved ? "Solved" : "Not solved"}
+              size="small"
+              color={solved ? "success" : "default"}
+              variant={solved ? "filled" : "outlined"}
+            />
+          )}
+          <Tooltip title="View submission history">
+            <span>
+              <IconButton
+                size="small"
+                onClick={(e) => { e.stopPropagation(); onHistoryClick(a); }}
+                sx={{ opacity: 0.6, "&:hover": { opacity: 1, color: "primary.main" } }}
+              >
+                <HistoryIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </span>
           </Tooltip>
-        ) : (
-          <Chip
-            label={solved ? "Solved" : "Not solved"}
-            size="small"
-            color={solved ? "success" : "default"}
-            variant={solved ? "filled" : "outlined"}
-          />
-        )}
+        </Stack>
       </TableCell>
     </TableRow>
   );
@@ -395,6 +447,41 @@ export default function AssignmentsPage({ currentUser, token, handleLogout, navI
   const [tab,         setTab]         = useState(0);        // 0=homework, 1=practice, 2=exams
   const [filterLang,  setFilterLang]  = useState("all");    // language filter
   const [modeAnchor,  setModeAnchor]  = useState(null);     // mode-selector menu anchor
+
+  // ── Submission history dialog ────────────────────────────────────────────
+  // "List" dialog: shows the submission table for one assignment
+  const [historyOpen,    setHistoryOpen]    = useState(false);
+  const [historyTitle,   setHistoryTitle]   = useState("");
+  const [historySubs,    setHistorySubs]    = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  // "Detail" dialog: SubmissionTimelineDialog opened from a list row
+  const [timelineOpen,   setTimelineOpen]   = useState(false);
+  const [timelineIdx,    setTimelineIdx]    = useState(0);
+
+  async function openHistory(a) {
+    const problemId = a.problem?.id;
+    if (!problemId) return;
+    setHistoryTitle(a.title || a.problem?.title || "Submission History");
+    setHistorySubs([]);
+    setHistoryLoading(true);
+    setHistoryOpen(true);
+    try {
+      const res  = await fetch(`${API_BASE}/api/student/history?problemId=${problemId}`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+      });
+      const body = await res.json();
+      setHistorySubs(body?.data ?? []);
+    } catch {
+      setHistorySubs([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
+
+  function openTimeline(idx) {
+    setTimelineIdx(idx);
+    setTimelineOpen(true);
+  }
 
   useEffect(() => {
     if (!token) return;
@@ -582,9 +669,9 @@ export default function AssignmentsPage({ currentUser, token, handleLogout, navI
                 <TableBody>
                   {filteredItems.map((a, idx) =>
                     current.isExam ? (
-                      <ExamRow key={a.id} a={a} idx={idx} solvedSet={solvedSet} />
+                      <ExamRow key={a.id} a={a} idx={idx} solvedSet={solvedSet} onHistoryClick={openHistory} />
                     ) : (
-                      <AssignmentRow key={a.id} a={a} idx={idx} solvedSet={solvedSet} />
+                      <AssignmentRow key={a.id} a={a} idx={idx} solvedSet={solvedSet} onHistoryClick={openHistory} />
                     )
                   )}
                 </TableBody>
@@ -593,6 +680,101 @@ export default function AssignmentsPage({ currentUser, token, handleLogout, navI
           </>
         )}
       </SectionCard>
+
+      {/* ── Submission history list dialog ──────────────────────────────── */}
+      <Dialog
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pb: 1 }}>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <HistoryIcon color="primary" fontSize="small" />
+            <Typography fontWeight={700} fontSize={16}>
+              Submission History
+            </Typography>
+            {historyTitle && (
+              <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: 220 }}>
+                — {historyTitle}
+              </Typography>
+            )}
+          </Stack>
+          <IconButton size="small" onClick={() => setHistoryOpen(false)}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent dividers sx={{ p: 0 }}>
+          {historyLoading ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+              <CircularProgress size={28} />
+            </Box>
+          ) : historySubs.length === 0 ? (
+            <Typography
+              color="text.secondary"
+              variant="body2"
+              sx={{ py: 4, textAlign: "center" }}
+            >
+              No submissions yet for this assignment.
+            </Typography>
+          ) : (
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow sx={{ bgcolor: "rgba(148,163,184,0.08)" }}>
+                    <TableCell sx={{ fontWeight: 700, color: "text.secondary" }}>#</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: "text.secondary" }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: "text.secondary" }}>Language</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: "text.secondary" }}>Time</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: "text.secondary" }}>Date</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {historySubs.map((sub, idx) => (
+                    <TableRow
+                      key={sub.id}
+                      hover
+                      onClick={() => openTimeline(idx)}
+                      sx={{ cursor: "pointer" }}
+                    >
+                      <TableCell sx={{ color: "text.secondary" }}>
+                        {historySubs.length - idx}
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={subFormatStatus(sub.status)}
+                          size="small"
+                          color={subStatusColor(sub.status)}
+                          variant="outlined"
+                          sx={{ fontWeight: 600 }}
+                        />
+                      </TableCell>
+                      <TableCell>{sub.language ?? "—"}</TableCell>
+                      <TableCell>
+                        {sub.executionTime != null ? `${sub.executionTime.toFixed(0)} ms` : "—"}
+                      </TableCell>
+                      <TableCell sx={{ color: "text.secondary", fontSize: 13 }}>
+                        {subFormatDate(sub.createdAt)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Submission code viewer (opens from a row click above) ────────── */}
+      {timelineOpen && historySubs.length > 0 && (
+        <SubmissionTimelineDialog
+          open={timelineOpen}
+          onClose={() => setTimelineOpen(false)}
+          submissions={historySubs}
+          initialIndex={timelineIdx}
+        />
+      )}
     </AppLayout>
   );
 }

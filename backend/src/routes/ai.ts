@@ -9,7 +9,7 @@ import { aiChatSchema } from "../lib/schemas";
 
 const router = Router();
 
-const PROMPT_VERSION = "mentor_v2";
+const PROMPT_VERSION = "mentor_v3";
 const VALIDATOR_MODEL = process.env.OLLAMA_VALIDATOR_MODEL ?? "validator-heuristic";
 
 router.use(requireAuth);
@@ -391,6 +391,7 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
   // ── Step 1: collect full model response (do NOT send to client yet) ──────────
   let rawText    = "";
   let modelError = false;
+  const streamStartedAt = Date.now();
 
   try {
     for await (const token of getMentorReplyStream(input)) {
@@ -514,7 +515,7 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
             policyAction:     toPolicyAction(policy?.action ?? "allow"),
             finalText:        textToStream,
             rewriteCount:     policy?.rewriteCount ?? 0,
-            latencyMsMentor:  0,
+            latencyMsMentor:  Date.now() - streamStartedAt,
             latencyMsValidator: null,
             errorCode:        null,
           },

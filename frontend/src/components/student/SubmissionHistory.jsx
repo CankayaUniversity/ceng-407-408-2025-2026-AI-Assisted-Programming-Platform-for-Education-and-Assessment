@@ -71,7 +71,7 @@ function formatStatus(status) {
 
 // ── Timeline dialog ───────────────────────────────────────────────────────────
 
-function SubmissionTimelineDialog({ open, onClose, submissions, initialIndex }) {
+export function SubmissionTimelineDialog({ open, onClose, submissions, initialIndex }) {
   const [idx, setIdx] = useState(initialIndex ?? 0);
 
   // Keep idx clamped whenever the list changes

@@ -2,9 +2,16 @@ import { Router, type Request, type Response } from "express";
 import { PolicyAction } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/requireAuth";
-import { getMentorReply, getMentorReplyStream, type MentorRequestInput } from "../services/mentor";
+import {
+  getMentorModelName,
+  getMentorReply,
+  getMentorReplyStream,
+  type MentorRequestInput,
+} from "../services/mentor";
 import { applyPolicyWithRetry } from "../services/policy";
 import { validateMentorReply } from "../services/validator";
+import { firstErrorLine } from "../services/mentorContext";
+import { detectMentorIntent } from "../services/mentorIntent";
 import { aiChatSchema } from "../lib/schemas";
 
 const router = Router();
@@ -38,6 +45,28 @@ function parseMentorBody(body: Record<string, unknown>): MentorRequestInput {
         ? body.output
         : null;
 
+  const rawActiveLine =
+    typeof body.activeLineNumber === "number"
+      ? body.activeLineNumber
+      : typeof body.cursorLine === "number"
+        ? body.cursorLine
+        : typeof body.lineNumber === "number"
+          ? body.lineNumber
+          : null;
+
+  const conversationHistory = Array.isArray(body.conversationHistory)
+    ? body.conversationHistory
+        .filter(
+          (message): message is { role: "user" | "assistant"; content: string } =>
+            typeof message === "object" &&
+            message !== null &&
+            ((message as { role?: unknown }).role === "user" ||
+              (message as { role?: unknown }).role === "assistant") &&
+            typeof (message as { content?: unknown }).content === "string",
+        )
+        .slice(-6)
+    : null;
+
   return {
     problemDescription:
       typeof body.problemDescription === "string" ? body.problemDescription : null,
@@ -54,6 +83,23 @@ function parseMentorBody(body: Record<string, unknown>): MentorRequestInput {
     stdout,
     stderr: typeof body.stderr === "string" ? body.stderr : null,
     language: typeof body.language === "string" ? body.language : null,
+    mentorLocale: body.mentorLocale === "tr" ? "tr" : "en",
+    modelOverride:
+      process.env.ALLOW_AI_MODEL_OVERRIDE === "true" && typeof body.modelOverride === "string"
+        ? body.modelOverride
+        : null,
+    activeFileName: typeof body.activeFileName === "string" ? body.activeFileName : null,
+    activeLineNumber:
+      typeof rawActiveLine === "number" && Number.isInteger(rawActiveLine) && rawActiveLine > 0
+        ? rawActiveLine
+        : null,
+    selectedCodeContext:
+      typeof body.selectedCodeContext === "string"
+        ? body.selectedCodeContext
+        : typeof body.codeContext === "string"
+          ? body.codeContext
+          : null,
+    conversationHistory,
     mode: typeof body.mode === "string" ? body.mode : null,
     hintLevel: typeof body.hintLevel === "number" ? body.hintLevel : null,
   };
@@ -96,16 +142,42 @@ function parseSubmissionId(body: Record<string, unknown>): number | undefined {
 function buildMentorFallback(input: MentorRequestInput): string {
   const question = (input.studentQuestion ?? "").trim();
   const runStatus = (input.runStatus ?? "").trim().toLowerCase();
+  const errorLine = firstErrorLine(input);
+  const intent = detectMentorIntent(question);
+  const isTurkish = input.mentorLocale === "tr";
+
+  if (errorLine) {
+    if (isTurkish) {
+      return `İlk incelemen gereken hata: \`${errorLine}\`. Önce bu satırı veya hemen önceki satırı düzeltmeyi dene, sonra kodu yeniden çalıştır.`;
+    }
+    return `The first error to inspect is: \`${errorLine}\`. Start by fixing that line or the line immediately before it, then run the code again.`;
+  }
+
+  if (intent === "runtime") {
+    if (isTurkish) {
+      return "Bakabilirim, ama terminaldeki gerçek hata metnine ihtiyacım var. Kodu çalıştırıp ilk hata satırını buraya yapıştır.";
+    }
+    return "I can take a look, but I need the exact error text from the terminal. Run the code and paste the first error line here.";
+  }
 
   if (question) {
-    return `Let's focus on your question: "${question}". I won't give the full final solution, but I can help with the concept, the syntax, or the next step.`;
+    if (isTurkish) {
+      return "Kontrol etmemi istediğin satırı veya davranışı net yaz; odaklı bir ipucu ya da küçük bir örnek verebilirim.";
+    }
+    return "Tell me the exact line or behavior you want checked, and I can give a focused hint or a tiny example.";
   }
 
   if (runStatus === "idle") {
-    return "Show me the exact part you are stuck on. I can help with the concept or the next step without giving the full solution.";
+    if (isTurkish) {
+      return "Kodu bir kez çalıştır, sonra ilk hata satırını veya kontrol etmemi istediğin satırı gönder.";
+    }
+    return "Run the code once, then send the first error line or the line you want checked.";
   }
 
-  return "Show me the exact part you are stuck on, and I can help with the concept or the next step.";
+  if (isTurkish) {
+    return "Takıldığın kısmı göster; sonraki adımda yardımcı olabilirim.";
+  }
+  return "Show me the exact part you are stuck on, and I can help with the next step.";
 }
 
 function toPolicyAction(action: string): PolicyAction {
@@ -175,7 +247,7 @@ async function handleAiRequest(req: Request, res: Response) {
 
   const fallbackUsed = !result.success;
   const mentorRaw = result.success ? result.mentorReply : buildMentorFallback(input);
-  const mentorModel = result.success ? process.env.OLLAMA_MODEL ?? "ai-mentor" : "fallback-local";
+  const mentorModel = result.success ? getMentorModelName(input) : "fallback-local";
 
   const validatorStartedAt = Date.now();
   const validator = await runValidator(input, mentorRaw);
@@ -368,7 +440,7 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
               problemId: problem.id,
               mode,
               promptVersion: PROMPT_VERSION,
-              modelName: process.env.OLLAMA_MODEL ?? "ai-mentor",
+              modelName: getMentorModelName(input),
               studentQuestion: input.studentQuestion ?? null,
               responseText: policy.finalText,
               requestPayload: body as object,
@@ -386,7 +458,7 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
               userId: req.auth!.userId,
               problemId: problem.id,
               attemptId: linkedAttempt?.id ?? null,
-              mentorModel: process.env.OLLAMA_MODEL ?? "ai-mentor",
+              mentorModel: getMentorModelName(input),
               validatorModel: VALIDATOR_MODEL,
               mentorRaw: fullText,
               validatorJson: validator as object,

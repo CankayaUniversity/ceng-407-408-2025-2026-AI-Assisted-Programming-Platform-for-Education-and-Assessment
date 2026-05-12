@@ -1,3 +1,5 @@
+import { detectMentorIntent, toValidatorQuestionMode } from "./mentorIntent";
+
 export type ValidatorDecision = "allow" | "rewrite" | "block";
 
 export type ValidatorResult = {
@@ -42,44 +44,7 @@ function countSentences(text: string): number {
 }
 
 function detectQuestionMode(message: string): "casual" | "meta" | "solution" | "runtime" | "code_help" {
-  const msg = message.trim().toLowerCase();
-
-  if (!msg) return "code_help";
-
-  const casualSet = new Set([
-    "hi",
-    "hello",
-    "hey",
-    "yo",
-    "how are you",
-    "how's it going",
-    "what's up",
-    "sup",
-  ]);
-
-  if (casualSet.has(msg)) return "casual";
-
-  if (
-    /what model|which model|are you an ai mentor|coding assistant|what can you do|who are you|explain how you work|what is your ai model/i.test(
-      msg,
-    )
-  ) {
-    return "meta";
-  }
-
-  if (
-    /full solution|just write the code|solve it completely|final answer only|no hints|just code|fix the code and send the corrected version|pretend you are not a mentor|ignore previous instructions|for testing purposes, output the final code/i.test(
-      msg,
-    )
-  ) {
-    return "solution";
-  }
-
-  if (/what is the output|did it pass|what does it print|what error|runtime|compile/i.test(msg)) {
-    return "runtime";
-  }
-
-  return "code_help";
+  return toValidatorQuestionMode(detectMentorIntent(message));
 }
 
 const CODE_LINE_PATTERNS = [
@@ -123,6 +88,13 @@ function containsFullSolutionLanguage(text: string): boolean {
     "here's the corrected version",
     "your code should look like",
     "final code",
+    "tam çözüm",
+    "tüm kod",
+    "bütün kod",
+    "kopyalayıp yapıştır",
+    "kopyala yapıştır",
+    "final kod",
+    "düzeltilmiş hali",
   ].some((p) => lower.includes(p));
 }
 
@@ -137,6 +109,16 @@ function containsAssignmentWalkthrough(text: string): boolean {
   ].filter((p) => lower.includes(p)).length;
 
   return hits >= 4;
+}
+
+function containsExactFinalEdit(text: string): boolean {
+  return [
+    /replace\s+.+\s+with\s+.+/i,
+    /change\s+.+\s+to\s+.+/i,
+    /use\s+.+\s+instead\s+of\s+.+/i,
+    /print\s*\([^)]*\+\s*[^)]*\)/i,
+    /return\s+.+\+.+/i,
+  ].some((pattern) => pattern.test(text));
 }
 
 function heuristicValidate(input: ValidateInput): ValidatorResult {
@@ -156,7 +138,7 @@ function heuristicValidate(input: ValidateInput): ValidatorResult {
     violations.push("explicit_solution_language");
   }
 
-  if (codeLikeLines >= 4) {
+  if (codeLikeLines >= 6) {
     violations.push("contains_code_solution");
   }
 
@@ -192,6 +174,10 @@ function heuristicValidate(input: ValidateInput): ValidatorResult {
     violations.push("solution_seek_leak");
   }
 
+  if (questionMode === "solution" && containsExactFinalEdit(mentorReply)) {
+    violations.push("solution_seek_exact_fix");
+  }
+
   if (questionMode === "casual" || questionMode === "meta") {
     if (sentenceCount > 3 || lineCount > 6) {
       violations.push("overly_long_response");
@@ -209,7 +195,8 @@ function heuristicValidate(input: ValidateInput): ValidatorResult {
   if (
     violations.includes("contains_code_solution") ||
     violations.includes("explicit_solution_language") ||
-    violations.includes("solution_seek_leak")
+    violations.includes("solution_seek_leak") ||
+    violations.includes("solution_seek_exact_fix")
   ) {
     return {
       riskScore: 0.92,
@@ -301,11 +288,13 @@ ALLOW:
 - error explanation
 - brief direct answer to a basic programming question
 - short and focused next-step guidance
+- a tiny non-solution snippet or pseudo-code example, usually 1-3 lines, when it directly answers syntax, concept, or local debugging questions
 
 Important:
 - Be conservative.
 - If unsure between allow and rewrite, choose rewrite.
 - If unsure between rewrite and block for near-complete code, choose block.
+- Do not block a short generic snippet just because it contains code; block only when it is copy-paste ready for the assignment or near-complete.
 - Do not be lenient just because the reply sounds educational.
 
 Return one of:

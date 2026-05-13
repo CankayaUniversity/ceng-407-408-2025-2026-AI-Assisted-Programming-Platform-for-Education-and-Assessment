@@ -93,10 +93,16 @@ const BANNED_PHRASES = [
 ] as const;
 
 // "Replace X with Y" / "Change X to Y" — these are *the literal fix*, not a hint.
+//
+// Both X and Y must be SHORT and within ONE clause (no comma / period / colon
+// crossing). The previous regex used `.+` which let the pattern span entire
+// sentences and produced false positives like
+//   "change one small part of a string into another, what would you think to compare?"
+// where "change" and "to" sat in different clauses.
 const EXACT_FIX_PATTERNS: RegExp[] = [
-  /\breplace\s+.+\s+with\s+.+/i,
-  /\bchange\s+.+\s+to\s+.+/i,
-  /\buse\s+.+\s+instead\s+of\s+.+/i,
+  /\breplace\s+[^,.\n;:!?]{1,40}?\s+with\s+[^,.\n;:!?]{1,40}/i,
+  /\bchange\s+[^,.\n;:!?]{1,40}?\s+to\s+[^,.\n;:!?]{1,40}/i,
+  /\buse\s+[^,.\n;:!?]{1,40}?\s+instead\s+of\s+[^,.\n;:!?]{1,40}/i,
 ];
 
 // Assignment-walkthrough detector — if the reply hits 4+ of these in one

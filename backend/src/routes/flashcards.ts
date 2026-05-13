@@ -187,7 +187,19 @@ router.post("/generate", async (req, res) => {
 
       console.log(`[flashcards] Generated ${cards.length} cards for user=${userId} problem=${problemId}`);
     } catch (err) {
-      console.error("[flashcards] Generation failed:", err instanceof Error ? err.message : err);
+      // C2 — Distinguish abort/timeout from real errors so log scanning is
+      // actually useful. AbortError comes from the timeout watchdog in
+      // flashcardService.ts; everything else is a real failure (HTTP, parse,
+      // Prisma write, etc.).
+      const isAbort = err instanceof Error && err.name === "AbortError";
+      const cause = isAbort
+        ? `timeout (${failedAttempts.length} prior attempts)`
+        : err instanceof Error
+          ? `${err.name}: ${err.message}`
+          : String(err);
+      console.error(
+        `[flashcards] Generation failed user=${userId} problem=${problemId} cause=${cause}`,
+      );
     } finally {
       generatingSet.delete(key);
     }

@@ -95,6 +95,21 @@ export const aiChatSchema = z.object({
       content: z.string().max(2_000),
     }),
   ).max(20).optional().nullable(),
+
+  // ── Editor context (Phase 2 — adopted from feature/ai) ─────────────────────
+  // Lets the mentor reference the exact file, line, and code window the
+  // student is looking at right now. All three are optional; if absent, the
+  // mentor falls back to the bigger studentCode field.
+  activeFileName:      z.string().max(200).optional().nullable(),
+  activeLineNumber:    z.number().int().positive().optional().nullable(),
+  // Up to ~50 lines of code around the cursor. Frontend should prefix the
+  // focused line with "> " so the quality-check module (mentorQuality.ts) can
+  // detect when a reply ignored that line.
+  selectedCodeContext: z.string().max(4_000).optional().nullable(),
+
+  // ── Locale (Phase 4 — bilingual support) ───────────────────────────────────
+  // "en" (default) or "tr" — controls reply language and fallback wording.
+  mentorLocale:        z.enum(["en", "tr"]).optional().nullable(),
 });
 
 // ── Assignments ───────────────────────────────────────────────────────────────

@@ -8,6 +8,7 @@
 // as block so that any stale call sites still produce a safe result.
 
 import type { ValidatorResult } from "./validator";
+import { normalizeMentorLocale, type MentorLocale } from "./mentor";
 
 // Strips LLM prompt delimiter markers to prevent injected text from being
 // re-injected into any future retry prompts via the studentQuestion field.
@@ -24,8 +25,15 @@ export type PolicyResult = {
   rewriteCount: number;
 };
 
-const SAFE_HINT =
+const SAFE_HINT_EN =
   "I can't give the full final solution directly, but I can still help with one next step or one specific concept. What part is giving you the most trouble right now?";
+
+const SAFE_HINT_TR =
+  "Tam final çözümü doğrudan veremem, ama bir sonraki adımda veya belirli bir kavramda yardımcı olabilirim. Şu an seni en çok ne zorluyor?";
+
+function safeHint(locale: MentorLocale): string {
+  return locale === "tr" ? SAFE_HINT_TR : SAFE_HINT_EN;
+}
 
 // ── applyPolicy (synchronous, no retry) ──────────────────────────────────────
 
@@ -33,15 +41,17 @@ export function applyPolicy(params: {
   mentorReply:     string;
   validator:       ValidatorResult;
   studentQuestion?: string | null;
+  mentorLocale?:    unknown;
 }): PolicyResult {
-  const { mentorReply, validator } = params;
+  const { mentorReply, validator, mentorLocale } = params;
 
   if (validator.decision === "allow") {
     return { action: "allow", finalText: mentorReply, rewriteCount: 0 };
   }
 
+  const locale = normalizeMentorLocale(mentorLocale);
   // block (or legacy "rewrite" — treated the same)
-  return { action: "block", finalText: SAFE_HINT, rewriteCount: 0 };
+  return { action: "block", finalText: safeHint(locale), rewriteCount: 0 };
 }
 
 // ── applyPolicyWithRetry (async, previously called getMentorReply) ────────────
@@ -53,8 +63,13 @@ export async function applyPolicyWithRetry(params: {
   mentorReply:      string;
   validator:        ValidatorResult;
   studentQuestion?: string | null;
-  // originalInput kept in signature for backward compat; no longer used
-  originalInput?:   unknown;
+  // originalInput kept in signature for backward compat; we extract
+  // mentorLocale from it so the block-message is in the right language.
+  originalInput?:   { mentorLocale?: unknown } | unknown;
 }): Promise<PolicyResult> {
-  return applyPolicy(params);
+  const mentorLocale =
+    params.originalInput && typeof params.originalInput === "object"
+      ? (params.originalInput as { mentorLocale?: unknown }).mentorLocale
+      : undefined;
+  return applyPolicy({ ...params, mentorLocale });
 }

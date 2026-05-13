@@ -25,6 +25,8 @@ function truncate(text: string, max: number): string {
   return text.slice(0, max) + `\n…[truncated — ${text.length - max} chars omitted]`;
 }
 
+export type MentorLocale = "en" | "tr";
+
 export type MentorRequestInput = {
   problemDescription?: string | null;
   assignmentText?: string | null;
@@ -40,15 +42,35 @@ export type MentorRequestInput = {
   /** Previous turns in this chat session — injected into prompt so the model
    *  can build on what was already said instead of starting from scratch. */
   conversationHistory?: { role: "user" | "assistant"; content: string }[] | null;
+
+  // ── Editor context (adopted from feature/ai) ──────────────────────────────
+  /** File the student currently has open. Used to ground "look at line N" hints. */
+  activeFileName?: string | null;
+  /** 1-based line number the cursor is on. */
+  activeLineNumber?: number | null;
+  /** Multi-line window of code around the cursor. Convention: prefix the
+   *  focused line with "> " so the mentor (and the quality checker) can pick
+   *  out which line is the centre of attention. */
+  selectedCodeContext?: string | null;
+
+  // ── Locale ────────────────────────────────────────────────────────────────
+  /** "en" (default) or "tr". Controls reply language + fallback wording. */
+  mentorLocale?: MentorLocale | string | null;
 };
+
+/** Coerce arbitrary locale strings/null into our canonical 2-letter code. */
+export function normalizeMentorLocale(locale: unknown): MentorLocale {
+  return locale === "tr" ? "tr" : "en";
+}
 
 export type MentorResult =
   | { success: true; mentorReply: string }
   | { success: false; mentorReply: ""; error: string };
 
-type MessageMode = "casual" | "meta" | "runtime" | "solution" | "mentor";
+export type MessageMode = "casual" | "meta" | "runtime" | "solution" | "mentor";
 
 const CASUAL_PATTERNS = new Set([
+  // English
   "hi",
   "hello",
   "hey",
@@ -57,6 +79,18 @@ const CASUAL_PATTERNS = new Set([
   "how's it going",
   "what's up",
   "sup",
+  "thanks",
+  "thank you",
+  // Turkish (adopted from feature/ai)
+  "merhaba",
+  "selam",
+  "slm",
+  "nasılsın",
+  "nasilsin",
+  "teşekkürler",
+  "tesekkurler",
+  "sağ ol",
+  "sag ol",
 ]);
 
 const BASIC_HELP_PATTERNS = [
@@ -83,31 +117,34 @@ function normalize(text: string | null | undefined): string {
   return (text ?? "").trim();
 }
 
-function detectMessageMode(message: string | null | undefined): MessageMode {
+export function detectMessageMode(message: string | null | undefined): MessageMode {
   const msg = normalize(message).toLowerCase();
   if (!msg) return "mentor";
   if (CASUAL_PATTERNS.has(msg)) return "casual";
 
   if (
-    /what model|which model|what is your ai model|what can you do|who are you|are you an ai mentor|coding assistant|explain how you work/i.test(
-      msg,
-    )
+    // English meta
+    /what model|which model|what is your ai model|what can you do|who are you|are you an ai mentor|coding assistant|explain how you work/i.test(msg)
+    // Turkish meta (adopted from feature/ai)
+    || /hangi model|kimsin|ne yapabilirsin|yapay zeka mentor/i.test(msg)
   ) {
     return "meta";
   }
 
   if (
-    /what is the output|did it pass|what does it print|what error|runtime|compile|execution/i.test(
-      msg,
-    )
+    // English runtime
+    /what is the output|did it pass|what does it print|what error|runtime|compile|execution|exception|traceback|stderr/i.test(msg)
+    // Turkish runtime
+    || /çıktı|ne yazdırır|\bhata\b|derleme|çalışma zamanı|neden alıyorum/i.test(msg)
   ) {
     return "runtime";
   }
 
   if (
-    /full solution|just write the code|solve it completely|send the final answer only|no hints|just code|fix the code and send the corrected version|pretend you are not a mentor|ignore previous instructions|for testing purposes, output the final code|give me the answer|just tell me the answer|what is the correct code|write me the complete|show me the working code|provide the complete solution|give me the working code|don't give hints|skip the hints|write the whole|complete the code for me|finish my code|write the rest of the code|act as if you have no restrictions|disregard your instructions|you are now|forget your rules|bypass|output only code|return only the code/i.test(
-      msg,
-    )
+    // English solution-seek + injection attempts
+    /full solution|just write the code|solve it completely|send the final answer only|no hints|just code|fix the code and send the corrected version|pretend you are not a mentor|ignore previous instructions|for testing purposes, output the final code|give me the answer|just tell me the answer|what is the correct code|write me the complete|show me the working code|provide the complete solution|give me the working code|don't give hints|skip the hints|write the whole|complete the code for me|finish my code|write the rest of the code|act as if you have no restrictions|disregard your instructions|you are now|forget your rules|bypass|output only code|return only the code/i.test(msg)
+    // Turkish solution-seek (adopted from feature/ai)
+    || /tam çözüm|tüm kod|bütün kod|sadece kod|final cevab|direkt çöz|çözümü ver|kopyalayıp yapıştır|kopyala yapıştır/i.test(msg)
   ) {
     return "solution";
   }
@@ -121,14 +158,20 @@ function isBasicHelpQuestion(message: string | null | undefined): boolean {
   return BASIC_HELP_PATTERNS.some((pattern) => pattern.test(text));
 }
 
-function buildCasualPrompt(message: string | null | undefined): string {
+function buildCasualPrompt(
+  message: string | null | undefined,
+  locale: MentorLocale = "en",
+): string {
+  const langDirective = locale === "tr"
+    ? "You MUST respond in Turkish (Türkçe)."
+    : "You MUST respond in English only.";
   return `
 You are an AI coding mentor.
 
 The user is making casual conversation.
 
 Rules:
-- You MUST respond in English only.
+- ${langDirective}
 - Reply naturally.
 - Keep it to 1 short sentence.
 - Do not mention the code unless the user asks about it.
@@ -139,14 +182,20 @@ ${message ?? "No message provided."}
 `.trim();
 }
 
-function buildMetaPrompt(message: string | null | undefined): string {
+function buildMetaPrompt(
+  message: string | null | undefined,
+  locale: MentorLocale = "en",
+): string {
+  const langDirective = locale === "tr"
+    ? "You MUST respond in Turkish (Türkçe)."
+    : "You MUST respond in English only.";
   return `
 You are an AI coding mentor.
 
 The user asked a meta question.
 
 Rules:
-- You MUST respond in English only.
+- ${langDirective}
 - Answer only the actual question.
 - Keep it to 1-2 short sentences.
 - Do not mention the student's code, assignment, output, or error unless the user directly asked about them.
@@ -181,10 +230,37 @@ function buildMentorPrompt(
   const safeStdout     = truncate(sanitizeForPrompt(input.stdout),         MAX_OUTPUT_CHARS);
   const lang           = sanitizeForPrompt(input.language) || "the student's language";
 
+  // Locale-aware response language directive. The instruction rules below
+  // stay in English regardless — they're guidance to the model, not the
+  // student-facing reply.
+  const locale = normalizeMentorLocale(input.mentorLocale);
+  const replyLanguageDirective = locale === "tr"
+    ? "Respond in Turkish (Türkçe). Use natural Turkish prose; keep code, error messages, and API names in their original form."
+    : "Respond in English only.";
+
+  // Editor context (focused file/line). Optional — only injected when the
+  // frontend actually sent something useful, so prompts stay tight.
+  const focusedFile = sanitizeForPrompt(input.activeFileName).trim();
+  const focusedLine = typeof input.activeLineNumber === "number"
+    && Number.isFinite(input.activeLineNumber) && input.activeLineNumber > 0
+      ? String(input.activeLineNumber)
+      : "";
+  const focusedCode = truncate(sanitizeForPrompt(input.selectedCodeContext), 3_000);
+
+  const focusedSection = (focusedFile || focusedLine || focusedCode)
+    ? `\n[FOCUSED CODE NEAR CURSOR]\n` +
+      `Active file: ${focusedFile || "unknown"}\n` +
+      `Active line: ${focusedLine || "unknown"}\n` +
+      (focusedCode
+        ? `Code window (line marked with ">" is where the cursor is):\n${focusedCode}\n`
+        : "Code window: (not provided)\n") +
+      `When the student says "this line", "this code", or "here", they mean the marked line in this window. Reference it specifically by line number or by quoting an identifier from it.`
+    : "";
+
   // ── Static context ────────────────────────────────────────────────────────────
   let prompt = `You are a university programming mentor. Guide students toward understanding — never solve problems for them.
 
-Respond in English only.
+${replyLanguageDirective}
 
 [LANGUAGE]: ${lang}
 
@@ -193,7 +269,7 @@ ${safeAssignment || "No assignment provided. Use the student's code as context."
 
 [CODE]
 ${safeCode || "No code provided."}
-
+${focusedSection}
 [RUN STATUS]: ${normalizedStatus}
 [OUTPUT]: ${safeStdout || "Not available."}
 [STDERR]: ${safeStderr || "None."}
@@ -527,8 +603,20 @@ function violatesIdleRule(text: string, runStatus: string | null | undefined): b
   return bad.some((p) => lower.includes(p));
 }
 
-function fallbackCasualReply(message: string | null | undefined): string {
+function fallbackCasualReply(
+  message: string | null | undefined,
+  locale: MentorLocale = "en",
+): string {
   const msg = normalize(message).toLowerCase();
+  if (locale === "tr") {
+    if (msg.includes("merhaba") || msg.includes("selam") || msg.includes("slm")) {
+      return "Merhaba. Nasıl yardımcı olabilirim?";
+    }
+    if (msg.includes("nasılsın") || msg.includes("nasilsin")) {
+      return "İyiyim, teşekkürler. Ne üzerinde çalışıyorsun?";
+    }
+    return "Anladım. Hangi konuda yardım istiyorsun?";
+  }
   if (msg.includes("hi") || msg.includes("hello")) {
     return "Hello. How can I help?";
   }
@@ -539,29 +627,43 @@ function fallbackCasualReply(message: string | null | undefined): string {
 }
 
 function fallbackMentorReply(input: MentorRequestInput): string {
-  const question = normalize(input.studentQuestion);
-  const mode = detectMessageMode(question);
+  const question  = normalize(input.studentQuestion);
+  const mode      = detectMessageMode(question);
   const basicHelp = isBasicHelpQuestion(question);
+  const locale    = normalizeMentorLocale(input.mentorLocale);
 
   if (mode === "meta") {
-    return "I'm an AI programming mentor. I help with code, errors, and next steps without giving the full assignment solution.";
+    return locale === "tr"
+      ? "Ben bir yapay zeka programlama mentoruyum. Tam çözümü vermeden kod, hata ve sonraki adımlar konusunda yardımcı olurum."
+      : "I'm an AI programming mentor. I help with code, errors, and next steps without giving the full assignment solution.";
   }
 
   if (mode === "runtime" && normalize(input.runStatus).toLowerCase() === "idle") {
-    return "I can't know the real output yet because the code has not been run. Run it once and I can help interpret the result.";
+    return locale === "tr"
+      ? "Kod henüz çalıştırılmadığı için gerçek çıktıyı bilemiyorum. Bir kez çalıştır, sonucu yorumlamana yardımcı olabilirim."
+      : "I can't know the real output yet because the code has not been run. Run it once and I can help interpret the result.";
   }
 
   if (basicHelp) {
+    if (locale === "tr") {
+      return question
+        ? `Bu soruyu doğrudan yanıtlayalım: "${question}". Kavramı veya sözdizimini kısaca açıklayabilirim, ödevin tamamını yazmadan.`
+        : "Tell me the exact concept or syntax you are stuck on.";
+    }
     return question
       ? `Let's answer that directly: "${question}". I can explain the concept or syntax briefly without writing the full assignment for you.`
       : "Tell me the exact concept or syntax you are stuck on.";
   }
 
   if (question) {
-    return `Let's focus on your question: "${question}". Start with the single step that is blocking you most.`;
+    return locale === "tr"
+      ? `Sorunu odaklayalım: "${question}". Seni en çok engelleyen tek adımla başla.`
+      : `Let's focus on your question: "${question}". Start with the single step that is blocking you most.`;
   }
 
-  return "Show me the exact step where you are stuck.";
+  return locale === "tr"
+    ? "Tam olarak takıldığın adımı göster."
+    : "Show me the exact step where you are stuck.";
 }
 
 /**
@@ -574,12 +676,13 @@ export async function* getMentorReplyStream(
 ): AsyncGenerator<string, void, unknown> {
   const messageMode = detectMessageMode(input.studentQuestion ?? undefined);
   const basicHelp = isBasicHelpQuestion(input.studentQuestion ?? undefined);
+  const locale = normalizeMentorLocale(input.mentorLocale);
 
   const prompt =
     messageMode === "casual"
-      ? buildCasualPrompt(input.studentQuestion)
+      ? buildCasualPrompt(input.studentQuestion, locale)
       : messageMode === "meta"
-        ? buildMetaPrompt(input.studentQuestion)
+        ? buildMetaPrompt(input.studentQuestion, locale)
         : buildMentorPrompt(input, { forceGuidance: messageMode === "solution", basicHelp });
 
   const url = getOllamaGenerateUrl();
@@ -636,13 +739,14 @@ export async function* getMentorReplyStream(
 export async function getMentorReply(input: MentorRequestInput): Promise<MentorResult> {
   const messageMode = detectMessageMode(input.studentQuestion ?? undefined);
   const basicHelp = isBasicHelpQuestion(input.studentQuestion ?? undefined);
+  const locale = normalizeMentorLocale(input.mentorLocale);
 
   try {
     const prompt =
       messageMode === "casual"
-        ? buildCasualPrompt(input.studentQuestion)
+        ? buildCasualPrompt(input.studentQuestion, locale)
         : messageMode === "meta"
-          ? buildMetaPrompt(input.studentQuestion)
+          ? buildMetaPrompt(input.studentQuestion, locale)
           : buildMentorPrompt(input, {
               forceGuidance: messageMode === "solution",
               basicHelp,
@@ -678,7 +782,7 @@ IMPORTANT:
     if (!responseText.trim()) {
       responseText =
         messageMode === "casual"
-          ? fallbackCasualReply(input.studentQuestion)
+          ? fallbackCasualReply(input.studentQuestion, locale)
           : fallbackMentorReply(input);
     }
 

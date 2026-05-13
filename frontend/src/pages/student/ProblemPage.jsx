@@ -32,11 +32,23 @@ function extForLanguage(lang) {
 
 const STARTER_CODE = {
   python:     "# Write your solution here\n# Read input with: input() or int(input())\n# Example: n = int(input()); arr = list(map(int, input().split()))\n",
-  javascript: `const lines = require('fs').readFileSync(0, 'utf8').trim().split('\\n');
-// lines[0] = first input line, lines[1] = second, etc.
+  javascript: `const readline = require('readline');
+const rl = readline.createInterface({ input: process.stdin });
 
-// Write your solution here
+const lines = [];
+rl.on('line', (line) => {
+  lines.push(line);
+  // Change this number to match how many input lines your solution reads.
+  // When you have enough lines, run your logic and call rl.close() — the
+  // program will exit on its own without needing the EOF button.
+  if (lines.length === 2) {
+    // Write your solution here
+    // Example: const n = parseInt(lines[0], 10);
+    //          const arr = lines[1].split(' ').map(Number);
 
+    rl.close();
+  }
+});
 `,
   c: `#include <stdio.h>\n\nint main() {\n    \n    return 0;\n}\n`,
   cpp: `#include <iostream>\nusing namespace std;\n\nint main() {\n    \n    return 0;\n}\n`,

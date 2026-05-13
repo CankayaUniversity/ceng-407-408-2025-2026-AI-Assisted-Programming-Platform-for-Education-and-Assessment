@@ -2,9 +2,18 @@ import { Router, type Request, type Response } from "express";
 import { PolicyAction } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/requireAuth";
-import { getMentorReply, getMentorReplyStream, looksLikeSolution, enforceIdleHint, type MentorRequestInput } from "../services/mentor";
+import {
+  getMentorReply,
+  getMentorReplyStream,
+  looksLikeSolution,
+  enforceIdleHint,
+  normalizeMentorLocale,
+  detectMessageMode,
+  type MentorRequestInput,
+} from "../services/mentor";
 import { applyPolicyWithRetry } from "../services/policy";
 import { validateMentorReply } from "../services/validator";
+import { assessMentorReply } from "../services/mentorQuality";
 import { aiChatSchema } from "../lib/schemas";
 
 const router = Router();
@@ -41,6 +50,19 @@ function parseMentorBody(body: Record<string, unknown>): MentorRequestInput {
         ? body.output
         : null;
 
+  // Editor context (Phase 2 adoption). Accept several legacy/aliased keys
+  // for the cursor line so the frontend can evolve without breaking us.
+  const rawActiveLine =
+    typeof body.activeLineNumber === "number" ? body.activeLineNumber
+    : typeof body.cursorLine === "number"     ? body.cursorLine
+    : typeof body.lineNumber === "number"     ? body.lineNumber
+    : null;
+
+  const selectedCodeContext =
+    typeof body.selectedCodeContext === "string" ? body.selectedCodeContext
+    : typeof body.codeContext === "string"        ? body.codeContext
+    : null;
+
   return {
     problemDescription:
       typeof body.problemDescription === "string" ? body.problemDescription : null,
@@ -73,6 +95,22 @@ function parseMentorBody(body: Record<string, unknown>): MentorRequestInput {
           }))
           .slice(0, 20) // max 20 entries = 10 full turns
       : null,
+
+    // ── Editor context ──────────────────────────────────────────────────────
+    activeFileName:   typeof body.activeFileName === "string" ? body.activeFileName : null,
+    activeLineNumber:
+      typeof rawActiveLine === "number"
+        && Number.isInteger(rawActiveLine)
+        && rawActiveLine > 0
+        ? rawActiveLine
+        : null,
+    selectedCodeContext:
+      typeof selectedCodeContext === "string"
+        ? selectedCodeContext.slice(0, 4_000)
+        : null,
+
+    // ── Locale ──────────────────────────────────────────────────────────────
+    mentorLocale: body.mentorLocale === "tr" ? "tr" : "en",
   };
 }
 
@@ -171,16 +209,46 @@ async function isAiDisabledForProblem(userId: number, problemId: number): Promis
 }
 
 async function runValidator(input: MentorRequestInput, mentorReply: string) {
-  // Pass assignment text + mode so the AI validator can reason about leakage
-  // relative to the specific problem. Prefer `assignmentText` (newer field);
-  // fall back to `problemDescription` for older callers.
+  // Pass assignment text + mode + questionMode so the validator (both stages)
+  // can reason about leakage relative to the specific problem AND apply the
+  // mode-aware heuristic rules (context_misuse, runtime_guess, length caps).
   return validateMentorReply({
     studentQuestion: input.studentQuestion ?? "",
     mentorReply,
     runStatus:       input.runStatus ?? "",
     assignmentText:  input.assignmentText ?? input.problemDescription ?? null,
     mode:            input.mode ?? null,
+    questionMode:    detectMessageMode(input.studentQuestion ?? undefined),
   });
+}
+
+// ── Quality fallback (Phase 1 — adopted from feature/ai) ──────────────────────
+//
+// When mentorQuality flags a reply (echo, repeats, ignored error/line, generic
+// fallback), replace the text with a short, context-aware deflection rather
+// than letting the bad reply through. Bilingual.
+function qualityDeflection(input: MentorRequestInput): string {
+  const locale = normalizeMentorLocale(input.mentorLocale);
+  const mode   = detectMessageMode(input.studentQuestion ?? undefined);
+  const hasErr = Boolean((input.stderr ?? input.errorMessage ?? "").trim());
+
+  if (locale === "tr") {
+    if (mode === "runtime" && hasErr) {
+      return "Hata mesajının ilk satırını ve hatanın çıktığı satır numarasını paylaş; oradan başlayalım.";
+    }
+    if (mode === "meta") {
+      return "Ben bir yapay zeka programlama mentoruyum. Kod, hata ve sonraki adım konularında yardımcı olabilirim.";
+    }
+    return "Sorunu daha net göster: kontrol etmemi istediğin satırı veya beklediğin sonuç ile aldığın sonuç arasındaki farkı söyle.";
+  }
+
+  if (mode === "runtime" && hasErr) {
+    return "Share the first line of the error and the line number it points at — let's start from there.";
+  }
+  if (mode === "meta") {
+    return "I'm an AI programming mentor. I can help with code, errors, and next steps — what's the specific thing you'd like guidance on?";
+  }
+  return "Show me the part more concretely — point at the exact line you want checked, or tell me what you expected vs. what you actually saw.";
 }
 
 // ── HintEvent creation (Bug #4 fix: wrapped in transaction to prevent race) ───
@@ -270,6 +338,28 @@ async function handleAiRequest(req: Request, res: Response) {
     originalInput: input,
   });
 
+  // Quality check — only meaningful when the validator allowed the reply.
+  // If validator blocked, policy.finalText is already SAFE_HINT and there's
+  // nothing to reassess.
+  let qualityReasons: string[] = [];
+  if (policy.action === "allow") {
+    const quality = assessMentorReply({
+      reply:               policy.finalText,
+      studentQuestion:     input.studentQuestion ?? undefined,
+      selectedCodeContext: input.selectedCodeContext ?? undefined,
+      stderr:              input.stderr ?? undefined,
+      errorMessage:        input.errorMessage ?? undefined,
+      conversationHistory: input.conversationHistory ?? undefined,
+    });
+    if (!quality.ok) {
+      qualityReasons = quality.reasons;
+      // Replace with locale-aware deflection. We deliberately do NOT call
+      // the mentor a second time — that's the "rewrite produces worse
+      // output" pattern the team previously rejected.
+      policy.finalText = qualityDeflection(input);
+    }
+  }
+
   const problem =
     problemId !== undefined ? await prisma.problem.findUnique({ where: { id: problemId } }) : null;
 
@@ -313,6 +403,9 @@ async function handleAiRequest(req: Request, res: Response) {
           validator,
           policyAction: policy.action,
           fallbackUsed,
+          // Phase 1 — record which quality issues triggered the deflection
+          // (empty array means the reply passed quality).
+          qualityReasons,
         },
       },
     });
@@ -442,6 +535,7 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
   let validator: Awaited<ReturnType<typeof runValidator>> | null = null;
   let policy:    Awaited<ReturnType<typeof applyPolicyWithRetry>> | null = null;
   let latencyMsValidator: number | null = null;
+  let qualityReasons: string[] = [];
 
   try {
     const validatorStartedAt = Date.now();
@@ -454,6 +548,22 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
       originalInput:  input,
     });
     textToStream = policy.finalText;
+
+    // Phase 1 — quality assessment. Only meaningful when validator allowed.
+    if (policy.action === "allow") {
+      const quality = assessMentorReply({
+        reply:               textToStream,
+        studentQuestion:     input.studentQuestion ?? undefined,
+        selectedCodeContext: input.selectedCodeContext ?? undefined,
+        stderr:              input.stderr ?? undefined,
+        errorMessage:        input.errorMessage ?? undefined,
+        conversationHistory: input.conversationHistory ?? undefined,
+      });
+      if (!quality.ok) {
+        qualityReasons = quality.reasons;
+        textToStream   = qualityDeflection(input);
+      }
+    }
   } catch {
     // If validation pipeline fails, use safe fallback
     textToStream = buildMentorFallback(input);
@@ -510,6 +620,8 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
               validator,
               policyAction: policy?.action,
               streamed:     true,
+              // Phase 1 — empty array means the reply passed the quality check.
+              qualityReasons,
             },
           },
         });

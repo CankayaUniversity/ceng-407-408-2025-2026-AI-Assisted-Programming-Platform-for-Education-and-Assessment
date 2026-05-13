@@ -53,6 +53,10 @@ export type ValidateInput = {
   assignmentText?: string | null;
   /** Chat mode — "hint" mode always triggers AI validation (highest leak risk). */
   mode?:           string | null;
+  /** Coarse classification of the student's question. When provided, the
+   *  heuristic stage applies mode-specific length / context-misuse rules
+   *  (e.g. a "casual" question shouldn't get a 5-sentence code lecture). */
+  questionMode?:   "casual" | "meta" | "runtime" | "solution" | "mentor" | null;
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -64,6 +68,7 @@ function normalize(text: string | null | undefined): string {
 // Phrases that unambiguously signal "I am handing you the finished answer."
 // Keep the list short and HIGH-confidence — do not add borderline cases.
 const BANNED_PHRASES = [
+  // English
   "complete solution",
   "full solution",
   "full code",
@@ -77,7 +82,34 @@ const BANNED_PHRASES = [
   "here is the solution",
   "here's the solution",
   "the answer is",
+  // Turkish (adopted from feature/ai)
+  "tam çözüm",
+  "tüm kod",
+  "bütün kod",
+  "kopyalayıp yapıştır",
+  "kopyala yapıştır",
+  "final kod",
+  "düzeltilmiş hali",
 ] as const;
+
+// "Replace X with Y" / "Change X to Y" — these are *the literal fix*, not a hint.
+const EXACT_FIX_PATTERNS: RegExp[] = [
+  /\breplace\s+.+\s+with\s+.+/i,
+  /\bchange\s+.+\s+to\s+.+/i,
+  /\buse\s+.+\s+instead\s+of\s+.+/i,
+];
+
+// Assignment-walkthrough detector — if the reply hits 4+ of these in one
+// answer, it's effectively writing the algorithm out for the student.
+const WALKTHROUGH_KEYWORDS = ["read input", "split", "convert", "calculate", "print"];
+
+function countSentences(text: string): number {
+  return text.split(/[.!?]+/).map((s) => s.trim()).filter(Boolean).length;
+}
+
+function countNonEmptyLines(text: string): number {
+  return text.split(/\r?\n/).filter((l) => l.trim()).length;
+}
 
 function countFencedCodeBlocks(text: string): {
   blockCount:    number;
@@ -114,23 +146,102 @@ function countCodeLikeLines(text: string): number {
 function heuristicValidate(input: ValidateInput): ValidatorResult {
   const reply      = normalize(input.mentorReply);
   const lowerReply = reply.toLowerCase();
+  const runStatus  = (input.runStatus ?? "").toLowerCase();
+  const qMode      = input.questionMode ?? "mentor";
   const violations: string[] = [];
 
+  // 1. Explicit "here is the answer" language (en + tr)
   if (BANNED_PHRASES.some((p) => lowerReply.includes(p))) {
     violations.push("explicit_solution_language");
   }
 
+  // 2. Large or numerous fenced code blocks
   const { blockCount, maxBlockLines } = countFencedCodeBlocks(reply);
   if (maxBlockLines >= 10 || blockCount >= 3) {
     violations.push("large_code_block");
   }
 
-  if (violations.length > 0) {
+  // 3. "Replace X with Y" / "Change X to Y" — that's the literal fix
+  if (EXACT_FIX_PATTERNS.some((p) => p.test(reply))) {
+    violations.push("exact_fix_directive");
+  }
+
+  // 4. Assignment walkthrough — ≥4 workflow keywords in a long-ish reply
+  const sentenceCount = countSentences(reply);
+  const lineCount     = countNonEmptyLines(reply);
+  const walkthroughHits = WALKTHROUGH_KEYWORDS.filter((k) => lowerReply.includes(k)).length;
+  if (walkthroughHits >= 4 && sentenceCount >= 5) {
+    violations.push("assignment_walkthrough");
+  }
+
+  // 5. Casual / meta replies should not lecture about code idioms
+  if (qMode === "casual" || qMode === "meta") {
+    if (
+      lowerReply.includes("input()")
+      || lowerReply.includes("split()")
+      || lowerReply.includes("standard input")
+      || lowerReply.includes("read two integers")
+    ) {
+      violations.push("context_misuse");
+    }
+  }
+
+  // 6. Runtime question while no run has happened yet — model is guessing
+  if (qMode === "runtime" && runStatus === "idle") {
+    if (
+      lowerReply.includes("the output is")
+      || lowerReply.includes("it prints")
+      || /\bit pass(ed|es)?\b/.test(lowerReply)
+      || lowerReply.includes("works as expected")
+    ) {
+      violations.push("runtime_guess");
+    }
+  }
+
+  // 7. Solution-seek requests should not be answered with multi-line code
+  if (qMode === "solution" && countCodeLikeLines(reply) >= 2) {
+    violations.push("solution_seek_leak");
+  }
+
+  // 8. Mode-aware length cap. Casual/meta answers should be brief; code-help
+  //    can be a bit longer; solution-seek refusals are short by design.
+  if (qMode === "casual" || qMode === "meta") {
+    if (sentenceCount > 3 || lineCount > 6) violations.push("overly_long_response");
+  } else if (qMode === "solution") {
+    if (sentenceCount > 3 || lineCount > 8) violations.push("overly_long_response");
+  } else if (qMode === "mentor" || qMode === "runtime") {
+    if (sentenceCount > 8 || lineCount > 16) violations.push("overly_long_response");
+  }
+
+  // ── Decide ──────────────────────────────────────────────────────────────────
+  // HARD blocks: any leak signal.
+  const blockingViolations = new Set([
+    "explicit_solution_language",
+    "large_code_block",
+    "exact_fix_directive",
+    "assignment_walkthrough",
+    "solution_seek_leak",
+  ]);
+  if (violations.some((v) => blockingViolations.has(v))) {
     return {
       riskScore:  0.92,
       decision:   "block",
       violations,
       reason:     "Reply discloses too much of the solution.",
+      source:     "heuristic",
+    };
+  }
+
+  // SOFT signals (context_misuse, runtime_guess, overly_long_response):
+  // we don't have a "rewrite" path, so log them via the result but still
+  // allow the reply — the AI-validator stage can still escalate to block,
+  // and these signals show up in audit logs for prompt-tuning later.
+  if (violations.length > 0) {
+    return {
+      riskScore:  0.4,
+      decision:   "allow",
+      violations,
+      reason:     `Heuristic flagged soft issues: ${violations.join(", ")}.`,
       source:     "heuristic",
     };
   }

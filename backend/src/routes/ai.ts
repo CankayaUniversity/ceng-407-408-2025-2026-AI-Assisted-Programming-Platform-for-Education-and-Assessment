@@ -333,7 +333,7 @@ async function handleAiRequest(req: Request, res: Response) {
         finalText: policy.finalText,
         rewriteCount: policy.rewriteCount,
         latencyMsMentor,
-        latencyMsValidator: null,
+        latencyMsValidator,
         errorCode: result.success ? null : (result.error ?? "mentor_error"),
       },
     });

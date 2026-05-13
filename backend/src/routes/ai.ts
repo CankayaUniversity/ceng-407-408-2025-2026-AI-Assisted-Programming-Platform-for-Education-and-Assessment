@@ -10,7 +10,10 @@ import { aiChatSchema } from "../lib/schemas";
 const router = Router();
 
 const PROMPT_VERSION = "mentor_v3";
-const VALIDATOR_MODEL = process.env.OLLAMA_VALIDATOR_MODEL ?? "validator-heuristic";
+// Default to the small AI validator the ollama-init container pulls.
+// Set to "validator-heuristic" via env to explicitly disable the second stage
+// and run the heuristic checks alone (e.g. during incident response).
+const VALIDATOR_MODEL = process.env.OLLAMA_VALIDATOR_MODEL ?? "qwen2.5:3b-instruct";
 
 router.use(requireAuth);
 
@@ -168,10 +171,15 @@ async function isAiDisabledForProblem(userId: number, problemId: number): Promis
 }
 
 async function runValidator(input: MentorRequestInput, mentorReply: string) {
+  // Pass assignment text + mode so the AI validator can reason about leakage
+  // relative to the specific problem. Prefer `assignmentText` (newer field);
+  // fall back to `problemDescription` for older callers.
   return validateMentorReply({
     studentQuestion: input.studentQuestion ?? "",
     mentorReply,
-    runStatus: input.runStatus ?? "",
+    runStatus:       input.runStatus ?? "",
+    assignmentText:  input.assignmentText ?? input.problemDescription ?? null,
+    mode:            input.mode ?? null,
   });
 }
 
@@ -433,10 +441,13 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
   let textToStream = rawText;
   let validator: Awaited<ReturnType<typeof runValidator>> | null = null;
   let policy:    Awaited<ReturnType<typeof applyPolicyWithRetry>> | null = null;
+  let latencyMsValidator: number | null = null;
 
   try {
-    validator = await runValidator(input, rawText);
-    policy    = await applyPolicyWithRetry({
+    const validatorStartedAt = Date.now();
+    validator           = await runValidator(input, rawText);
+    latencyMsValidator  = Date.now() - validatorStartedAt;
+    policy = await applyPolicyWithRetry({
       mentorReply:    rawText,
       validator,
       studentQuestion: input.studentQuestion,
@@ -516,7 +527,10 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
             finalText:        textToStream,
             rewriteCount:     policy?.rewriteCount ?? 0,
             latencyMsMentor:  Date.now() - streamStartedAt,
-            latencyMsValidator: null,
+            // Total wall-clock for the validator pipeline (heuristic + AI).
+            // Consistent with the non-stream path's measurement.
+            // The AI-only latency is stored inside validatorJson as aiLatencyMs.
+            latencyMsValidator,
             errorCode:        null,
           },
         });

@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma";
-import { resolveLanguageId } from "../lib/judge0Languages";
 import { requireAuth } from "../middleware/requireAuth";
 import { AttemptMode } from "@prisma/client";
-import { runInJudge0, type Judge0RunResult } from "../services/judge0";
+import { type Judge0RunResult } from "../services/judge0";
+import { createDockerSession, runInDocker } from "../services/dockerRunner";
 import { executeSchema } from "../lib/schemas";
 
 const router = Router();
@@ -95,6 +95,29 @@ function normalizeLanguage(value: unknown): string | undefined {
     cs: "csharp", "c#": "csharp", csharp: "csharp",
   };
   return aliases[key];
+}
+
+/**
+ * Map a legacy Judge0 numeric language ID to our canonical language string.
+ *
+ * Even though the backend no longer talks to Judge0, the frontend's submit
+ * payload still sends `languageId` (a numeric Judge0 CE 1.13.1 ID) so the
+ * student's dropdown choice can override the problem's configured language.
+ *
+ * Returning `undefined` for an unknown ID lets the caller fall back to the
+ * problem's stored language (test mode) or report an error (raw mode).
+ */
+function languageFromJudge0Id(id: number | undefined): string | undefined {
+  if (id === undefined) return undefined;
+  switch (id) {
+    case 63: return "javascript";
+    case 71: return "python";
+    case 50: return "c";
+    case 54: return "cpp";
+    case 51: return "csharp";
+    case 62: return "java";
+    default: return undefined;
+  }
 }
 
 function parseOptionalInt(value: unknown): number | undefined {
@@ -293,10 +316,22 @@ router.post("/", async (req, res) => {
     return;
   }
 
-  const languageBody = normalizeLanguage(languageBodyRaw);
+  // Resolve language string from either (a) explicit `language` field, or
+  // (b) legacy numeric `languageId` (Judge0 CE convention) — the latter is
+  // still what the frontend sends.
+  const languageBody =
+    normalizeLanguage(languageBodyRaw) ??
+    languageFromJudge0Id(languageIdBody);
+
   if (languageBodyRaw && !languageBody) {
     res.status(400).json({
       error: `Unsupported language "${languageBodyRaw}". Supported: python, c, cpp, javascript, java, csharp.`,
+    });
+    return;
+  }
+  if (languageIdBody !== undefined && !languageBody) {
+    res.status(400).json({
+      error: `Unsupported languageId ${languageIdBody}. Use one of: 50 (c), 54 (cpp), 62 (java), 51 (csharp), 63 (javascript), 71 (python).`,
     });
     return;
   }
@@ -334,12 +369,12 @@ router.post("/", async (req, res) => {
         return;
       }
 
-      let langId: number;
+      // Create a Docker session — compiles once for compiled languages,
+      // then reuses the binary for every test case (much faster than
+      // recompiling per test case as the old Judge0 path did).
+      let session: Awaited<ReturnType<typeof createDockerSession>>;
       try {
-        // Pass languageIdBody as numeric override so the student's explicitly
-        // chosen language (e.g. switching from Python to JavaScript) is
-        // respected even in test mode.
-        langId = resolveLanguageId(effectiveLanguage, languageIdBody);
+        session = await createDockerSession(sourceCode, effectiveLanguage);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         res.status(400).json({ error: msg });
@@ -372,18 +407,14 @@ router.post("/", async (req, res) => {
       let hiddenPassed = 0;
       let hiddenTotal = 0;
 
+      try {
       for (let i = 0; i < problem.testCases.length; i++) {
         const tc = problem.testCases[i];
-        const jr = await runInJudge0({
-          sourceCode,
-          languageId: langId,
+        const jr = await session.run(
           // Normalize CRLF in test-case input (browser textareas on Windows store \r\n).
           // Without this, input() in Python receives "Alice\r" instead of "Alice".
-          // int() silently strips \r, but string comparisons and strip() calls would fail.
-          stdin: normalizeStdin(tc.input),
-          // Don't pass expectedOutput to Judge0 — it does exact byte comparison which fails
-          // on trailing-newline mismatches. We compare manually after trimming both sides.
-        });
+          normalizeStdin(tc.input),
+        );
 
         // Accept if the program ran cleanly AND output matches.
         // outputMatches first tries exact comparison, then loose matching so that
@@ -422,6 +453,11 @@ router.post("/", async (req, res) => {
           time: jr.time,
           memory: jr.memory,
         });
+      }
+      } finally {
+        // Always remove the per-submission scratch directory, even if a test
+        // case throws (e.g. docker daemon dies mid-run).
+        session.cleanup();
       }
 
       const submissionPayload = buildSubmissionPayload({
@@ -475,7 +511,7 @@ router.post("/", async (req, res) => {
       res.json({
         mode: "tests",
         problemId,
-        languageId: langId,
+        language: effectiveLanguage,
         allPassed,
         publicPassed,
         publicTotal,
@@ -490,53 +526,39 @@ router.post("/", async (req, res) => {
       return;
     }
 
-    if (languageIdBody === undefined && !languageBody) {
+    if (!languageBody) {
       res.status(400).json({
-        error: "Provide problemId to run tests, or language/languageId for a raw run",
+        error: "Provide problemId to run tests, or language for a raw run",
       });
       return;
     }
 
-    let rawLanguageId: number;
-    try {
-      if (languageIdBody !== undefined) {
-        rawLanguageId = languageIdBody;
-      } else {
-        rawLanguageId = resolveLanguageId(languageBody!);
-      }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      res.status(400).json({ error: msg });
-      return;
-    }
-
-    const jr = await runInJudge0({
+    const jr = await runInDocker({
       sourceCode,
-      languageId: rawLanguageId,
-      stdin: normalizeInteractiveStdin(stdinRaw),
+      language: languageBody,
+      stdin:    normalizeInteractiveStdin(stdinRaw),
     });
 
     const normalizedStatus = normalizeJudge0Status(jr);
-    const executionTimeMs = parseExecutionTimeMs(jr.time);
-    const langLabel = languageBody ?? String(rawLanguageId);
+    const executionTimeMs  = parseExecutionTimeMs(jr.time);
 
     await prisma.submissionAttempt.create({
       data: {
         userId,
-        problemId: null,
+        problemId:    null,
         submissionId: null,
-        mode: AttemptMode.raw,
-        language: langLabel,
+        mode:         AttemptMode.raw,
+        language:     languageBody,
         sourceCode,
-        judge0Status: jr.statusDescription,
+        judge0Status:     jr.statusDescription,
         normalizedStatus,
-        publicPassed: null,
-        publicTotal: null,
-        hiddenPassed: null,
-        hiddenTotal: null,
-        allPassed: jr.statusId === ACCEPTED_STATUS_ID,
-        stdout: jr.stdout || null,
-        stderr: jr.stderr || null,
+        publicPassed:  null,
+        publicTotal:   null,
+        hiddenPassed:  null,
+        hiddenTotal:   null,
+        allPassed:     jr.statusId === ACCEPTED_STATUS_ID,
+        stdout:        jr.stdout        || null,
+        stderr:        jr.stderr        || null,
         compileOutput: jr.compileOutput || null,
         executionTimeMs,
         memoryKb: jr.memory ?? null,
@@ -544,15 +566,15 @@ router.post("/", async (req, res) => {
     });
 
     res.json({
-      mode: "raw",
-      passed: jr.statusId === ACCEPTED_STATUS_ID,
-      status: jr.statusDescription,
-      stdout: jr.stdout,
-      stderr: jr.stderr,
+      mode:          "raw",
+      passed:        jr.statusId === ACCEPTED_STATUS_ID,
+      status:        jr.statusDescription,
+      stdout:        jr.stdout,
+      stderr:        jr.stderr,
       compileOutput: jr.compileOutput,
-      time: jr.time,
-      memory: jr.memory,
-      languageId: rawLanguageId,
+      time:          jr.time,
+      memory:        jr.memory,
+      language:      languageBody,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

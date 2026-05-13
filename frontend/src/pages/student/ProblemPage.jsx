@@ -31,8 +31,17 @@ function extForLanguage(lang) {
 }
 
 const STARTER_CODE = {
-  python:     "# Write your solution here\n",
-  javascript: "// Write your solution here\n",
+  python:     "# Write your solution here\n# Read input with: input() or int(input())\n# Example: n = int(input()); arr = list(map(int, input().split()))\n",
+  javascript: `const rl = require('readline').createInterface({ input: process.stdin, terminal: false });
+const lines = [];
+rl.on('line', l => lines.push(l.trim()));
+rl.on('close', () => {
+  // Write your solution here.
+  // Input lines are in the 'lines' array: lines[0], lines[1], ...
+
+  process.exit(0); // required — keeps the process from hanging in the sandbox
+});
+`,
   c: `#include <stdio.h>\n\nint main() {\n    \n    return 0;\n}\n`,
   cpp: `#include <iostream>\nusing namespace std;\n\nint main() {\n    \n    return 0;\n}\n`,
   csharp: `using System;\n\nclass Program {\n    static void Main(string[] args) {\n        \n    }\n}\n`,

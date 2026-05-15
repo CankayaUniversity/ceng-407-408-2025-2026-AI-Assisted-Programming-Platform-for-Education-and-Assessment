@@ -4,7 +4,7 @@
   "title": "C Function Pointers",
   "category": "C Functions",
   "categoryOrder": 2,
-  "order": 8,
+  "order": 1,
   "sections": [
     {
       "heading": "Function Pointer",
@@ -51,5 +51,7 @@
       "body": "- A function pointer stores the address of a function.\n- You can declare, assign, and call functions through it.\n- It allows passing functions as arguments to other functions.\n- Useful for callbacks, menus, and flexible program design.",
       "code": ""
     }
-  ]
+  ],
+  "subCategory": "Function Pointers",
+  "subCategoryOrder": 1
 }

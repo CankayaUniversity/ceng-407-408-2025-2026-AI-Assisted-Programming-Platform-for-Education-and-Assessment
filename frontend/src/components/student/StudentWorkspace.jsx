@@ -21,7 +21,6 @@ import {
   List,
   ListItemButton,
   ListItemText,
-  Menu,
   MenuItem,
   Select,
   Snackbar,
@@ -29,12 +28,15 @@ import {
   Tab,
   Tabs,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Tooltip,
   Typography,
 } from "@mui/material";
 import CheckCircleOutlineIcon  from "@mui/icons-material/CheckCircleOutline";
 import LightbulbIcon           from "@mui/icons-material/Lightbulb";
 import AddCommentIcon          from "@mui/icons-material/AddComment";
+import BugReportIcon           from "@mui/icons-material/BugReport";
 import PrintIcon               from "@mui/icons-material/Print";
 import AccessTimeIcon          from "@mui/icons-material/AccessTime";
 import ArrowBackIcon           from "@mui/icons-material/ArrowBack";
@@ -45,7 +47,6 @@ import OpenInFullIcon          from "@mui/icons-material/OpenInFull";
 import CloseFullscreenIcon     from "@mui/icons-material/CloseFullscreen";
 import ExpandMoreIcon          from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon          from "@mui/icons-material/ExpandLess";
-import KeyboardArrowDownIcon   from "@mui/icons-material/KeyboardArrowDown";
 import FilterListIcon          from "@mui/icons-material/FilterList";
 import LockIcon                from "@mui/icons-material/Lock";
 import WarningAmberIcon        from "@mui/icons-material/WarningAmber";
@@ -121,6 +122,7 @@ export default function StudentWorkspace({
   setChatInput,
   sendChat,
   sendHint,
+  sendDebugPrints,
   hintCount = 0,
   chatLoading,
   submissions,
@@ -155,6 +157,54 @@ export default function StudentWorkspace({
   // ── Layout state ──────────────────────────────────────────────────────────
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [mentorZoomed,  setMentorZoomed]  = useState(false);
+
+  // ── Monaco editor ref (Phase 6 — debug improvements) ──────────────────────
+  // Captured via the Editor's onMount. Used by:
+  //   (a) Clickable error-line links — jump the cursor to a specific line
+  //       when the user clicks `line 17` / `main.c:17:` in the terminal.
+  //   (c) "Add debug prints" — read the current cursor line and a window of
+  //       code around it to send as editor context to the mentor.
+  const monacoEditorRef = useRef(null);
+
+  function jumpToLine(lineNumber) {
+    const editor = monacoEditorRef.current;
+    if (!editor || !Number.isFinite(lineNumber) || lineNumber <= 0) return;
+    try {
+      editor.revealLineInCenter(lineNumber);
+      editor.setPosition({ lineNumber, column: 1 });
+      editor.focus();
+    } catch { /* editor may have unmounted between callback and click */ }
+  }
+
+  /**
+   * Build a small code window around the cursor, prefixing the cursor line
+   * with "> " so both the mentor prompt and the quality-check module can
+   * spot which line is the focus of attention.
+   *
+   * Returns { activeLineNumber, selectedCodeContext } or null if the editor
+   * isn't ready.
+   */
+  function getCursorContext(windowLines = 5) {
+    const editor = monacoEditorRef.current;
+    if (!editor) return null;
+    const position = editor.getPosition?.();
+    const model    = editor.getModel?.();
+    if (!position || !model) return null;
+    const cursorLine = position.lineNumber;
+    const totalLines = model.getLineCount();
+    const start = Math.max(1, cursorLine - windowLines);
+    const end   = Math.min(totalLines, cursorLine + windowLines);
+    const widthN = String(end).length;
+    const lines = [];
+    for (let n = start; n <= end; n++) {
+      const prefix = n === cursorLine ? "> " : "  ";
+      lines.push(`${prefix}${String(n).padStart(widthN, " ")}: ${model.getLineContent(n)}`);
+    }
+    return {
+      activeLineNumber:    cursorLine,
+      selectedCodeContext: lines.join("\n"),
+    };
+  }
 
   // Lock body scroll while the mentor zoom overlay is active so the page
   // behind it doesn't jump when the user scrolls inside the overlay.
@@ -257,6 +307,9 @@ export default function StudentWorkspace({
       navItems={navItems}
       maxWidth="xl"
       showPageTitle={false}
+      // Exam-mode lockdown — strips the top nav so students can't click
+      // away from the current problem until they submit or time runs out.
+      lockdown={Boolean(examMode)}
     >
       {/* ── Exam countdown banner ─────────────────────────────────────────── */}
       {examMode && (
@@ -325,19 +378,29 @@ export default function StudentWorkspace({
                 gridTemplateRows: "1fr",
                 overflow: "hidden",
               }
-            : {
-                gridTemplateColumns: leftPanelOpen
-                  ? { xs: "1fr", md: "minmax(260px, 320px) minmax(0, 1fr) minmax(280px, 360px)" }
-                  : { xs: "1fr", md: "40px minmax(0, 1fr) minmax(320px, 440px)" },
-                alignItems: "start",
-              }
+            : examMode
+              // Exam-mode lockdown — single column, editor takes the full width.
+              // The assignments panel + AI mentor chat are both hidden so only
+              // the problem description, editor, and terminal are visible.
+              ? {
+                  gridTemplateColumns: "1fr",
+                  alignItems: "start",
+                }
+              : {
+                  gridTemplateColumns: leftPanelOpen
+                    ? { xs: "1fr", md: "minmax(260px, 320px) minmax(0, 1fr) minmax(280px, 360px)" }
+                    : { xs: "1fr", md: "40px minmax(0, 1fr) minmax(320px, 440px)" },
+                  alignItems: "start",
+                }
           ),
         }}
       >
-        {/* ── Left panel: Assignments / Tutorials tabs ────────────────── */}
+        {/* ── Left panel: Assignments / Tutorials tabs ──────────────────
+            Hidden completely in exam mode so the student can't navigate
+            to other assignments mid-exam. */}
         <Box
           sx={
-            mentorZoomed
+            (mentorZoomed || examMode)
               ? { display: "none" }
               : leftPanelOpen
                 ? { border: 1, borderColor: "divider", borderRadius: 3, overflow: "hidden", bgcolor: "background.paper" }
@@ -401,35 +464,42 @@ export default function StudentWorkspace({
               ) : (
                 /* Grouped assignment panel */
                 <Box>
-                  {/* Mode selector button */}
-                  <Stack direction="row" alignItems="center" sx={{ mb: 1 }}>
-                    <Button
-                      endIcon={<KeyboardArrowDownIcon sx={{ fontSize: 16 }} />}
-                      onClick={(e) => setAssignModeAnchor(e.currentTarget)}
-                      size="small"
-                      sx={{ fontWeight: 700, textTransform: "none", color: "text.primary", pl: 0, fontSize: 13 }}
-                    >
-                      {currentMode.short}
-                    </Button>
-                  </Stack>
-
-                  <Menu
-                    anchorEl={assignModeAnchor}
-                    open={Boolean(assignModeAnchor)}
-                    onClose={() => setAssignModeAnchor(null)}
-                    anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+                  {/* Mode selector — three side-by-side toggle buttons so all
+                      modes (Homework / Practice / Exams) are visible at once
+                      without opening a dropdown. */}
+                  <ToggleButtonGroup
+                    value={assignMode}
+                    exclusive
+                    onChange={(_, v) => { if (v !== null) switchAssignMode(v); }}
+                    size="small"
+                    fullWidth
+                    sx={{
+                      mb: 1.25,
+                      "& .MuiToggleButton-root": {
+                        py: 0.5,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        textTransform: "none",
+                        lineHeight: 1.2,
+                      },
+                    }}
                   >
                     {assignModeDefs.map((m, i) => (
-                      <MenuItem
-                        key={i}
-                        selected={assignMode === i}
-                        onClick={() => switchAssignMode(i)}
-                        sx={{ fontSize: 13, fontWeight: assignMode === i ? 700 : 400 }}
-                      >
-                        {m.label}
-                      </MenuItem>
+                      <ToggleButton key={i} value={i}>
+                        {m.short}
+                        <Box
+                          component="span"
+                          sx={{
+                            ml: 0.5,
+                            opacity: 0.6,
+                            fontWeight: 500,
+                          }}
+                        >
+                          ({m.items.length})
+                        </Box>
+                      </ToggleButton>
                     ))}
-                  </Menu>
+                  </ToggleButtonGroup>
 
                   {/* Language filter chips */}
                   {assignLangList.length > 0 && (
@@ -538,6 +608,7 @@ export default function StudentWorkspace({
                       <Box sx={{ maxHeight: 520, overflowY: "auto", pr: 0.5 }}>
                         {tutorialList.map((group) => (
                           <Box key={group.category} sx={{ mb: 1.5 }}>
+                            {/* Main category — e.g. "C Tutorial", "C Functions" */}
                             <Typography
                               variant="caption"
                               fontWeight={700}
@@ -546,14 +617,49 @@ export default function StudentWorkspace({
                             >
                               {group.category}
                             </Typography>
-                            <List disablePadding>
-                              {group.topics.map((t) => (
-                                <ListItemButton key={t.tag} onClick={() => openTutorial(t.tag, t.title)}
-                                  sx={{ mb: 0.25, borderRadius: 1.5, border: 1, borderColor: "divider", py: 0.5 }}>
-                                  <ListItemText primary={t.title} primaryTypographyProps={{ fontSize: 12, fontWeight: 500 }} />
-                                </ListItemButton>
-                              ))}
-                            </List>
+
+                            {/* Sub-categories (e.g. "C Data Types") and their topics */}
+                            {(group.subCategories ?? []).map((sub, sIdx) => (
+                              <Box key={sub.subCategory ?? `__none__-${sIdx}`} sx={{ mb: 0.5 }}>
+                                {/* Show the sub-category label only when present.
+                                    Topics under a null sub-category are rendered
+                                    directly under the main category. */}
+                                {sub.subCategory && (
+                                  <Typography
+                                    variant="caption"
+                                    fontWeight={600}
+                                    sx={{
+                                      display: "block",
+                                      mt: 0.75, mb: 0.25, px: 1,
+                                      color: "text.secondary",
+                                      fontSize: 11,
+                                    }}
+                                  >
+                                    {sub.subCategory}
+                                  </Typography>
+                                )}
+                                <List disablePadding sx={{ pl: sub.subCategory ? 0.5 : 0 }}>
+                                  {sub.topics.map((t) => (
+                                    <ListItemButton
+                                      key={t.tag}
+                                      onClick={() => openTutorial(t.tag, t.title)}
+                                      sx={{
+                                        mb: 0.25,
+                                        borderRadius: 1.5,
+                                        border: 1,
+                                        borderColor: "divider",
+                                        py: 0.5,
+                                      }}
+                                    >
+                                      <ListItemText
+                                        primary={t.title}
+                                        primaryTypographyProps={{ fontSize: 12, fontWeight: 500 }}
+                                      />
+                                    </ListItemButton>
+                                  ))}
+                                </List>
+                              </Box>
+                            ))}
                           </Box>
                         ))}
                       </Box>
@@ -826,6 +932,51 @@ export default function StudentWorkspace({
             />
           )}
 
+          {/* Extra Run / Submit toolbar — directly above the editor.
+              Mirrors the pair in the top-of-page action stack so students
+              don't have to scroll up when the description is expanded.
+              Includes "Debug prints" — asks the mentor to insert temporary
+              print/log statements around the cursor line. Hidden in exam
+              mode because AI assistance is restricted during exams. */}
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{ mb: 1.5, justifyContent: "flex-end" }}
+          >
+            {!examMode && sendDebugPrints && (
+              <Tooltip title="Ask the mentor to add temporary debug prints around your cursor line">
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => {
+                    const ctx = getCursorContext();
+                    sendDebugPrints(ctx ?? {});
+                  }}
+                  disabled={chatLoading || examLocked}
+                  startIcon={<BugReportIcon />}
+                >
+                  Debug prints
+                </Button>
+              </Tooltip>
+            )}
+            <Button
+              variant="contained"
+              size="small"
+              onClick={runRaw}
+              disabled={running || examLocked}
+            >
+              {running ? "Running..." : "Run"}
+            </Button>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={runTests}
+              disabled={running || !selectedProblem || examLocked}
+            >
+              Submit
+            </Button>
+          </Stack>
+
           {/* Phase 7 — multi-file tab bar (locked during exam lock) */}
           <EditorTabBar
             files={files}
@@ -844,6 +995,7 @@ export default function StudentWorkspace({
               language={monacoLanguage(selectedLanguage)}
               value={code}
               onChange={(v) => setCode(v ?? "")}
+              onMount={(editor) => { monacoEditorRef.current = editor; }}
               theme="vs-dark"
               options={{
                 minimap:              { enabled: false },
@@ -854,6 +1006,31 @@ export default function StudentWorkspace({
               }}
             />
           </Box>
+
+          {/* Extra Run / Submit toolbar — directly below the editor, above
+              the terminal. So students always have a button within reach. */}
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{ mt: 1.5, mb: 1.5, justifyContent: "flex-end" }}
+          >
+            <Button
+              variant="contained"
+              size="small"
+              onClick={runRaw}
+              disabled={running || examLocked}
+            >
+              {running ? "Running..." : "Run"}
+            </Button>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={runTests}
+              disabled={running || !selectedProblem || examLocked}
+            >
+              Submit
+            </Button>
+          </Stack>
 
           {/* Phase 6 — xterm.js interactive terminal */}
           <Box
@@ -922,11 +1099,12 @@ export default function StudentWorkspace({
                 wsUrl={wsUrl("/ws/terminal")}
                 onReady={(writer) => { termWriterRef.current = writer; }}
                 onRunResult={onTerminalRunResult}
+                onErrorLineClick={jumpToLine}
               />
             </Box>
           </Box>
 
-          {!mentorZoomed && (
+          {!mentorZoomed && !examMode && (
             <Box sx={{ mt: 2 }}>
               <SubmissionHistory submissions={submissions} loading={submissionsLoading} />
             </Box>
@@ -934,6 +1112,9 @@ export default function StudentWorkspace({
         </SectionCard>
         </Box>{/* end editor scroll wrapper */}
 
+        {/* AI Mentor Chat — hidden entirely in exam mode per project spec
+            (AI assistance is restricted in exam mode for academic integrity). */}
+        {!examMode && (
         <Box sx={mentorZoomed ? { overflow: "auto" } : {}}>
         <SectionCard
           title="AI Mentor Chat"
@@ -1119,6 +1300,7 @@ export default function StudentWorkspace({
           )}
         </SectionCard>
         </Box>{/* end AI mentor scroll wrapper */}
+        )}{/* end !examMode guard around AI Mentor Chat */}
       </Box>
 
       {/* ── Expanded tutorial overlay ────────────────────────────────────────── */}

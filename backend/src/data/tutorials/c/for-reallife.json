@@ -4,12 +4,54 @@
   "title": "C For Loop Real-Life",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 44,
+  "subCategory": "For Loop",
+  "subCategoryOrder": 10,
+  "order": 3,
   "sections": [
     {
       "heading": "Real-Life Examples",
-      "body": "To demonstrate a practical example of the for loop, let's \ncreate a program that counts to 100 by tens:\n\nIn this example, we create a program that only print even numbers between 0 and 10 (inclusive):\n\nHere we only print odd numbers:\n\nIn this example we print the powers of 2 up to 512:\n\nAnd in this example, we create a program that prints the multiplication table for a specified number:",
-      "code": "  for (i = 0; i <= 100; i += 10) {\n  printf(\"%d\\n\", i);\n}\n\n  for (i = 0; i <= 10; i = i + 2) {\n  printf(\"%d\\n\", i);\n}\n\n  for (i = 1; i < 10; i = i + 2) {\n  printf(\"%d\\n\", i);\n}\n\n  for (i = 2; i <= 512; i *= 2) {\n  printf(\"%d\\n\", i);\n}\n\n  int number = 2;\nint i;\n\n// Print the multiplication table for the\n  number 2\nfor (i = 1; i <= 10; i++) {\n  printf(\"%d x %d = %d\\n\",\n  number, i, number * i);\n}\n\nreturn 0;"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "To demonstrate a practical example of the **`for` loop**, let's create a program that counts to `100` by tens:"
+        },
+        {
+          "type": "code",
+          "content": "int i;\n\nfor (i = 0; i <= 100; i += 10) {\n  printf(\"%d\\n\", i);\n}"
+        },
+        {
+          "type": "text",
+          "content": "In this example, we create a program that only prints **even numbers** between `0` and `10` (inclusive):"
+        },
+        {
+          "type": "code",
+          "content": "int i;\n\nfor (i = 0; i <= 10; i = i + 2) {\n  printf(\"%d\\n\", i);\n}"
+        },
+        {
+          "type": "text",
+          "content": "Here we only print **odd numbers**:"
+        },
+        {
+          "type": "code",
+          "content": "int i;\n\nfor (i = 1; i < 10; i = i + 2) {\n  printf(\"%d\\n\", i);\n}"
+        },
+        {
+          "type": "text",
+          "content": "In this example we print the **powers of 2** up to `512`:"
+        },
+        {
+          "type": "code",
+          "content": "int i;\n\nfor (i = 2; i <= 512; i *= 2) {\n  printf(\"%d\\n\", i);\n}"
+        },
+        {
+          "type": "text",
+          "content": "And in this example, we create a program that prints the **multiplication table** for a specified number:"
+        },
+        {
+          "type": "code",
+          "content": "int number = 2;\nint i;\n\n// Print the multiplication table for the number 2\nfor (i = 1; i <= 10; i++) {\n  printf(\"%d x %d = %d\\n\", number, i, number * i);\n}"
+        }
+      ]
     }
   ]
 }

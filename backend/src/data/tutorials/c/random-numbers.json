@@ -31,5 +31,7 @@
       "body": "A common real-life use of random numbers is rolling a six-sided dice. \nWe can simulate this by using rand() % 6 to get numbers from 0 to 5, and then add 1 to make the range 1 to 6:\n\nEach time you run the program, you will get two random numbers between 1 and 6, just like rolling two dice in real life.",
       "code": "#include <stdio.h>\n#include <stdlib.h>\n#include <time.h>\n\nint main() {\n  srand(time(NULL));\n\n  int dice1 = (rand() % 6) + 1;\n  int dice2 = (rand() % 6) + 1;\n  printf(\"You rolled %d and %d (total = %d)\\n\", dice1, dice2, dice1 + dice2);\n\n  return 0;\n}"
     }
-  ]
+  ],
+  "subCategory": null,
+  "subCategoryOrder": 0
 }

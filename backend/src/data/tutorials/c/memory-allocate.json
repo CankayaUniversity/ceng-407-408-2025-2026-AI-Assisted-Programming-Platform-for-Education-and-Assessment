@@ -31,5 +31,7 @@
       "body": "For completeness, it is worth mentioning stack memory. Stack memory is a type of dynamic memory which is reserved for variables that are declared inside functions. Variables declared inside a function use stack memory rather than static memory.\n\nWhen a function is called, stack memory is allocated for the variables in the function. When the function returns the stack memory is freed.\n\nIt is good to be aware of stack memory to be able to handle the memory usage of nested function calls and recursion. Recursion that repeats itself too many times may take up too much stack memory. When that happens it is called a stack overflow.",
       "code": ""
     }
-  ]
+  ],
+  "subCategory": null,
+  "subCategoryOrder": 0
 }

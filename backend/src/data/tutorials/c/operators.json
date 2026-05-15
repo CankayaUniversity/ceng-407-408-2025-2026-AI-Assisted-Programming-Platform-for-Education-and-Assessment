@@ -4,12 +4,14 @@
   "title": "C Operators",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 23,
+  "order": 1,
   "sections": [
     {
       "heading": "Operators",
       "body": "Operators are used to perform operations on variables and values.\n\nIn the example below, we use the\n+ operator to add together two values:\n\nAlthough the + operator is often used to add together two values, like in the example above, it can also be used to add together a variable and a value, or a variable and another variable:\n\nC divides the operators into the following groups:\n\n- Arithmetic operators\n- Assignment operators\n- Comparison operators\n- Logical operators\n- Bitwise operators (advanced)",
       "code": "  int myNum = 100 + 50;\n\n  int sum1 = 100 + 50;\n  // 150 (100 + 50)\n\n  int sum2 = sum1 + 250;      // 400 (150 + 250)\n\n  int sum3 = sum2 + sum2;     // 800 (400 + 400)"
     }
-  ]
+  ],
+  "subCategory": "Operators",
+  "subCategoryOrder": 5
 }

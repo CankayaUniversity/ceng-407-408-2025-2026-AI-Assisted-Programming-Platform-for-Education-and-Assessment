@@ -4,7 +4,7 @@
   "title": "C Operator Precedence",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 28,
+  "order": 6,
   "sections": [
     {
       "heading": "Operator Precedence",
@@ -26,5 +26,7 @@
       "body": "Subtraction and addition are done from left to right, unless you add parentheses:\n\nRemember: Parentheses always come first. Use them to control the order of your calculations.",
       "code": "int result1 = 10 - 2 + 5;    // (10 - 2) + 5 = 13\nint result2 = 10 - (2 + 5);  // 10 - 7 = 3\n\nprintf(\"%d\\n\", result1);\nprintf(\"%d\\n\", result2);"
     }
-  ]
+  ],
+  "subCategory": "Operators",
+  "subCategoryOrder": 5
 }

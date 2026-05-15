@@ -16,5 +16,7 @@
       "body": "- NULL represents a null (empty) pointer\n- It signals that a pointer is not pointing anywhere\n- You can compare a pointer to NULL to check if it's safe to use\n- Functions like malloc() and fopen() return NULL if they fail\n\nTip: Always check if a pointer is NULL before using it. This helps avoid crashes caused by accessing invalid memory.",
       "code": ""
     }
-  ]
+  ],
+  "subCategory": null,
+  "subCategoryOrder": 0
 }

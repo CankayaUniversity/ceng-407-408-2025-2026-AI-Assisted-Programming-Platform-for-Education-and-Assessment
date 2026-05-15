@@ -38,13 +38,17 @@ export default function AppHeader({
   navItems = [],
   variant = "default",
   roleLabel,
+  // When `lockdown` is true (exam mode), the header hides all navigation
+  // and the admin notification bell. Theme toggle + logout stay visible so
+  // the student can still exit in an emergency.
+  lockdown = false,
 }) {
   const location    = useLocation();
   const navigate    = useNavigate();
   const muiTheme    = useTheme();
   const { mode, toggleMode } = useThemeMode();
   const isDark      = mode === "dark";
-  const items       = normalizeNavItems(navItems, location.pathname);
+  const items       = lockdown ? [] : normalizeNavItems(navItems, location.pathname);
 
   // ── Color tokens (dark vs light) ──────────────────────────────────────────
   const headerBg     = isDark ? "rgba(15, 23, 42, 0.92)"  : "rgba(255, 255, 255, 0.95)";
@@ -111,8 +115,9 @@ export default function AppHeader({
   const RightControls = (
     <Stack direction="row" spacing={1} alignItems="center">
       {ThemeToggle}
-      {/* Admin-only notification bell — self-hides for non-admin users */}
-      <AdminApprovalBell />
+      {/* Admin-only notification bell — self-hides for non-admin users.
+          Also hidden completely in exam-lockdown mode. */}
+      {!lockdown && <AdminApprovalBell />}
       {userLabel ? (
         <Avatar sx={{ width: 36, height: 36, bgcolor: "#5B4DFF", color: "common.white", fontWeight: 700, fontSize: 14 }}>
           {getInitials(userLabel)}
@@ -131,19 +136,46 @@ export default function AppHeader({
   );
 
   // ── Logo + title ──────────────────────────────────────────────────────────
+  // Inline SVG icon — graduation cap + terminal cursor.
+  // Concept: academic platform for coding. Designed at 64×64 viewBox and
+  // rendered at 32×32 in the header for sharp anti-aliasing at small sizes.
+  const SiteIcon = (
+    <Box
+      component="svg"
+      viewBox="0 0 64 64"
+      sx={{
+        width: 32, height: 32, borderRadius: 1.5,
+        boxShadow: "0 8px 18px rgba(91, 77, 255, 0.22)",
+        flexShrink: 0,
+      }}
+    >
+      <defs>
+        <linearGradient id="siteIconBg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%"   stopColor="#0F172A" />
+          <stop offset="100%" stopColor="#1E293B" />
+        </linearGradient>
+      </defs>
+      <rect x="0" y="0" width="64" height="64" rx="14" fill="url(#siteIconBg)" />
+      {/* Mortarboard */}
+      <path d="M32 18 L52 26 L32 34 L12 26 Z"
+            fill="#6366F1" stroke="#A5B4FC" strokeWidth="1" />
+      {/* Tassel */}
+      <line x1="50" y1="26" x2="50" y2="36" stroke="#FBBF24" strokeWidth="2" />
+      <circle cx="50" cy="37" r="2" fill="#FBBF24" />
+      {/* Cap base */}
+      <path d="M22 30 L22 38 Q32 44 42 38 L42 30" fill="none"
+            stroke="#A5B4FC" strokeWidth="2" strokeLinecap="round" />
+      {/* ">" cursor (terminal prompt) */}
+      <path d="M22 48 L28 52 L22 56" stroke="#22D3EE" strokeWidth="3" fill="none"
+            strokeLinecap="round" strokeLinejoin="round" />
+      <line x1="32" y1="56" x2="44" y2="56" stroke="#22D3EE" strokeWidth="3"
+            strokeLinecap="round" />
+    </Box>
+  );
+
   const LogoTitle = (
     <Stack direction="row" alignItems="center" spacing={1.5} sx={{ minWidth: 0 }}>
-      <Box
-        sx={{
-          width: 32, height: 32, borderRadius: 1.5,
-          display: "grid", placeItems: "center",
-          color: "common.white", fontSize: 13, fontWeight: 700,
-          background: "linear-gradient(135deg, #5B4DFF 0%, #4F46E5 100%)",
-          boxShadow: "0 8px 18px rgba(91, 77, 255, 0.22)",
-        }}
-      >
-        AI
-      </Box>
+      {SiteIcon}
       <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
         <Typography variant="h6" sx={{ fontWeight: 700, color: titleColor, fontSize: 18 }}>
           {title}

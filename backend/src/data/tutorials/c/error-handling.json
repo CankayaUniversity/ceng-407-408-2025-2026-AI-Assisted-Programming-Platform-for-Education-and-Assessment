@@ -46,5 +46,7 @@
       "body": "- Many C functions return NULL when something goes wrong\n- Use perror() to print a message about the error\n- Use strerror(errno) to get the error message as a string\n- errno stores the error code from the last failed action\n- You can compare errno to values like ENOENT (file not found) or ENOMEM (not enough memory)\n- Use exit() to stop the program early if there's an error\n\nTip: Always check for errors after file operations, memory allocation, and system calls. Ignoring errors can lead to unexpected behavior or crashes.",
       "code": ""
     }
-  ]
+  ],
+  "subCategory": null,
+  "subCategoryOrder": 0
 }

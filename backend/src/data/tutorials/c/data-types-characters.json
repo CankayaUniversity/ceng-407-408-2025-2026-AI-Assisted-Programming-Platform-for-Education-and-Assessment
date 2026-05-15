@@ -4,7 +4,7 @@
   "title": "C Characters",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 15,
+  "order": 2,
   "sections": [
     {
       "heading": "The char Type",
@@ -16,5 +16,7 @@
       "body": "If you try to store more than a single character, it will only print the last \ncharacter:\n\nNote: Don't use the char type for storing multiple \ncharacters, as it may produce errors.\n\nTo store multiple characters (or whole words), use strings (which you will learn more about in a later chapter):\n\nFor now, just know that we use strings for storing multiple characters/text, and the char type for single characters.",
       "code": "  char myText = 'Hello';\n\n  printf(\"%c\", myText);\n\n  char myText[] = \"Hello\";\nprintf(\"%s\", myText);"
     }
-  ]
+  ],
+  "subCategory": "Data Types",
+  "subCategoryOrder": 4
 }

@@ -46,5 +46,7 @@
       "body": "Use a structure to store different information about Cars:",
       "code": "  struct Car {\n  char brand[30];\n  char model[30];\n  int\n  year;\n};\n\nint main() {\n  struct Car car1 = {\"BMW\", \"X5\",\n  1999};\n  struct Car car2 = {\"Ford\", \"Mustang\", 1969};\n  struct\n  Car car3 = {\"Toyota\", \"Corolla\", 2011};\n\n  printf(\"%s %s %d\\n\",\n  car1.brand, car1.model, car1.year);\n  printf(\"%s %s %d\\n\", car2.brand,\n  car2.model, car2.year);\n  printf(\"%s %s %d\\n\", car3.brand, car3.model,\n  car3.year);\n\n  return 0;\n}"
     }
-  ]
+  ],
+  "subCategory": null,
+  "subCategoryOrder": 0
 }

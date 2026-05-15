@@ -31,5 +31,7 @@
       "body": "To sum up, use local variables (with good variable names) as much as you can. This will make your code easier to maintain and \nbetter to understand. However, you may find global variables when working on existing C programs or \nwhile collaborating with others. Therefore, it is good to understand how the scope works and how to use it effectively to make sure your code is clear and functional.",
       "code": ""
     }
-  ]
+  ],
+  "subCategory": null,
+  "subCategoryOrder": 0
 }

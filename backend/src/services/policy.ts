@@ -25,11 +25,13 @@ export type PolicyResult = {
   rewriteCount: number;
 };
 
+// Neutral wording — must NOT contain any phrase from validator.ts BANNED_PHRASES
+// or the validator will block this canned text on its next pass (test Step 4).
 const SAFE_HINT_EN =
-  "I can't give the full final solution directly, but I can still help with one next step or one specific concept. What part is giving you the most trouble right now?";
+  "I won't write that out for you, but I can still help with one next step or one specific concept. What part is giving you the most trouble right now?";
 
 const SAFE_HINT_TR =
-  "Tam final çözümü doğrudan veremem, ama bir sonraki adımda veya belirli bir kavramda yardımcı olabilirim. Şu an seni en çok ne zorluyor?";
+  "Bunu senin yerine yazmam, ama bir sonraki adımda veya belirli bir kavramda yardımcı olabilirim. Şu an seni en çok ne zorluyor?";
 
 function safeHint(locale: MentorLocale): string {
   return locale === "tr" ? SAFE_HINT_TR : SAFE_HINT_EN;

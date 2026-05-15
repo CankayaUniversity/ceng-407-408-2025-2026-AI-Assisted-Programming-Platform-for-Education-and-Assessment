@@ -26,5 +26,7 @@
       "body": "Imagine you are building a program that shows the battery level of a device. \nSince the battery percentage will always be between 0 and 100, you don't need a large type like int. \nInstead, you can use uint8_t, which is exactly 1 byte (8 bits) and can store values from 0 to 255:\n\nHere we save memory by using a uint8_t, which is perfect for storing values in a small, well-defined range like a battery percentage.",
       "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main() {\n  uint8_t battery = 87; // battery level percentage\n\n  printf(\"Battery level is %u out of 100\\n\", battery);\n\n  return 0;\n}"
     }
-  ]
+  ],
+  "subCategory": null,
+  "subCategoryOrder": 0
 }

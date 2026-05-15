@@ -4,17 +4,56 @@
   "title": "C Else Statement",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 32,
+  "subCategory": "If...Else",
+  "subCategoryOrder": 7,
+  "order": 2,
   "sections": [
     {
       "heading": "The else Statement",
-      "body": "Use the else statement to specify a block of code\nto be executed if the condition is false.\n\nIn the example below, the program checks the value of time.\nIf it is less than 18, it prints \"Good day\". Otherwise, it prints \"Good evening\":\n\nIn the example above, time (20) is greater than 18, so the condition is false. \nBecause of this, we move on to the else condition and print to the screen \"Good \nevening\". If time was less than 18, the program would print \"Good day\".",
-      "code": "if (condition) {\n\n  // block of code to be executed if the condition is true\n\n} else {\n\n  // block of code to be executed if the condition is false\n\n}\n\nint time = 20;\n\n\n\nif (time < 18) {\n\n  printf(\"Good day.\");\n\n} else {\n\n  printf(\"Good evening.\");\n\n}\n\n\n\n// Outputs \"Good evening.\""
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Use the **`else`** statement to specify a block of code to be executed if the condition is `false`."
+        },
+        {
+          "type": "syntax",
+          "content": "if (condition) {\n  // block of code to be executed if the condition is true\n} else {\n  // block of code to be executed if the condition is false\n}"
+        },
+        {
+          "type": "text",
+          "content": "In the example below, the program checks the value of `time`. If it is less than 18, it prints *\"Good day\"*. Otherwise, it prints *\"Good evening\"*:"
+        },
+        {
+          "type": "code",
+          "content": "int time = 20;\n\nif (time < 18) {\n  printf(\"Good day.\");\n} else {\n  printf(\"Good evening.\");\n}\n\n// Outputs \"Good evening.\""
+        }
+      ]
+    },
+    {
+      "heading": "Example explained",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "In the example above, `time` (`20`) is greater than `18`, so the condition is `false`. Because of this, we move on to the `else` condition and print *\"Good evening\"* to the screen. If `time` was less than `18`, the program would print *\"Good day\"*."
+        }
+      ]
     },
     {
       "heading": "Using a Boolean Variable",
-      "body": "You can also store the condition in a boolean variable and use it in the if...else statement.\nThis can make the code easier to read:\n\nTip: A name like isDay makes it easy to understand what the condition means.",
-      "code": "int time = 20;\n\n\n\nbool isDay = time < 18;\n\n\n\nif (isDay) {\n\n  printf(\"Good day.\");\n\n} else {\n\n  printf(\"Good evening.\");\n\n}"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "You can also store the condition in a boolean variable and use it in the `if...else` statement. This can make the code easier to read:"
+        },
+        {
+          "type": "code",
+          "content": "int time = 20;\n\nbool isDay = time < 18;\n\nif (isDay) {\n  printf(\"Good day.\");\n} else {\n  printf(\"Good evening.\");\n}"
+        },
+        {
+          "type": "goodtoknow",
+          "content": "A name like `isDay` makes it easy to understand what the condition means."
+        }
+      ]
     }
   ]
 }

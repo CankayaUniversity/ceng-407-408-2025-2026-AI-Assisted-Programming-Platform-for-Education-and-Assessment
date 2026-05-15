@@ -4,7 +4,7 @@
   "title": "C Format Specifiers",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 9,
+  "order": 2,
   "sections": [
     {
       "heading": "Format Specifiers",
@@ -16,5 +16,7 @@
       "body": "You can also print values directly without storing them in variables, as long as you use the correct format specifier:\n\nNote: Using variables is usually better, because the value can be reused and changed later.",
       "code": "  printf(\"My favorite number is: %d\", 15);\n\n  printf(\"My favorite letter is: %c\", 'D');"
     }
-  ]
+  ],
+  "subCategory": "Variables",
+  "subCategoryOrder": 3
 }

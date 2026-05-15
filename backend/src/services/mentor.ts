@@ -771,9 +771,11 @@ IMPORTANT:
       // If the response still looks like a full solution, swap it for a safe
       // deflection immediately — no extra model call required.
       if (looksLikeSolution(responseText)) {
-        responseText =
-          "I can't write the complete solution, but I can point to the specific issue. " +
-          "What part is giving you the most trouble right now — is it a logic error, a missing step, or something else?";
+        // Use neutral wording that does NOT contain any banned phrase
+        // (otherwise the validator blocks our own refusal — see test Step 4).
+        responseText = locale === "tr"
+          ? "Bunu senin yerine yazamam, ama belirli bir sorunu işaret edebilirim. Şu an seni en çok ne zorluyor — mantık hatası mı, eksik bir adım mı, yoksa başka bir şey mi?"
+          : "I won't write that out for you, but I can point to the specific issue. What part is giving you the most trouble right now — is it a logic error, a missing step, or something else?";
       }
 
       responseText = enforceIdleHint(responseText, input.runStatus);

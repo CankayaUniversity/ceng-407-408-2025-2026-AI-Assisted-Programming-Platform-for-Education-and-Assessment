@@ -4,7 +4,7 @@
   "title": "C String Functions",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 53,
+  "order": 3,
   "sections": [
     {
       "heading": "String Functions",
@@ -36,5 +36,7 @@
       "body": "For a complete reference of string functions, go to our C \n<string.h> Library Reference.",
       "code": ""
     }
-  ]
+  ],
+  "subCategory": "Strings",
+  "subCategoryOrder": 13
 }

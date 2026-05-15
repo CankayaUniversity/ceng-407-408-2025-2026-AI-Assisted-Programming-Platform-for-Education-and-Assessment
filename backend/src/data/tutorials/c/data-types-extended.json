@@ -4,7 +4,7 @@
   "title": "C Extended Types",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 20,
+  "order": 7,
   "sections": [
     {
       "heading": "More Data Types",
@@ -16,5 +16,7 @@
       "body": "*The exact sizes depend on your system and compiler. Remember that you can check them with the sizeof operator:\n\nTip: When you really need exact control over the size of your numbers, you can use the fixed-width types, which you will learn about later.\n\nNote: This page is just to show you that C has other extended types, but for now \nwe will keep focusing on the basic types (int, float, double, char) in this tutorial.",
       "code": "printf(\"Size of int: %zu bytes\\n\", sizeof(int));\nprintf(\"Size of double: %zu bytes\\n\", sizeof(double));\nprintf(\"Size of short int: %zu bytes\\n\", sizeof(short int));\nprintf(\"Size of unsigned int: %zu bytes\\n\", sizeof(unsigned int));\nprintf(\"Size of long int: %zu bytes\\n\", sizeof(long int));\nprintf(\"Size of long long int: %zu bytes\\n\", sizeof(long long int));\nprintf(\"Size of unsigned long long int: %zu bytes\\n\", sizeof(unsigned long long int));\nprintf(\"Size of long double: %zu bytes\\n\", sizeof(long double));"
     }
-  ]
+  ],
+  "subCategory": "Data Types",
+  "subCategoryOrder": 4
 }

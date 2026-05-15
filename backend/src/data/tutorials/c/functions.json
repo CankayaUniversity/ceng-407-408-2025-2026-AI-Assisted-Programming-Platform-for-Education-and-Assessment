@@ -4,32 +4,98 @@
   "title": "C Functions",
   "category": "C Functions",
   "categoryOrder": 2,
+  "subCategory": null,
+  "subCategoryOrder": 0,
   "order": 1,
   "sections": [
     {
       "heading": "Functions",
-      "body": "A function is a block of code which only runs when it is called.\n\nYou can pass data, known as parameters, into a function.\n\nFunctions are used to perform certain actions, and they are \nimportant for reusing code: Define the code once, and use it many times.",
-      "code": ""
+      "blocks": [
+        {
+          "type": "text",
+          "content": "A **function** is a block of code which only runs when it is called.\n\nYou can pass data, known as **parameters**, into a function.\n\nFunctions are used to perform certain actions, and they are important for **reusing code**: define the code once, and use it many times."
+        }
+      ]
     },
     {
       "heading": "Predefined Functions",
-      "body": "So it turns out you already know what a function is. You have been using it the whole time \nwhile studying this tutorial!\n\nFor example, main() is a function, which is used to execute code, \nand printf() is a function; used to output/print text to the screen:",
-      "code": "  int main() {\n  printf(\"Hello World!\");\n\n  return 0;\n}"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "So it turns out you already know what a function is. You have been using it the whole time while studying this tutorial!"
+        },
+        {
+          "type": "text",
+          "content": "For example, `main()` is a function, which is used to execute code, and `printf()` is a function used to output/print text to the screen:"
+        },
+        {
+          "type": "code",
+          "content": "int main() {\n  printf(\"Hello World!\");\n  return 0;\n}"
+        }
+      ]
     },
     {
       "heading": "Create a Function",
-      "body": "To create (often referred to as declare) your own function, specify the name of the function, followed by parentheses () \nand curly brackets {}:\n\n- myFunction() is the name of the function\n- void means that the function does not have a \nreturn value. You will learn more about return values later in the next chapter\n- Inside the function (the body), add code that defines what the function should do",
-      "code": "    void myFunction() {\n\n  // code to be executed\n}"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "To create (often referred to as **declare**) your own function, specify the name of the function, followed by parentheses `()` and curly brackets `{}`:"
+        },
+        {
+          "type": "syntax",
+          "content": "void myFunction() {\n  // code to be executed\n}"
+        },
+        {
+          "type": "text",
+          "content": "**Example explained:**"
+        },
+        {
+          "type": "list",
+          "items": [
+            "`myFunction()` is the name of the function",
+            "`void` means that the function does **not** have a return value. You will learn more about return values later in the next chapter",
+            "Inside the function (the body), add code that defines what the function should do"
+          ]
+        }
+      ]
     },
     {
       "heading": "Call a Function",
-      "body": "Declared functions are not executed immediately. They are \"saved for later \nuse\", and will be executed when they are called.\n\nTo call a function, write the function's name followed by two parentheses () \nand a semicolon ;\n\nIn the following example, myFunction() is used to print a text (the action), when it is called:\n\nInside main, \ncall \nmyFunction():\n\nA function can be called multiple times:",
-      "code": "  // Create a function\nvoid myFunction() {\n  printf(\"I just got\n  executed!\");\n}\n\nint main() {\n\n  myFunction(); // call the function\n  return 0;\n}\n\n// Outputs\n  \"I just got executed!\"\n\n  void myFunction() {\n  printf(\"I just got executed!\");\n}\n\nint main() {\n\n  myFunction();\n  myFunction();\n\n  myFunction();\n  return 0;\n}\n\n//\n  I just got executed!\n// I just got executed!\n// I just got executed!"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Declared functions are not executed immediately. They are *saved for later use*, and will be executed when they are called.\n\nTo call a function, write the function's name followed by two parentheses `()` and a semicolon `;`.\n\nIn the following example, `myFunction()` is used to print a text (the action), when it is called:"
+        },
+        {
+          "type": "code",
+          "content": "void myFunction() {\n  printf(\"I just got executed!\");\n}\n\nint main() {\n  myFunction();\n  return 0;\n}"
+        },
+        {
+          "type": "text",
+          "content": "A function can be called multiple times:"
+        },
+        {
+          "type": "code",
+          "content": "void myFunction() {\n  printf(\"I just got executed!\");\n}\n\nint main() {\n  myFunction();\n  myFunction();\n  myFunction();\n  return 0;\n}"
+        }
+      ]
     },
     {
       "heading": "Calculate the Sum of Numbers",
-      "body": "You can put almost whatever you want inside a function. The purpose of the function is to save the code, and execute it when you need it.\n\nLike in the example below, we have created a function to calculate \nthe sum of two numbers. Whenever you are \nready to execute the function (and perform the calculation), you just call it:\n\nThis was just an example to demonstrate a simple function with different \nstatements in C. The real power of \na function is revealed in the next chapter, when we \npass \"parameters\" to it.\nThis allows the function to calculate the sum of any numbers, \ninstead of being limited to the fixed values 5 and 10.",
-      "code": "  void\n  calculateSum() {\n  int x = 5;\n  int y = 10;\n  int sum =\n  x + y;\n  printf(\"The sum of x + y is: %d\", sum);\n}\n\nint main() {\n\n  calculateSum();  // call the function\n  return 0;\n}\n\n// Outputs The\n  sum of x + y is: 15"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "You can put almost whatever you want inside a function. The purpose of the function is to save the code, and execute it when you need it.\n\nLike in the example below, we have created a function to calculate the sum of two numbers. Whenever you are ready to execute the function (and perform the calculation), you just call it:"
+        },
+        {
+          "type": "code",
+          "content": "void calculateSum() {\n  int x = 5;\n  int y = 10;\n  int sum = x + y;\n  printf(\"The sum of x + y is: %d\", sum);\n}\n\nint main() {\n  calculateSum();\n  return 0;\n}"
+        },
+        {
+          "type": "goodtoknow",
+          "content": "This was just an example to demonstrate a simple function with different statements in C. The real power of a function is revealed in the next chapter, when we pass **parameters** to it. This allows the function to calculate the sum of *any* numbers, instead of being limited to the fixed values `5` and `10`."
+        }
+      ]
     }
   ]
 }

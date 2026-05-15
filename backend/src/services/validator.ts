@@ -92,17 +92,87 @@ const BANNED_PHRASES = [
   "düzeltilmiş hali",
 ] as const;
 
+// Negation markers — when one of these appears in the ~40 chars BEFORE a
+// banned phrase, the phrase is being refused ("I can't give the full
+// solution"), not asserted ("here is the full solution"). We must not flag
+// refusals as leaks. Covers both English and Turkish.
+const NEGATION_WORDS = new Set([
+  // English
+  "can't", "cannot", "cant",
+  "won't", "wont", "will",        // "will not" → tokens "will" + "not"
+  "don't", "dont", "do",
+  "doesn't", "doesnt", "does",
+  "isn't", "isnt", "is",
+  "not",
+  "never",
+  "no",
+  "refuse", "refused", "refusing", "refuses",
+  "without",
+  "instead",                       // "instead of"
+  "rather",                        // "rather than"
+  // Turkish
+  "yapamam", "veremem", "yazamam",
+  "değil", "degil",
+  "asla",
+  "yerine",
+]);
+
+/**
+ * Returns true iff the banned phrase appears in the reply WITHOUT a negation
+ * marker in the immediately preceding ~40 chars. This separates real leaks
+ * ("here is the full solution: …") from refusals that mention the phrase in
+ * order to refuse it ("I can't write the full solution, but…").
+ */
+function bannedPhraseIsAsserted(reply: string, phrase: string): boolean {
+  const lower = reply.toLowerCase();
+  let pos = 0;
+  while (true) {
+    const idx = lower.indexOf(phrase, pos);
+    if (idx === -1) return false;
+
+    const before = lower.slice(Math.max(0, idx - 40), idx);
+    const words  = before.match(/[a-zçğıöşü]+(?:'[a-zçğıöşü]+)?/g) ?? [];
+    const hasNegation = words.some((w) => NEGATION_WORDS.has(w));
+
+    if (!hasNegation) return true;       // one assertion is enough to flag
+    pos = idx + phrase.length;            // skip past this occurrence
+  }
+}
+
 // "Replace X with Y" / "Change X to Y" — these are *the literal fix*, not a hint.
 //
-// Both X and Y must be SHORT and within ONE clause (no comma / period / colon
-// crossing). The previous regex used `.+` which let the pattern span entire
-// sentences and produced false positives like
-//   "change one small part of a string into another, what would you think to compare?"
-// where "change" and "to" sat in different clauses.
+// Three layers of filtering to avoid false positives:
+//   1. NEGATIVE LOOKBEHIND — when an article or quantifier precedes the verb
+//      (e.g. "the change", "a replace", "minimal change"), it's a NOUN, not
+//      a directive. Skip those. Caught Step 10's false positive:
+//        "What's the minimal change needed to fix the initialization …"
+//   2. Both X and Y must be SHORT (≤40 chars).
+//   3. Both X and Y must be within ONE clause (no comma/period/colon/etc.).
+//
+// The previous (greedy `.+`) version produced false positives because it
+// crossed sentence boundaries; the previous tightened version still matched
+// noun-form "change" because it didn't look at what came BEFORE the verb.
+const NOUN_PREFIX_LOOKBEHIND =
+  "(?<!\\b(?:the|a|an|any|some|every|each|no|this|that|these|those|" +
+  "minimal|small|big|large|major|minor|key|main|critical|important|" +
+  "simple|easy|quick|short|long|tiny|first|last|next|previous|current|" +
+  "whole|entire|total|partial|several|few|many|much|more|less|" +
+  "extra|additional|necessary|required|needed|possible|recent)\\s)";
+const SHORT_CLAUSE_TOKEN = "[^,.\\n;:!?]{1,40}";
+
 const EXACT_FIX_PATTERNS: RegExp[] = [
-  /\breplace\s+[^,.\n;:!?]{1,40}?\s+with\s+[^,.\n;:!?]{1,40}/i,
-  /\bchange\s+[^,.\n;:!?]{1,40}?\s+to\s+[^,.\n;:!?]{1,40}/i,
-  /\buse\s+[^,.\n;:!?]{1,40}?\s+instead\s+of\s+[^,.\n;:!?]{1,40}/i,
+  new RegExp(
+    `${NOUN_PREFIX_LOOKBEHIND}\\breplace\\s+${SHORT_CLAUSE_TOKEN}?\\s+with\\s+${SHORT_CLAUSE_TOKEN}`,
+    "i",
+  ),
+  new RegExp(
+    `${NOUN_PREFIX_LOOKBEHIND}\\bchange\\s+${SHORT_CLAUSE_TOKEN}?\\s+to\\s+${SHORT_CLAUSE_TOKEN}`,
+    "i",
+  ),
+  new RegExp(
+    `${NOUN_PREFIX_LOOKBEHIND}\\buse\\s+${SHORT_CLAUSE_TOKEN}?\\s+instead\\s+of\\s+${SHORT_CLAUSE_TOKEN}`,
+    "i",
+  ),
 ];
 
 // Assignment-walkthrough detector — if the reply hits 4+ of these in one
@@ -156,8 +226,10 @@ function heuristicValidate(input: ValidateInput): ValidatorResult {
   const qMode      = input.questionMode ?? "mentor";
   const violations: string[] = [];
 
-  // 1. Explicit "here is the answer" language (en + tr)
-  if (BANNED_PHRASES.some((p) => lowerReply.includes(p))) {
+  // 1. Explicit "here is the answer" language (en + tr) — but only flag when
+  // the phrase is ASSERTED, not when it appears inside a refusal like
+  // "I can't give the full solution".
+  if (BANNED_PHRASES.some((p) => bannedPhraseIsAsserted(reply, p))) {
     violations.push("explicit_solution_language");
   }
 

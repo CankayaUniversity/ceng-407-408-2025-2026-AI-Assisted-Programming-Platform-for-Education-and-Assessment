@@ -26,5 +26,7 @@
       "body": "This example uses a recursive function to calculate the factorial of 5:\n\nFactorial means multiplying a number by every number below it, down to 1. \nFor example, the factorial of 5 is: 5 * 4 * 3 * 2 * 1 = 120. \nBy definition, 0! is also 1.",
       "code": "int factorial(int n);\n\nint main() {\n  printf(\"Factorial of 5 is %d\", factorial(5));\n  return 0;\n}\n\nint factorial(int n) {\n  if (n > 1) {\n    return n * factorial(n - 1);\n  } else {\n    return 1;\n  }\n}"
     }
-  ]
+  ],
+  "subCategory": null,
+  "subCategoryOrder": 0
 }

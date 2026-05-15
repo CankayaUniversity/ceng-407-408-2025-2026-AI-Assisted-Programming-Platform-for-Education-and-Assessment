@@ -31,5 +31,7 @@
       "body": "The extern keyword tells the compiler that a variable or function is defined in another file.\n\nIt is commonly used when working with multiple source files.\n\nFile 1: main.c\n\nFile 2: data.c\n\nCompile both files together:",
       "code": "#include <stdio.h>\n\nextern int shared;  // Declared here, defined in another file\n\nint main() {\n  printf(\"shared = %d\\n\", shared);\n  return 0;\n}\n\nint shared = 50;  // Definition of the variable\n\ngcc main.c data.c -o program"
     }
-  ]
+  ],
+  "subCategory": null,
+  "subCategoryOrder": 0
 }

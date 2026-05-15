@@ -4,7 +4,7 @@
   "title": "C Constants",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 22,
+  "order": 7,
   "sections": [
     {
       "heading": "Constants",
@@ -21,5 +21,7 @@
       "body": "Another thing about constant variables, is that it is considered good practice to declare them with uppercase.\n\nIt is not required, but useful for code readability and common for C programmers:",
       "code": "  const int BIRTHYEAR = 1980;"
     }
-  ]
+  ],
+  "subCategory": "Variables",
+  "subCategoryOrder": 3
 }

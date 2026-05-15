@@ -4,7 +4,7 @@
   "title": "C Output",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 5,
+  "order": 1,
   "sections": [
     {
       "heading": "Output (Print Text)",
@@ -21,5 +21,7 @@
       "body": "You can use as many printf() functions as you want.\n\nHowever, note that it does not insert a new line at the end of the output:\n\nNotice: All the text appears on the same line. In the next chapter, you will learn how to add new lines to make the output easier to read.",
       "code": "  #include <stdio.h>\n\nint main() {\n  printf(\"Hello World!\");\n\n  printf(\"I am learning C.\");\n\n  printf(\"And it is awesome!\");\n\n  return 0;\n}"
     }
-  ]
+  ],
+  "subCategory": "Output",
+  "subCategoryOrder": 2
 }

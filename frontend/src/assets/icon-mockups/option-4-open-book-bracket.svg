@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Option 4: "Open book with a glowing bracket"
+       Education-first vibe. Subtle, doesn't scream "AI". Most professional /
+       least trendy. Good if you want a logo that ages well. -->
+  <defs>
+    <linearGradient id="g4" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#7C3AED"/>
+      <stop offset="100%" stop-color="#5B21B6"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="64" height="64" rx="14" fill="url(#g4)"/>
+  <!-- Book spine + pages -->
+  <path d="M14 22 Q18 18 32 20 Q46 18 50 22 L50 46 Q46 42 32 44 Q18 42 14 46 Z"
+        fill="#fff" opacity="0.92"/>
+  <!-- Spine -->
+  <line x1="32" y1="20" x2="32" y2="44" stroke="#5B21B6" stroke-width="1.2"/>
+  <!-- Page lines (left) -->
+  <line x1="20" y1="26" x2="29" y2="26" stroke="#5B21B6" stroke-width="1.2" opacity="0.6"/>
+  <line x1="20" y1="30" x2="29" y2="30" stroke="#5B21B6" stroke-width="1.2" opacity="0.6"/>
+  <line x1="20" y1="34" x2="27" y2="34" stroke="#5B21B6" stroke-width="1.2" opacity="0.6"/>
+  <!-- Glowing bracket on right page -->
+  <path d="M40 28 L36 32 L40 36" stroke="#FBBF24" stroke-width="2.2" fill="none"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="42" y1="26" x2="46" y2="38" stroke="#FBBF24" stroke-width="2.2"
+        stroke-linecap="round"/>
+</svg>

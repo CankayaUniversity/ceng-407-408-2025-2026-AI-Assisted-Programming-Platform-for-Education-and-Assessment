@@ -1,0 +1,307 @@
+{
+  "_comment": "Canonical TOC of the C tutorial corpus. Each tag is mapped to its w3schools categorisation. categoryOrder ranks the main heading (C Tutorial = 1, C Functions = 2, etc.); subCategoryOrder ranks sub-headings within a main heading; order ranks topics within a sub-heading. Topics WITHOUT a subCategory sit directly under the main heading. Code-Challenge / Cert / Examples / Projects / Reference pages are intentionally excluded.",
+
+  "categories": [
+    {
+      "category": "C Tutorial",
+      "categoryOrder": 1,
+      "subCategories": [
+        {
+          "subCategory": null,
+          "subCategoryOrder": 0,
+          "_note": "Orphan intro topics that sit directly under 'C Tutorial' in the w3schools left nav",
+          "topics": [
+            { "tag": "introduction",     "order": 1 },
+            { "tag": "getting-started",  "order": 2 }
+          ]
+        },
+        {
+          "subCategory": "Syntax",
+          "subCategoryOrder": 1,
+          "topics": [
+            { "tag": "syntax",     "order": 1 },
+            { "tag": "statements", "order": 2 },
+            { "tag": "comments",   "order": 3, "_note": "Project extra — not on w3schools TOC but useful" }
+          ]
+        },
+        {
+          "subCategory": "Output",
+          "subCategoryOrder": 2,
+          "topics": [
+            { "tag": "output",    "order": 1 },
+            { "tag": "new-lines", "order": 2 }
+          ]
+        },
+        {
+          "subCategory": "Variables",
+          "subCategoryOrder": 3,
+          "topics": [
+            { "tag": "variables",            "order": 1 },
+            { "tag": "format-specifiers",    "order": 2 },
+            { "tag": "variables-change",     "order": 3 },
+            { "tag": "multiple-variables",   "order": 4 },
+            { "tag": "variable-names",       "order": 5 },
+            { "tag": "variables-reallife",   "order": 6 },
+            { "tag": "constants",            "order": 7, "_note": "Project extra — covers const/#define" }
+          ]
+        },
+        {
+          "subCategory": "Data Types",
+          "subCategoryOrder": 4,
+          "topics": [
+            { "tag": "data-types",             "order": 1 },
+            { "tag": "data-types-characters",  "order": 2 },
+            { "tag": "data-types-numbers",     "order": 3 },
+            { "tag": "data-types-decimal",     "order": 4 },
+            { "tag": "data-types-sizeof",      "order": 5 },
+            { "tag": "data-types-reallife",    "order": 6 },
+            { "tag": "data-types-extended",    "order": 7 },
+            { "tag": "type-conversion",        "order": 8, "_note": "Project extra — implicit vs explicit casting" }
+          ]
+        },
+        {
+          "subCategory": "Operators",
+          "subCategoryOrder": 5,
+          "topics": [
+            { "tag": "operators",              "order": 1 },
+            { "tag": "operators-arithmetic",   "order": 2 },
+            { "tag": "operators-assignment",   "order": 3 },
+            { "tag": "operators-comparison",   "order": 4 },
+            { "tag": "operators-logical",      "order": 5 },
+            { "tag": "operators-precedence",   "order": 6 }
+          ]
+        },
+        {
+          "subCategory": "Booleans",
+          "subCategoryOrder": 6,
+          "topics": [
+            { "tag": "booleans",            "order": 1 },
+            { "tag": "booleans-reallife",   "order": 2 }
+          ]
+        },
+        {
+          "subCategory": "If...Else",
+          "subCategoryOrder": 7,
+          "topics": [
+            { "tag": "if",                    "order": 1 },
+            { "tag": "else",                  "order": 2 },
+            { "tag": "else-if",               "order": 3 },
+            { "tag": "shorthand-if",          "order": 4 },
+            { "tag": "nested-if",             "order": 5 },
+            { "tag": "conditions-logical",    "order": 6 },
+            { "tag": "conditions-reallife",   "order": 7 }
+          ]
+        },
+        {
+          "subCategory": "Switch",
+          "subCategoryOrder": 8,
+          "topics": [
+            { "tag": "switch", "order": 1 }
+          ]
+        },
+        {
+          "subCategory": "While Loop",
+          "subCategoryOrder": 9,
+          "topics": [
+            { "tag": "while-loop",     "order": 1 },
+            { "tag": "do-while",       "order": 2 },
+            { "tag": "while-reallife", "order": 3 }
+          ]
+        },
+        {
+          "subCategory": "For Loop",
+          "subCategoryOrder": 10,
+          "topics": [
+            { "tag": "for-loop",      "order": 1 },
+            { "tag": "nested-loops",  "order": 2 },
+            { "tag": "for-reallife",  "order": 3 }
+          ]
+        },
+        {
+          "subCategory": "Break / Continue",
+          "subCategoryOrder": 11,
+          "topics": [
+            { "tag": "break-continue", "order": 1 }
+          ]
+        },
+        {
+          "subCategory": "Arrays",
+          "subCategoryOrder": 12,
+          "topics": [
+            { "tag": "arrays",            "order": 1 },
+            { "tag": "array-size",        "order": 2 },
+            { "tag": "array-loops",       "order": 3 },
+            { "tag": "arrays-reallife",   "order": 4 },
+            { "tag": "multidimensional",  "order": 5 }
+          ]
+        },
+        {
+          "subCategory": "Strings",
+          "subCategoryOrder": 13,
+          "topics": [
+            { "tag": "strings",                "order": 1 },
+            { "tag": "string-special-chars",   "order": 2 },
+            { "tag": "string-functions",       "order": 3 }
+          ]
+        },
+        {
+          "subCategory": "Memory & Pointers",
+          "subCategoryOrder": 14,
+          "topics": [
+            { "tag": "user-input",          "order": 1 },
+            { "tag": "memory-address",      "order": 2 },
+            { "tag": "pointers",            "order": 3 },
+            { "tag": "pointers-arrays",     "order": 4 },
+            { "tag": "pointer-arithmetic",  "order": 5 },
+            { "tag": "pointer-to-pointer",  "order": 6 }
+          ]
+        }
+      ]
+    },
+    {
+      "category": "C Functions",
+      "categoryOrder": 2,
+      "subCategories": [
+        {
+          "subCategory": null,
+          "subCategoryOrder": 0,
+          "topics": [
+            { "tag": "functions",             "order": 1 },
+            { "tag": "function-parameters",   "order": 2 },
+            { "tag": "scope",                 "order": 3 },
+            { "tag": "function-declaration",  "order": 4 },
+            { "tag": "math-functions",        "order": 5 },
+            { "tag": "inline-functions",      "order": 6 },
+            { "tag": "recursion",             "order": 7 }
+          ]
+        },
+        {
+          "subCategory": "Function Pointers",
+          "subCategoryOrder": 1,
+          "topics": [
+            { "tag": "function-pointers",  "order": 1 },
+            { "tag": "callback-functions", "order": 2 }
+          ]
+        }
+      ]
+    },
+    {
+      "category": "C Files",
+      "categoryOrder": 3,
+      "subCategories": [
+        {
+          "subCategory": null,
+          "subCategoryOrder": 0,
+          "topics": [
+            { "tag": "files-create", "order": 1 },
+            { "tag": "files-write",  "order": 2 },
+            { "tag": "files-read",   "order": 3 }
+          ]
+        }
+      ]
+    },
+    {
+      "category": "C Structures",
+      "categoryOrder": 4,
+      "subCategories": [
+        {
+          "subCategory": null,
+          "subCategoryOrder": 0,
+          "topics": [
+            { "tag": "structs",          "order": 1 },
+            { "tag": "nested-structs",   "order": 2 },
+            { "tag": "structs-pointers", "order": 3 },
+            { "tag": "unions",           "order": 4 },
+            { "tag": "typedef",          "order": 5 },
+            { "tag": "struct-padding",   "order": 6 }
+          ]
+        }
+      ]
+    },
+    {
+      "category": "C Enums",
+      "categoryOrder": 5,
+      "subCategories": [
+        {
+          "subCategory": null,
+          "subCategoryOrder": 0,
+          "topics": [
+            { "tag": "enums", "order": 1 }
+          ]
+        }
+      ]
+    },
+    {
+      "category": "C Memory",
+      "categoryOrder": 6,
+      "subCategories": [
+        {
+          "subCategory": null,
+          "subCategoryOrder": 0,
+          "topics": [
+            { "tag": "memory-management",   "order": 1 },
+            { "tag": "memory-allocate",     "order": 2 },
+            { "tag": "memory-access",       "order": 3 },
+            { "tag": "memory-reallocate",   "order": 4 },
+            { "tag": "memory-deallocate",   "order": 5 },
+            { "tag": "memory-structs",      "order": 6 },
+            { "tag": "memory-example",      "order": 7 }
+          ]
+        }
+      ]
+    },
+    {
+      "category": "C Errors",
+      "categoryOrder": 7,
+      "subCategories": [
+        {
+          "subCategory": null,
+          "subCategoryOrder": 0,
+          "topics": [
+            { "tag": "errors",            "order": 1 },
+            { "tag": "debugging",         "order": 2 },
+            { "tag": "null",              "order": 3 },
+            { "tag": "error-handling",    "order": 4 },
+            { "tag": "input-validation",  "order": 5 }
+          ]
+        }
+      ]
+    },
+    {
+      "category": "C More",
+      "categoryOrder": 8,
+      "subCategories": [
+        {
+          "subCategory": null,
+          "subCategoryOrder": 0,
+          "topics": [
+            { "tag": "date-time",         "order": 1 },
+            { "tag": "random-numbers",    "order": 2 },
+            { "tag": "macros",            "order": 3 },
+            { "tag": "organize-code",     "order": 4 },
+            { "tag": "storage-classes",   "order": 5 },
+            { "tag": "bitwise",           "order": 6 },
+            { "tag": "fixed-width-ints",  "order": 7 }
+          ]
+        }
+      ]
+    }
+  ],
+
+  "excluded": {
+    "_comment": "Pages we intentionally do NOT scrape per the project scope",
+    "wholeSections": ["C Projects", "C Cert", "C Examples", "C Reference"],
+    "perPage":       ["Code Challenge", "Try it Yourself"]
+  },
+
+  "deletions": {
+    "_comment": "Local files to remove because they duplicate another file or were a leftover from an early scrape",
+    "files": [
+      { "file": "bitwise-operators.json",    "keep": "bitwise.json",            "reason": "duplicate" },
+      { "file": "date.json",                 "keep": "date-time.json",          "reason": "duplicate" },
+      { "file": "fixed-width-integers.json", "keep": "fixed-width-ints.json",   "reason": "duplicate" },
+      { "file": "null-pointer.json",         "keep": "null.json",               "reason": "duplicate" },
+      { "file": "if-else.json",              "keep": "if.json, else.json, else-if.json", "reason": "redundant — granular files cover the same material" }
+    ]
+  }
+}

@@ -21,5 +21,7 @@
       "body": "Using pointers with structs is helpful when:\n\n- You want to avoid copying large amounts of data.\n Instead of copying a whole struct, you can just pass a pointer. This makes your program faster and uses less memory.\n- You want to change values inside a function.\n If you pass a pointer to a struct into a function, the function can change the original values.\n- You want to create structs dynamically using memory allocation.\n With pointers, you can use malloc() to create structs while the program is running.\n You will learn more about memory management in a later chapter.\n\nTip: If you're working with big programs or many values, struct pointers can help make your code cleaner and more efficient.",
       "code": ""
     }
-  ]
+  ],
+  "subCategory": null,
+  "subCategoryOrder": 0
 }

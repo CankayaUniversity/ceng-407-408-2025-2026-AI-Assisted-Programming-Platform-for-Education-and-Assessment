@@ -51,5 +51,7 @@
       "body": "While debugging is about finding and fixing mistakes in your code during development, error handling is a way to deal with problems while the program is running, and run specific code when something goes wrong.\n\nYou will learn about NULL Pointers and Error Handling in the next chapters.",
       "code": ""
     }
-  ]
+  ],
+  "subCategory": null,
+  "subCategoryOrder": 0
 }

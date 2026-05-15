@@ -26,5 +26,7 @@
       "body": "- Always initialize your variables\n- Use meaningful variable names\n- Keep your code clean and use indentation to stay organized\n- Keep functions short and focused\n- Check if loops or conditions are running as expected\n- Read error messages carefully - they often tell you exactly where the problem is\n\nIn the next chapter, you will learn how to debug your code - how to find and fix bugs/errors in your C program.",
       "code": ""
     }
-  ]
+  ],
+  "subCategory": null,
+  "subCategoryOrder": 0
 }

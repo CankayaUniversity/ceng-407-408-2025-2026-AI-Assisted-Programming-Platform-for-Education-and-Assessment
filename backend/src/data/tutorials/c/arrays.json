@@ -4,7 +4,7 @@
   "title": "C Arrays",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 46,
+  "order": 1,
   "sections": [
     {
       "heading": "Arrays",
@@ -31,5 +31,7 @@
       "body": "It is important to note that all elements in an array must be of the same \ndata type.\n\nThis means you cannot mix different types of values, like integers and \nfloating point numbers, in the same array:\n\nIn the example above, the values 3.15 and 5.99 will be truncated to 3 and 5. In some cases it might also result in an error, so \nit is important to always make sure that the elements in the array are of the \nsame type.",
       "code": "  int myArray[] = {25, 50, 75,\n  3.15, 5.99};"
     }
-  ]
+  ],
+  "subCategory": "Arrays",
+  "subCategoryOrder": 12
 }

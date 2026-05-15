@@ -4,7 +4,7 @@
   "title": "C Pointer to Pointer",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 59,
+  "order": 6,
   "sections": [
     {
       "heading": "Pointer to Pointer",
@@ -21,5 +21,7 @@
       "body": "- A pointer to pointer stores the address of another pointer.\n- *ptr gives the value of a variable.\n- **pptr gives the same value by following two levels of indirection.\n- They can be useful when passing pointers to functions or working with complex data structures.",
       "code": ""
     }
-  ]
+  ],
+  "subCategory": "Memory & Pointers",
+  "subCategoryOrder": 14
 }

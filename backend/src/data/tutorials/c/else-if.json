@@ -4,22 +4,56 @@
   "title": "C Else If",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 33,
+  "subCategory": "If...Else",
+  "subCategoryOrder": 7,
+  "order": 3,
   "sections": [
     {
       "heading": "The else if Statement",
-      "body": "Use the else if statement to specify a new condition to test\nif the first condition is false.\n\nYou can use else if to check multiple conditions, one after another.\n\nThe conditions are checked from top to bottom.\nAs soon as one condition is true, its block of code runs, and the rest are skipped.",
-      "code": "if (condition1) {\n\n  // block of code to be executed if condition1 is true\n\n} else if (condition2) {\n\n  // block of code to be executed if condition1 is false and condition2 is true\n\n} else {\n\n  // block of code to be executed if both conditions are false\n\n}"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Use the **`else if`** statement to specify a new condition to test if the first condition is `false`.\n\nYou can use `else if` to check multiple conditions, one after another."
+        },
+        {
+          "type": "syntax",
+          "content": "if (condition1) {\n  // block of code to be executed if condition1 is true\n} else if (condition2) {\n  // block of code to be executed if condition1 is false and condition2 is true\n} else {\n  // block of code to be executed if both conditions are false\n}"
+        },
+        {
+          "type": "text",
+          "content": "The conditions are checked from top to bottom. As soon as one condition is `true`, its block of code runs, and the rest are skipped."
+        }
+      ]
     },
     {
       "heading": "Example",
-      "body": "In the example below, we decide which message to print based on the value of\ntime:\n\nThe value of time is 16.\nThe first condition (time < 12) is false,\nbut the second condition (time < 18) is true.\nBecause of this, the code inside the else if block runs,\nand \"Good day.\" is printed.\n\nIf the value of time was 22, none of the conditions would be true,\nand the program would print \"Good evening.\" instead.",
-      "code": "int time = 16;\n\n\n\nif (time < 12) {\n\n  printf(\"Good morning.\");\n\n} else if (time < 18) {\n\n  printf(\"Good day.\");\n\n} else {\n\n  printf(\"Good evening.\");\n\n}\n\n\n\n// Outputs \"Good day.\""
+      "blocks": [
+        {
+          "type": "code",
+          "content": "int time = 16;\n\nif (time < 12) {\n  printf(\"Good morning.\");\n} else if (time < 18) {\n  printf(\"Good day.\");\n} else {\n  printf(\"Good evening.\");\n}\n\n// Outputs \"Good day.\""
+        },
+        {
+          "type": "text",
+          "content": "**Example explained** — The value of `time` is `16`. The first condition (`time < 12`) is false, but the second condition (`time < 18`) is true. Because of this, the code inside the `else if` block runs, and *\"Good day.\"* is printed. If the value of `time` was `22`, none of the conditions would be true, and the program would print *\"Good evening.\"* instead."
+        }
+      ]
     },
     {
       "heading": "Using Boolean Variables",
-      "body": "Just like with if statements, you can store conditions in boolean variables\nand use them with else if:\n\nTip: Boolean variable names like isMorning and\nisDay make it easier to understand what each condition means.",
-      "code": "int time = 16;\n\n\n\nbool isMorning = time < 12;\n\nbool isDay = time < 18;\n\n\n\nif (isMorning) {\n\n  printf(\"Good morning.\");\n\n} else if (isDay) {\n\n  printf(\"Good day.\");\n\n} else {\n\n  printf(\"Good evening.\");\n\n}"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Just like with `if` statements, you can store conditions in boolean variables and use them with `else if`:"
+        },
+        {
+          "type": "code",
+          "content": "int time = 16;\n\nbool isMorning = time < 12;\nbool isDay = time < 18;\n\nif (isMorning) {\n  printf(\"Good morning.\");\n} else if (isDay) {\n  printf(\"Good day.\");\n} else {\n  printf(\"Good evening.\");\n}"
+        },
+        {
+          "type": "goodtoknow",
+          "content": "Boolean variable names like `isMorning` and `isDay` make it easier to understand what each condition means."
+        }
+      ]
     }
   ]
 }

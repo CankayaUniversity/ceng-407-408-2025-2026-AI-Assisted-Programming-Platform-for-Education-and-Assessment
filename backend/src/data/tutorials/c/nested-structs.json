@@ -11,5 +11,7 @@
       "body": "A structure can also contain another structure as a member. \nThis is called a nested structure, and it is useful when you want to group related data together in layers:\n\nHere, the Car structure contains another structure (Owner) inside it. \nThis makes it easy to organize complex data, for example, a car and its owner.",
       "code": "struct Owner {\n\n  char firstName[30];\n\n  char lastName[30];\n\n};\n\n\n\nstruct Car {\n\n  char brand[30];\n\n  int year;\n\n  struct Owner owner; // Nested structure\n\n};\n\n\n\nint main() {\n\n  struct Owner person = {\"John\", \"Doe\"};\n\n  struct Car car1 = {\"Toyota\", 2010, person};\n\n\n\n  printf(\"Car: %s (%d)\\n\", car1.brand, car1.year);\n\n  printf(\"Owner: %s %s\\n\", car1.owner.firstName, car1.owner.lastName);\n\n\n\n  return 0;\n\n}"
     }
-  ]
+  ],
+  "subCategory": null,
+  "subCategoryOrder": 0
 }

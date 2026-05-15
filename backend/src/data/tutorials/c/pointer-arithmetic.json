@@ -4,7 +4,7 @@
   "title": "C Pointer Arithmetic",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 58,
+  "order": 5,
   "sections": [
     {
       "heading": "Pointer Arithmetic",
@@ -36,5 +36,7 @@
       "body": "- Using the wrong type: \n Remember that pointer movement depends on its type. \n An int* moves in 4-byte steps, \n but a char* moves 1 byte at a time. \n Mixing them up will point to the wrong memory locations.\n- Uninitialized pointers: \n Always make sure a pointer is pointing to something real before you use it. \n Using a pointer that doesn't point anywhere can crash your program.\n- Going out of bounds: \n Never move a pointer past the end of an array or before it starts. \n The only safe \"outside\" position is one step past the end, \n and that's only for comparing pointers - not for accessing values.\n\nAnd be careful; pointers must be handled with care, since it is possible to damage data stored in other memory addresses.",
       "code": ""
     }
-  ]
+  ],
+  "subCategory": "Memory & Pointers",
+  "subCategoryOrder": 14
 }

@@ -4,7 +4,7 @@
   "title": "C Statements",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 4,
+  "order": 2,
   "sections": [
     {
       "heading": "Statements",
@@ -16,5 +16,7 @@
       "body": "Most C programs contain more than one statement.\n\nStatements are executed one by one, in the same order as they are written:\n\nThis program contains three statements:\n\n- printf(\"Hello World!\");\n- printf(\"Have a good day!\");\n- return 0;\n\nThe first statement runs first and prints Hello World!.\nThen the second statement runs and prints Have a good day!.\nFinally, the last statement runs and ends the program.\n\nRemember: Each statement is one instruction, and it must end with a semicolon.\n\nComing up: The next chapter will show you how to control output and add new lines.",
       "code": "  printf(\"Hello World!\");\n\n  printf(\"Have a good day!\");\n\n  return 0;"
     }
-  ]
+  ],
+  "subCategory": "Syntax",
+  "subCategoryOrder": 1
 }

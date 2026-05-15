@@ -31,5 +31,7 @@
       "body": "- Inline functions are defined with the inline keyword.\n- They can make small, often-used functions faster.\n- The compiler decides whether to inline a function or not.\n- Mostly used for short, simple functions.",
       "code": ""
     }
-  ]
+  ],
+  "subCategory": null,
+  "subCategoryOrder": 0
 }

@@ -4,7 +4,7 @@
   "title": "C Strings",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 51,
+  "order": 1,
   "sections": [
     {
       "heading": "Strings",
@@ -41,5 +41,7 @@
       "body": "Use strings to create a simple welcome message:",
       "code": "  char message[] = \"Good to see you,\";\nchar fname[] = \"John\";\n\nprintf(\"%s\n  %s!\", message, fname);"
     }
-  ]
+  ],
+  "subCategory": "Strings",
+  "subCategoryOrder": 13
 }

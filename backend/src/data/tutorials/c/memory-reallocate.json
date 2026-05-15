@@ -16,5 +16,7 @@
       "body": "The realloc() function returns a NULL \npointer if it is not able to allocate more memory. This is very unlikely, but it \nis worth keeping in mind when you need your code to be failproof.\n\nThe following example checks whether realloc() \nis able to resize the memory or not, by checking for a NULL pointer:\n\nCheck for a NULL pointer:\n\nNote: You should always include error checking (if pointer == NULL) when \nallocating memory.\n\nNote: You should also always free, or release, \nallocated memory when you are done using it. This is important to make sure that \nyour program behaves as expected, but it will also make it more maintainable and \nefficient.\n\nTo free memory, simply use the free() function:\n\nFree allocated memory:\n\nYou will learn more about how to free allocated memory and why this is important in the next chapter.",
       "code": "  int *ptr1, *ptr2;\n\n// Allocate memory\nptr1 = malloc(4);\n\n//\n  Attempt to resize the memory\nptr2 = realloc(ptr1, 8);\n\n// Check\n  whether realloc is able to resize the memory or not\nif (ptr2 ==\n  NULL) {\n  // If reallocation fails\n  printf(\"Failed. Unable to resize memory\");\n} else {\n\n  // If reallocation is successful\n\n  printf(\"Success. 8 bytes reallocated at address %p \\n\", ptr2);\n  ptr1 = ptr2;\n  // Update ptr1 to point to the newly allocated memory\n\n  }\n\n  // Free allocated memory\n\n  free(ptr1);"
     }
-  ]
+  ],
+  "subCategory": null,
+  "subCategoryOrder": 0
 }

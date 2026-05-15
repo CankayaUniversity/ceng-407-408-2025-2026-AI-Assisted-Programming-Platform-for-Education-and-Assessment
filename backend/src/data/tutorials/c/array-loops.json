@@ -4,7 +4,7 @@
   "title": "C Array Loops",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 48,
+  "order": 3,
   "sections": [
     {
       "heading": "Loop Through an Array",
@@ -16,5 +16,7 @@
       "body": "In the previous chapter, you learned how to calculate the number of elements in an array using the sizeof formula. \nNow we can use that to write loops that work for arrays of any size. This is more flexible and sustainable:\n\nThis loop will automatically work no matter how many elements the array has!\n\nSummary: Always use the sizeof formula when looping through arrays. \nIt makes your loops adapt to the array size automatically.",
       "code": "int myNumbers[] = {25, 50, 75, 100};\n\nint length = sizeof(myNumbers) / sizeof(myNumbers[0]);\nint i;\n\nfor (i = 0; i < length; i++) {\n  printf(\"%d\\n\", myNumbers[i]);\n}"
     }
-  ]
+  ],
+  "subCategory": "Arrays",
+  "subCategoryOrder": 12
 }

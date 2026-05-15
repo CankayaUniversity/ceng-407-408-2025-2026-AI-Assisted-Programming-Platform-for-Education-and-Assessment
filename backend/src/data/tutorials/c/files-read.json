@@ -16,5 +16,7 @@
       "body": "If you try to open a file for reading that does not exist, the fopen() function will return NULL.\n\nTip: As a good practice, we can use an if statement to test for NULL, \nand print some text instead (when the file does not exist):\n\nIf the file does not exist, the following text is printed:\n\nWith this in mind, we can create a more sustainable code if we use our \"read \na file\" example above again:\n\nIf the file exist, read the content and print it. If the file does not exist, print a message:\n\nNote: You will learn more about NULL in our NULL chapter.",
       "code": "    FILE *fptr;\n\n// Open a file in read mode\nfptr =\n    fopen(\"loremipsum.txt\", \"r\");\n\n// Print some text\n    if the file does not exist\nif(fptr == NULL) {\n  printf(\"Not able to open the\n    file.\");\n}\n\n// Close the file\nfclose(fptr);\n\n    FILE *fptr;\n\n// Open a file in read mode\nfptr =\n    fopen(\"filename.txt\", \"r\");\n\n// Store the content of the file\nchar\n    myString[100];\n\n// If the file exist\nif(fptr != NULL) {\n\n\n    // Read the content and print it\n  while(fgets(myString, 100, fptr))\n    {\n    printf(\"%s\", myString);\n  }\n\n//\n    If the file does not exist\n} else {\n  printf(\"Not able to open the file.\");\n}\n\n// Close the file\n\n    fclose(fptr);"
     }
-  ]
+  ],
+  "subCategory": null,
+  "subCategoryOrder": 0
 }

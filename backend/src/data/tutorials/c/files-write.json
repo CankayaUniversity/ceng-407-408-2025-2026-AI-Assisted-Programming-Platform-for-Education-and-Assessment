@@ -16,5 +16,7 @@
       "body": "If you want to add content to a file without deleting the old content, you can use the\na mode.\n\nThe a mode appends content at the end of the file:\n\nAs a result, when we open the file on our computer, it looks like this:\n\nNote: Just like with the w mode; if the file does not exist, the a \nmode will create a new file with the \"appended\" content.",
       "code": "    FILE *fptr;\n\n// Open a file in append mode\nfptr = fopen(\"filename.txt\", \"a\");\n\n\n// Append some text to the file\nfprintf(fptr, \"\\nHi everybody!\");\n\n\n// Close the file\nfclose(fptr);"
     }
-  ]
+  ],
+  "subCategory": null,
+  "subCategoryOrder": 0
 }

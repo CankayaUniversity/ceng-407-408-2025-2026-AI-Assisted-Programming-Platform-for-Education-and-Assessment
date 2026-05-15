@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Option 3: "Neural network nodes through a bracket"
+       Pure AI-feel — connected nodes (like a tiny neural net) flowing
+       between code brackets. Modern, technical, generic AI aesthetic. -->
+  <defs>
+    <linearGradient id="g3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#10B981"/>
+      <stop offset="100%" stop-color="#0EA5E9"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="64" height="64" rx="14" fill="url(#g3)"/>
+  <!-- Left bracket -->
+  <path d="M16 18 L10 32 L16 46" stroke="#fff" stroke-width="3" fill="none"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Right bracket -->
+  <path d="M48 18 L54 32 L48 46" stroke="#fff" stroke-width="3" fill="none"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Neural connections -->
+  <line x1="22" y1="24" x2="32" y2="32" stroke="#fff" stroke-width="1.2" opacity="0.6"/>
+  <line x1="22" y1="40" x2="32" y2="32" stroke="#fff" stroke-width="1.2" opacity="0.6"/>
+  <line x1="32" y1="32" x2="42" y2="24" stroke="#fff" stroke-width="1.2" opacity="0.6"/>
+  <line x1="32" y1="32" x2="42" y2="40" stroke="#fff" stroke-width="1.2" opacity="0.6"/>
+  <line x1="22" y1="24" x2="42" y2="40" stroke="#fff" stroke-width="0.8" opacity="0.35"/>
+  <line x1="22" y1="40" x2="42" y2="24" stroke="#fff" stroke-width="0.8" opacity="0.35"/>
+  <!-- Nodes -->
+  <circle cx="22" cy="24" r="3.5" fill="#fff"/>
+  <circle cx="22" cy="40" r="3.5" fill="#fff"/>
+  <circle cx="32" cy="32" r="4"   fill="#FBBF24" stroke="#fff" stroke-width="1"/>
+  <circle cx="42" cy="24" r="3.5" fill="#fff"/>
+  <circle cx="42" cy="40" r="3.5" fill="#fff"/>
+</svg>

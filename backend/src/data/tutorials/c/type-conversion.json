@@ -4,7 +4,7 @@
   "title": "C Type Conversion",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 21,
+  "order": 8,
   "sections": [
     {
       "heading": "Type Conversion",
@@ -26,5 +26,7 @@
       "body": "Here's a real-life example of data types and type conversion where we create a program to calculate the percentage of a user's score in relation to the maximum score in a game:",
       "code": "  // Set the maximum possible score in the game to 500\nint maxScore = 500;\n\n\n// The actual score of the user\nint userScore = 423;\n\n/*\n  Calculate the percantage of the user's score in relation to the maximum\n  available score.\nConvert userScore to float to make sure that the division\n  is accurate */\nfloat percentage = (float) userScore / maxScore * 100.0;\n\n\n// Print the percentage\nprintf(\"User's percentage is %.2f\", percentage);"
     }
-  ]
+  ],
+  "subCategory": "Data Types",
+  "subCategoryOrder": 4
 }

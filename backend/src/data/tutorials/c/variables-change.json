@@ -4,7 +4,7 @@
   "title": "C Change Variable Values",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 10,
+  "order": 3,
   "sections": [
     {
       "heading": "Change Variable Values",
@@ -16,5 +16,7 @@
       "body": "You can use mathematical operators to work with variables.\n\nFor example, to add one variable to another, use the + operator:\n\nYou can also update a variable using its current value:\n\nTip: Writing x = x + 1 means \"take the current value of x and add 1 to it\".\n\nNote: You will learn much more about operators in a later chapter.",
       "code": "  int x = 5;\n\n  int y = 6;\n\n  int sum = x + y;\n\n  printf(\"%d\", sum);\n\n  int x = 5;\n\n  x = x + 1;\n\n  printf(\"%d\", x);"
     }
-  ]
+  ],
+  "subCategory": "Variables",
+  "subCategoryOrder": 3
 }

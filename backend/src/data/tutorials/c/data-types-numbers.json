@@ -4,7 +4,7 @@
   "title": "C Numbers",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 16,
+  "order": 3,
   "sections": [
     {
       "heading": "Numeric Types",
@@ -16,5 +16,7 @@
       "body": "In C, you can write very large or very small floating-point numbers using scientific notation.\n\nThis is done using the letter e (or E), which stands for \"times 10 to the power of\".\n\nFor example, 35e3 means 35 × 10³ = \n35000.\n\nThis is useful for writing numbers in a shorter way. Especially when working with scientific values or large-scale data.",
       "code": "  float f1 = 35e3;   // 35 * 10^3 = 35000\ndouble d1 = 12E4;  // 12 * 10^4 = 120000\n\nprintf(\"%f\\n\", f1);\n\n  printf(\"%lf\", d1);"
     }
-  ]
+  ],
+  "subCategory": "Data Types",
+  "subCategoryOrder": 4
 }

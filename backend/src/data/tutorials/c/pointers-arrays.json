@@ -4,7 +4,7 @@
   "title": "C Pointers & Arrays",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 57,
+  "order": 4,
   "sections": [
     {
       "heading": "Pointers & Arrays",
@@ -16,5 +16,7 @@
       "body": "Ok, so what's the relationship between pointers and arrays? Well, in C, the name of an \narray, is actually a pointer to the first \nelement of the array.\n\nConfused? Let's try to understand this better, and use our \"memory address example\" above \nagain.\n\nThe memory address of the first element is the same as the \nname of the array:\n\nResult:\n\nThis basically means that we can work with arrays through pointers!\n\nHow? Since myNumbers is a pointer to the first element in myNumbers, you can use \nthe * operator to access it:\n\nResult:\n\nTo access the rest of the elements in myNumbers, you can increment the pointer/array (+1, +2, etc):\n\nResult:\n\nOr loop through it:\n\nResult:\n\nIt is also possible to change the value of array elements with pointers:\n\nResult:\n\nThis way of working with arrays might seem a bit excessive. Especially with \n simple arrays like in the examples above. However, for large arrays, it can be \n much more efficient to access and manipulate arrays with pointers.\n\nIt is also considered faster and easier to access two-dimensional arrays \n with pointers.\n\nAnd since strings are actually arrays, you can also use pointers to access \n strings.\n\nFor now, it's great that you know how this works. But like we specified in the previous chapter; pointers \n must be handled with care, since it is possible to overwrite other data stored \n in memory.",
       "code": "    int myNumbers[4] = {25, 50, 75, 100};\n\n// Get the memory address of the\n    myNumbers array\nprintf(\"%p\\n\", myNumbers);\n\n// Get the memory\n    address of the first array element\nprintf(\"%p\\n\", &myNumbers[0]);\n\n    int myNumbers[4] = {25, 50, 75, 100};\n\n// Get the value of the first\n    element in myNumbers\nprintf(\"%d\", *myNumbers);\n\n    int myNumbers[4] = {25, 50, 75, 100};\n\n// Get the value of the second\n    element in myNumbers\nprintf(\"%d\\n\", *(myNumbers + 1));\n\n// Get the value of the\n    third\n    element in myNumbers\nprintf(\"%d\", *(myNumbers + 2));\n\n//\n    and so on..\n\n    int myNumbers[4] = {25, 50, 75, 100};\nint *ptr = myNumbers;\nint i;\n\n\nfor (i = 0; i < 4; i++) {\n  printf(\"%d\\n\", *(ptr + i));\n}\n\n    int myNumbers[4] = {25, 50, 75, 100};\n\n// Change the\n    value of the first element to 13\n*myNumbers = 13;\n\n// Change the\n    value of the second element to 17\n*(myNumbers +1) = 17;\n\n// Get\n    the value of the first element\nprintf(\"%d\\n\", *myNumbers);\n\n// Get\n    the value of the second element\nprintf(\"%d\\n\", *(myNumbers + 1));"
     }
-  ]
+  ],
+  "subCategory": "Memory & Pointers",
+  "subCategoryOrder": 14
 }

@@ -31,5 +31,7 @@
       "body": "Use unions when:\n\n- You need to store different types in the same location\n- You only use one type at a time\n- Saving memory is very important",
       "code": ""
     }
-  ]
+  ],
+  "subCategory": null,
+  "subCategoryOrder": 0
 }

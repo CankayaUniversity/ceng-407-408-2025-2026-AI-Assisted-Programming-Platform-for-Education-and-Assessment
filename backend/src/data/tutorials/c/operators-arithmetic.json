@@ -4,7 +4,7 @@
   "title": "C Arithmetic Operators",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 24,
+  "order": 2,
   "sections": [
     {
       "heading": "Arithmetic Operators",
@@ -16,5 +16,7 @@
       "body": "Incrementing and decrementing are very common in programming, especially when working with counters, loops, and arrays (which you will learn more about in later chapters).\n\nThe ++ operator increases a value by 1, while the -- operator decreases a value by 1:\n\nSometimes, you might both increment and decrement the same variable. Remember that if you increase a value and later decrease it, it will go up by one and then back down by one - ending up where it started:\n\nImagine you are building a program to count how many people enter and leave a room. \nYou can use ++ to increase the counter when someone enters, \nand -- to decrease it when someone leaves:",
       "code": "int x = 5;\n\n++x; // Increment x by 1\nprintf(\"%d\\n\", x); // 6\n\nint x = 5;\n\n--x; // Decrement x by 1\nprintf(\"%d\\n\", x); // 4\n\nint x = 5;\n\n++x; // Increment x by 1 (x becomes 6)\n--x; // Decrement x by 1 (x becomes 5 again)\n\nprintf(\"%d\\n\", x); // 5\n\nint peopleInRoom = 0;\n\n// 3 people enter\npeopleInRoom++;\npeopleInRoom++;\npeopleInRoom++;\n\nprintf(\"%d\\n\", peopleInRoom); // 3\n\n// 1 person leaves\npeopleInRoom--;\n\nprintf(\"%d\\n\", peopleInRoom); // 2"
     }
-  ]
+  ],
+  "subCategory": "Operators",
+  "subCategoryOrder": 5
 }

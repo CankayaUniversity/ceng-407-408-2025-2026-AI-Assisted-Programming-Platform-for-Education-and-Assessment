@@ -12,7 +12,7 @@ import "@xterm/xterm/css/xterm.css";
  * - Enter sends the buffered line to process stdin.
  * - Ctrl+C sends a kill message.
  */
-export default function InteractiveTerminal({ wsUrl, onReady, onRunResult }) {
+export default function InteractiveTerminal({ wsUrl, onReady, onRunResult, onErrorLineClick }) {
   const containerRef  = useRef(null);
   const termRef       = useRef(null);
   const wsRef         = useRef(null);
@@ -20,11 +20,13 @@ export default function InteractiveTerminal({ wsUrl, onReady, onRunResult }) {
   const outputBuf     = useRef("");          // accumulated stdout for mentor context
   const isRunning     = useRef(false);
   const onDoneRef     = useRef(null);
-  const onRunResultRef = useRef(onRunResult);
+  const onRunResultRef     = useRef(onRunResult);
+  const onErrorLineClickRef = useRef(onErrorLineClick);
   const unmounted     = useRef(false);
 
-  // Keep the ref in sync with the prop without re-running the effect
-  onRunResultRef.current = onRunResult;
+  // Keep the refs in sync with the props without re-running the effect.
+  onRunResultRef.current      = onRunResult;
+  onErrorLineClickRef.current = onErrorLineClick;
 
   useEffect(() => {
     unmounted.current = false;
@@ -43,6 +45,55 @@ export default function InteractiveTerminal({ wsUrl, onReady, onRunResult }) {
     term.open(containerRef.current);
     try { fitAddon.fit(); } catch { /* ignore if container has zero dimensions at mount */ }
     termRef.current = term;
+
+    // ── Clickable error-line links ───────────────────────────────────────────
+    // Match common error formats and turn the line numbers into clickable
+    // links that jump the editor cursor to that line. Covers:
+    //   Python   File "main.py", line 17
+    //   JS       at main (main.js:17:5)  |  main.js:17
+    //   C/C++    main.c:17:5: error: …
+    //   Java     at Main.java:17        |  Main.java:17:
+    //   Generic  line 17 / Line 17
+    const ERROR_LINE_PATTERNS = [
+      /\bline\s+(\d+)\b/gi,            // Python "line 17", generic
+      /\.(?:c|cpp|cc|h|hpp|js|jsx|ts|py|java|cs)\b[^\d]*?:(\d+)\b/gi, // file.ext:17
+    ];
+
+    term.registerLinkProvider({
+      provideLinks(bufferLineY, callback) {
+        // bufferLineY is 1-based row in the terminal buffer.
+        const line = term.buffer.active.getLine(bufferLineY - 1);
+        if (!line) { callback(undefined); return; }
+        const text  = line.translateToString(true);
+        const links = [];
+
+        for (const pattern of ERROR_LINE_PATTERNS) {
+          // pattern is `g`-flagged; reset lastIndex before each scan
+          pattern.lastIndex = 0;
+          let m;
+          while ((m = pattern.exec(text)) !== null) {
+            const lineNum = Number.parseInt(m[1], 10);
+            if (!Number.isFinite(lineNum) || lineNum <= 0) continue;
+            // xterm.js link range is 1-based; convert from JS string index
+            const start = m.index + 1;
+            const end   = m.index + m[0].length + 1;
+            links.push({
+              range: {
+                start: { x: start, y: bufferLineY },
+                end:   { x: end,   y: bufferLineY },
+              },
+              text: m[0],
+              activate(_event) {
+                onErrorLineClickRef.current?.(lineNum);
+              },
+              hover(_event) { /* xterm shows the standard pointer cursor */ },
+              leave(_event) { /* no-op */ },
+            });
+          }
+        }
+        callback(links);
+      },
+    });
 
     // ── WebSocket ─────────────────────────────────────────────────────────
     let reconnectTimer = null;

@@ -4,7 +4,7 @@
   "title": "C User Input",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 54,
+  "order": 1,
   "sections": [
     {
       "heading": "User Input",
@@ -21,5 +21,7 @@
       "body": "You can also get a string entered by the user:\n\nOutput the name of a user:\n\nNote: When working with strings in scanf(), you must specify the size of \nthe string/array (we used a very high number, 30 in our example, but at least then we are \ncertain it will store enough characters for the first name), and you don't have \nto use the reference operator (&).\n\nHowever, the scanf() function has some limitations: it considers space (whitespace, \ntabs, etc) as a terminating character, which means that it can only display a \nsingle word (even if you type many words). For example:\n\nFrom the example above, you would expect the program to print \"John Doe\", but it only prints \"John\".\n\nThat's why, when working with strings, we often use the fgets() function to \nread a line of text. Note that you must include the following \narguments: the name of the string variable, sizeof(string_name), and stdin:\n\nUse the scanf() function to get a single word as input, and use fgets() for multiple words.",
       "code": "  // Create a string\nchar firstName[30];\n\n// Ask the user to input some\n  text\nprintf(\"Enter your first name: \\n\");\n\n// Get and save the text\n\n  scanf(\"%s\", firstName);\n\n// Output the text\nprintf(\"Hello %s\",\n  firstName);\n\n  char fullName[30];\n\nprintf(\"Type your full name: \\n\");\n\n  scanf(\"%s\", &fullName);\n\nprintf(\"Hello %s\",\n  fullName);\n\n// Type your full name: John Doe\n// Hello John\n\n  char fullName[30];\n\nprintf(\"Type your full name: \\n\");\n\n  fgets(fullName, sizeof(fullName), stdin);\n\nprintf(\"Hello %s\",\n  fullName);\n\n// Type your full name: John Doe\n// Hello John Doe"
     }
-  ]
+  ],
+  "subCategory": "Memory & Pointers",
+  "subCategoryOrder": 14
 }

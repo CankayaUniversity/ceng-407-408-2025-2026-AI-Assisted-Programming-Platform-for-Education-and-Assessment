@@ -131,6 +131,36 @@ export default function ProblemPage() {
   // OR the student navigated here from an exam assignment row (location.state.examMode).
   const isExamSession              = examMode || Boolean(location.state?.examMode);
 
+  // ── Exam-mode tab guards ──────────────────────────────────────────────────
+  // 1. beforeunload — warns the student if they try to close the tab / refresh
+  //    / navigate away while inside an exam. (Browsers show their own generic
+  //    "Leave site?" prompt; we can't customize the text in modern browsers.)
+  // 2. contextmenu  — disables right-click within the exam page so students
+  //    can't easily "View page source" / "Inspect" / open a new tab.
+  // Both are removed automatically when the student leaves the page or the
+  // exam mode flag flips off.
+  useEffect(() => {
+    if (!isExamSession) return;
+
+    function onBeforeUnload(e) {
+      e.preventDefault();
+      // Required for older browsers; modern ones ignore the return value
+      // and show their own generic confirmation message.
+      e.returnValue = "";
+      return "";
+    }
+    function onContextMenu(e) {
+      e.preventDefault();
+    }
+
+    window.addEventListener("beforeunload", onBeforeUnload);
+    window.addEventListener("contextmenu", onContextMenu);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      window.removeEventListener("contextmenu", onContextMenu);
+    };
+  }, [isExamSession]);
+
   // ── Exam countdown timer ──────────────────────────────────────────────────
   const [examTimeLeft, setExamTimeLeft] = useState(null);
   useEffect(() => {
@@ -701,7 +731,7 @@ export default function ProblemPage() {
   // overrideMessage:   pre-set message text (used by hint button)
   // overrideMode:      "hint" | "practice" etc.
   // overrideHintLevel: explicit hint level (Bug #8 fix — avoids closure stale value)
-  async function sendChat(overrideMessage, overrideMode, overrideHintLevel) {
+  async function sendChat(overrideMessage, overrideMode, overrideHintLevel, editorContext) {
     const message = overrideMessage ?? chatInput.trim();
     const mode    = overrideMode    ?? "practice";
 
@@ -760,6 +790,12 @@ export default function ProblemPage() {
           hintLevel:           mode === "hint" ? (overrideHintLevel ?? hintCount) : undefined,
           // Conversation history so the mentor can build on previous exchanges
           conversationHistory: historySnapshot.length > 0 ? historySnapshot : undefined,
+          // Phase 2 (Editor context) — let the mentor reference the exact
+          // cursor line the student is looking at. Backend already accepts
+          // these fields (mentor.ts buildMentorPrompt renders a
+          // [FOCUSED CODE NEAR CURSOR] section when they're present).
+          activeLineNumber:    editorContext?.activeLineNumber,
+          selectedCodeContext: editorContext?.selectedCodeContext,
         }),
       });
 
@@ -854,6 +890,39 @@ export default function ProblemPage() {
     await sendChat(msg, "hint", currentLevel);
   }
 
+  // ── "Add debug prints" button handler (Phase 6c — debug improvements) ─────
+  // Asks the mentor to insert temporary trace prints around the cursor line.
+  // The editor context (line number + window of surrounding code) is provided
+  // by StudentWorkspace via getCursorContext() and passed to sendChat which
+  // forwards it to the mentor as activeLineNumber + selectedCodeContext.
+  async function sendDebugPrints(editorContext) {
+    if (!selectedProblem || chatLoading) return;
+    if (!editorContext?.activeLineNumber) {
+      // Editor not ready or no cursor — surface a non-fatal hint in the chat.
+      setChat((prev) => [
+        ...prev,
+        { role: "assistant",
+          content: "Place your cursor on a line in the editor first, then click Debug prints." },
+      ]);
+      return;
+    }
+    const printerByLang = {
+      python:     "print(...)",
+      javascript: "console.log(...)",
+      c:          "printf(...)",
+      cpp:        "std::cout << ...",
+      java:       "System.out.println(...)",
+      csharp:     "Console.WriteLine(...)",
+    };
+    const printer = printerByLang[selectedLanguage] ?? "print(...)";
+    const msg =
+      `Add a few temporary ${printer} debug statements around line ${editorContext.activeLineNumber} ` +
+      `to help me see the values of the relevant variables when I run the code. ` +
+      `Do not change the program logic — only add prints. ` +
+      `Show me the small snippet of modified code I can paste in.`;
+    await sendChat(msg, "practice", undefined, editorContext);
+  }
+
   return (
     <StudentWorkspace
       currentUser={currentUser}
@@ -890,6 +959,7 @@ export default function ProblemPage() {
       setChatInput={setChatInput}
       sendChat={sendChat}
       sendHint={sendHint}
+      sendDebugPrints={sendDebugPrints}
       hintCount={hintCount}
       chatLoading={chatLoading}
       onNewChat={handleNewChat}

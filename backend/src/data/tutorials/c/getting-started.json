@@ -26,5 +26,7 @@
       "body": "Let's create our first C file.\n\nOpen Codeblocks and go to File > New > Empty File.\n\nWrite the following C code and save the file as \nmyfirstprogram.c (File > Save File as):\n\nNote: C source files always end with .c.\n\nDon't worry if you don't understand the code above - we will discuss it in detail in later chapters. For now, focus on how to run the code.\n\nIn Codeblocks, it should look like this:\n\nThen, go to Build > Build and Run to run (execute) the program. The result will look something to this:\n\nIf you see the message above, your setup is working correctly.\n\nCongratulations! You have now written and executed your first C program.\n\nWhat just happened? You wrote C code, the compiler turned it into a program, and the computer ran it. This is the basic workflow you will use throughout this tutorial.",
       "code": "  #include <stdio.h>\n\nint main() {\n  printf(\"Hello World!\");\n\n  return 0;\n}"
     }
-  ]
+  ],
+  "subCategory": null,
+  "subCategoryOrder": 0
 }

@@ -21,5 +21,7 @@
       "body": "As long as you declare functions first, it is also possible to use functions to call other functions:\n\nUse one function to call another function:",
       "code": "  // Declare two functions, myFunction and myOtherFunction\nvoid\n  myFunction();\nvoid myOtherFunction();\n\nint main() {\n\n  myFunction(); // call myFunction (from main)\n  return 0;\n}\n\n// Define\n  myFunction\nvoid\n  myFunction() {\n  printf(\"Some text in myFunction\\n\");\n\n  myOtherFunction(); // call myOtherFunction (from myFunction)\n}\n\n// Define myOtherFunction\nvoid\n  myOtherFunction() {\n  printf(\"Hey! Some text in myOtherFunction\\n\");\n\n  }"
     }
-  ]
+  ],
+  "subCategory": null,
+  "subCategoryOrder": 0
 }

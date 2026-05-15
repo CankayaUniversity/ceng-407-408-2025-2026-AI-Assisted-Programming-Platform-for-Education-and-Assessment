@@ -4,7 +4,7 @@
   "title": "C Variables Real-Life",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 13,
+  "order": 6,
   "sections": [
     {
       "heading": "Real-Life Example",
@@ -16,5 +16,7 @@
       "body": "Variables are often used to store values, perform calculations, and then show the result.\n\nIn this example, we calculate the area of a rectangle:\n\nTip: Calculations are usually done first, and the result is stored in a variable before being printed.",
       "code": "  // Create variables\n\n  int length = 4;\n\n  int width = 6;\n\n  int area;\n\n\n  // Calculate the area\n\n  area = length * width;\n\n\n  // Print the result\n\n  printf(\"Length is: %d\\n\", length);\n\n  printf(\"Width is: %d\\n\", width);\n\n  printf(\"Area of the rectangle is: %d\", area);"
     }
-  ]
+  ],
+  "subCategory": "Variables",
+  "subCategoryOrder": 3
 }

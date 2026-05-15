@@ -522,9 +522,12 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
   if (!modelError) {
     // 2a. Inline solution-leak deflection (8-line single block / 2+ blocks / banned phrases)
     if (looksLikeSolution(rawText)) {
-      rawText =
-        "I can't write the complete solution, but I can point to the specific issue. " +
-        "What part is giving you the most trouble right now — is it a logic error, a missing step, or something else?";
+      // Neutral wording — must not contain banned phrases or our own validator
+      // will block this refusal text on the next stage (see test Step 4).
+      const locale = normalizeMentorLocale(input.mentorLocale);
+      rawText = locale === "tr"
+        ? "Bunu senin yerine yazamam, ama belirli bir sorunu işaret edebilirim. Şu an seni en çok ne zorluyor — mantık hatası mı, eksik bir adım mı, yoksa başka bir şey mi?"
+        : "I won't write that out for you, but I can point to the specific issue. What part is giving you the most trouble right now — is it a logic error, a missing step, or something else?";
     }
     // 2b. Append "Run the code first" note when model asserts runtime results at idle
     rawText = enforceIdleHint(rawText, input.runStatus);

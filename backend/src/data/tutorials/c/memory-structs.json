@@ -31,5 +31,7 @@
       "body": "If you need more elements later, you can resize your dynamic array with realloc(). This may move the block to a new location and returns a new pointer. Always store the result in a temporary pointer first to avoid losing the original memory if reallocation fails.\n\nNote: New space added by realloc() is uninitialized. Be sure to initialize newly added elements (e.g. strcpy(cars[2].brand, \"Kia\"); cars[2].year = 2022;) before using them.",
       "code": "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n\nstruct Car {\n  char brand[50];\n  int year;\n};\n\nint main() {\n  int count = 2;\n  struct Car *cars = (struct Car*) malloc(count * sizeof(struct Car));\n  if (cars == NULL) {\n    printf(\"Initial allocation failed.\\n\");\n    return 1;\n  }\n\n  // Initialize first 2 cars\n  strcpy(cars[0].brand, \"Toyota\"); cars[0].year = 2010;\n  strcpy(cars[1].brand, \"Audi\");   cars[1].year = 2019;\n\n  // Need one more car -> grow to 3\n  int newCount = 3;\n  struct Car *tmp = (struct Car*) realloc(cars, newCount * sizeof(struct Car));\n  if (tmp == NULL) {\n    // 'cars' is still valid here; free it to avoid a leak\n    free(cars);\n    printf(\"Reallocation failed.\\n\");\n    return 1;\n  }\n  cars = tmp;  // use the reallocated block\n\n  // Initialize the new element at index 2\n  strcpy(cars[2].brand, \"Kia\");\n  cars[2].year = 2022;\n\n  // Print all cars\n  for (int i = 0; i < newCount; i++) {\n    printf(\"%s - %d\\n\", cars[i].brand, cars[i].year);\n  }\n\n  free(cars);\n  return 0;\n}"
     }
-  ]
+  ],
+  "subCategory": null,
+  "subCategoryOrder": 0
 }

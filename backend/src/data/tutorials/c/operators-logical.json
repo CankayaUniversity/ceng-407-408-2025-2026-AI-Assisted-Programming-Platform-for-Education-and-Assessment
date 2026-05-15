@@ -4,7 +4,7 @@
   "title": "C Logical Operators",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 27,
+  "order": 5,
   "sections": [
     {
       "heading": "Logical Operators",
@@ -16,5 +16,7 @@
       "body": "The example below shows how logical operators can be used in a real situation, e.g. when checking login status and access rights:\n\nResult:\n\nRemember: in C, 1 means true and 0 means false. Logical operators often become easier to understand once you start using them inside if statements, which you will learn about in the upcoming chapters.",
       "code": "int isLoggedIn = 1;\nint isAdmin = 0;\n\nprintf(\"Regular user: %d\\n\", isLoggedIn && !isAdmin);\nprintf(\"Has access: %d\\n\", isLoggedIn || isAdmin);\nprintf(\"Not logged in: %d\\n\", !isLoggedIn);"
     }
-  ]
+  ],
+  "subCategory": "Operators",
+  "subCategoryOrder": 5
 }

@@ -26,5 +26,7 @@
       "body": "In summary, when managing memory in C, use \nbest practices:\n\n- Remember to check for errors (NULL return \nvalues) to find out if memory allocation was sucessful or not\n- Prevent memory leaks - always remember to free memory that is no longer used, \nor else the program might underperform or even worse, crash if it runs out of \nmemory\n- Set the pointer to NULL after freeing memory so that you cannot accidentally \ncontinue using it\n\nTip: You will learn more about NULL in our NULL chapter.",
       "code": ""
     }
-  ]
+  ],
+  "subCategory": null,
+  "subCategoryOrder": 0
 }

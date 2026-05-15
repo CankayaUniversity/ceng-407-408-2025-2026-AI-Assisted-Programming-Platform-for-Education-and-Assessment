@@ -4,7 +4,7 @@
   "title": "C Comparison Operators",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 26,
+  "order": 4,
   "sections": [
     {
       "heading": "Comparison Operators",
@@ -16,5 +16,7 @@
       "body": "Comparison operators are often used in real-world conditions, such as checking if a person is old enough to vote:\n\nAnother common use is checking if a password is long enough:",
       "code": "int age = 18;\n\nprintf(\"%d\\n\", age >= 18); // 1 (true), old enough to vote\nprintf(\"%d\\n\", age < 18);  // 0 (false)\n\nint passwordLength = 5;\n\nprintf(\"%d\\n\", passwordLength >= 8); // 0 (false), too short\nprintf(\"%d\\n\", passwordLength < 8);  // 1 (true), needs more characters"
     }
-  ]
+  ],
+  "subCategory": "Operators",
+  "subCategoryOrder": 5
 }

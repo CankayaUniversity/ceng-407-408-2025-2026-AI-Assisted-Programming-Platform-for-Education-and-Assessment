@@ -4,12 +4,42 @@
   "title": "C Short Hand If",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 34,
+  "subCategory": "If...Else",
+  "subCategoryOrder": 7,
+  "order": 4,
   "sections": [
     {
       "heading": "Short Hand If...Else (Ternary Operator)",
-      "body": "There is also a short-hand if...else, known as the ternary operator \nbecause it uses three operands.\n\nThe ternary operator returns a value based on a condition: if the condition is true, it returns the first value; otherwise, it returns the second value.\n\nIt can be used to replace multiple lines of code with a single line, and is often used to replace simple if...else statements:\n\nInstead of writing:\n\nYou can simply write:\n\nIt is completely up to you if you want to use the traditional if...else statement or the ternary operator.",
-      "code": "  variable = (condition) ? expressionTrue :\n  expressionFalse;\n\n  int time = 20;\nif (time < 18) {\n  printf(\"Good day.\");\n} else {\n\n  printf(\"Good evening.\");\n}\n\n  int time = 20;\n(time < 18) ? printf(\"Good day.\") : printf(\"Good evening.\");"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "There is also a short-hand `if...else`, known as the **ternary operator** because it uses three operands.\n\nThe ternary operator *returns a value* based on a condition: if the condition is `true`, it returns the first value; otherwise, it returns the second value.\n\nIt can be used to replace multiple lines of code with a single line, and is often used to replace simple `if...else` statements:"
+        },
+        {
+          "type": "syntax",
+          "content": "variable = (condition) ? expressionTrue : expressionFalse;"
+        },
+        {
+          "type": "text",
+          "content": "Instead of writing:"
+        },
+        {
+          "type": "code",
+          "content": "int time = 20;\nif (time < 18) {\n  printf(\"Good day.\");\n} else {\n  printf(\"Good evening.\");\n}"
+        },
+        {
+          "type": "text",
+          "content": "You can simply write:"
+        },
+        {
+          "type": "code",
+          "content": "int time = 20;\n(time < 18) ? printf(\"Good day.\") : printf(\"Good evening.\");"
+        },
+        {
+          "type": "text",
+          "content": "It is completely up to you if you want to use the traditional `if...else` statement or the ternary operator."
+        }
+      ]
     }
   ]
 }

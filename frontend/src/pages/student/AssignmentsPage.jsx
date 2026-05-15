@@ -6,6 +6,7 @@ import {
   Chip,
   CircularProgress,
   Dialog,
+  DialogActions,
   DialogContent,
   DialogTitle,
   IconButton,
@@ -165,7 +166,11 @@ function examState(a) {
 
 function ExamRow({ a, idx, solvedSet, onHistoryClick }) {
   const navigate = useNavigate();
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogOpen,       setDialogOpen]       = useState(false);
+  // "Are you sure you want to start the exam?" confirmation. Fires when a
+  // student clicks a published, currently-active exam — gives them one
+  // last chance to back out before the lockdown UI takes over.
+  const [startConfirmOpen, setStartConfirmOpen] = useState(false);
   const [now, setNow] = useState(Date.now());
 
   // Live clock for active scheduled exams
@@ -193,6 +198,12 @@ function ExamRow({ a, idx, solvedSet, onHistoryClick }) {
   function handleClick() {
     if (!published || state === "ended") return;
     if (state === "not_started") { setDialogOpen(true); return; }
+    // Active exam → confirm before entering the lockdown UI.
+    setStartConfirmOpen(true);
+  }
+
+  function enterExam() {
+    setStartConfirmOpen(false);
     navigate(`/problem/${problem.id}`, {
       state: {
         assignmentId:     a.id,
@@ -331,6 +342,49 @@ function ExamRow({ a, idx, solvedSet, onHistoryClick }) {
             The exam content will be visible and the timer will start once the scheduled time arrives.
           </Typography>
         </DialogContent>
+      </Dialog>
+
+      {/* "Are you sure you want to start the exam?" confirmation.
+          Fires when a student clicks a currently-active exam. Gives them
+          one last chance to back out before the lockdown UI takes over. */}
+      <Dialog
+        open={startConfirmOpen}
+        onClose={() => setStartConfirmOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <LockIcon color="warning" />
+          Start exam?
+        </DialogTitle>
+        <DialogContent>
+          <Typography gutterBottom>
+            You are about to start <strong>{a.title}</strong>.
+          </Typography>
+          <Alert severity="warning" icon={<WarningIcon />} sx={{ mt: 1 }}>
+            Once you start, the navigation will be locked. Only the editor and
+            terminal will be visible until you submit or time runs out. The AI
+            mentor is disabled during exams.
+          </Alert>
+          {endLabel && (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
+              Exam deadline: <strong>{endLabel}</strong>
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setStartConfirmOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="warning"
+            onClick={enterExam}
+            startIcon={<LockIcon />}
+          >
+            Start exam
+          </Button>
+        </DialogActions>
       </Dialog>
     </>
   );

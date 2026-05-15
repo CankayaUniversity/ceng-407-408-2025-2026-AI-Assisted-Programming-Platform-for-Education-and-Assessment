@@ -26,5 +26,7 @@
       "body": "You can also use typedef with enum. \nThis makes it easier to declare variables of the enum type, without having to write enum every time:\n\nBoth versions work the same, but the typedef version is shorter and easier to read:\n\nEnums are used to give names to constants, which makes the code easier to \n read and maintain.\n\nUse enums when you have values that you know aren't going to change, like month days, days, colors, deck of cards, etc.",
       "code": "// Without typedef\n\nenum Day {MON, TUE, WED, THU, FRI, SAT, SUN};\n\nenum Day today = WED;\n\n\n\n// With typedef\n\ntypedef enum {MON, TUE, WED, THU, FRI, SAT, SUN} Day;\n\nDay today = WED;\n\n#include <stdio.h>\n\n\n\ntypedef enum {MON, TUE, WED, THU, FRI, SAT, SUN} Day;\n\n\n\nint main() {\n\n  Day today = WED;\n\n  if (today == WED) {\n\n    printf(\"It is Wednesday!\\n\");\n\n  }\n\n  return 0;\n\n}"
     }
-  ]
+  ],
+  "subCategory": null,
+  "subCategoryOrder": 0
 }

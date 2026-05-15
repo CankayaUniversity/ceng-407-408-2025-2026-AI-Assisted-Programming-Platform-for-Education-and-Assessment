@@ -41,5 +41,7 @@
       "body": "When your program is split across multiple files, you need to compile them together. For example:\n\nThis tells the compiler to build one executable named program from both main.c and calc.c.",
       "code": "gcc main.c calc.c -o program"
     }
-  ]
+  ],
+  "subCategory": null,
+  "subCategoryOrder": 0
 }

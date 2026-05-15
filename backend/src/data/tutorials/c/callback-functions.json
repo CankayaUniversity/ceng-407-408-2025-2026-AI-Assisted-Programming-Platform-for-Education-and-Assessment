@@ -4,7 +4,7 @@
   "title": "C Callback Functions",
   "category": "C Functions",
   "categoryOrder": 2,
-  "order": 9,
+  "order": 2,
   "sections": [
     {
       "heading": "Callback Function",
@@ -36,5 +36,7 @@
       "body": "- A callback function is a function passed as an argument to another function.\n- It allows one function to call another without knowing its name in advance.\n- Callbacks make code more flexible and reusable.\n- They are used in the C Standard Library (like qsort()).",
       "code": ""
     }
-  ]
+  ],
+  "subCategory": "Function Pointers",
+  "subCategoryOrder": 1
 }

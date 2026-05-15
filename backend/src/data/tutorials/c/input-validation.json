@@ -26,5 +26,7 @@
       "body": "Make sure the user enters a number. If they enter something else (like a letter), ask again using fgets() and sscanf():\n\nExample Result:\n\nTip: You can read more about fgets() and sscanf() in our \n<stdio.h> library reference.",
       "code": "    #include <stdio.h>\n\n\n\n    int main() {\n\n      int number;       // Variable to store the user's number\n\n      char input[100];  // Buffer to hold user input as a string\n\n\n\n      printf(\"Enter a number: \");\n\n\n\n      // Keep reading input until the user enters a valid integer\n\n      while (fgets(input, sizeof(input), stdin)) {\n\n        // Try to read an integer from the input string\n\n        if (sscanf(input, \"%d\", &number) == 1) {\n\n          break; // Success: break out of the loop\n\n        } else {\n\n          printf(\"Invalid input. Try again: \"); //\n    If not an integer, ask again\n\n        }\n\n      }\n\n  // Print the valid number entered by\n    the user\n\n\n      printf(\"You entered: %d\\n\", number);\n\n      return 0;\n\n    }"
     }
-  ]
+  ],
+  "subCategory": null,
+  "subCategoryOrder": 0
 }

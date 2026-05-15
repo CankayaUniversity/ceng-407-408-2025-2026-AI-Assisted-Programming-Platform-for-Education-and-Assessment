@@ -4,7 +4,7 @@
   "title": "C Variables",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 8,
+  "order": 1,
   "sections": [
     {
       "heading": "Variables",
@@ -21,5 +21,7 @@
       "body": "You learned from the output chapter that you can print text using the printf() function:\n\nIn many other programming languages (like Python, Java, and C++), you would normally use a \nprint function to display the value of a variable. However, this is not possible in C:\n\nTo print variables in C, you must use something called format specifiers.\n\nDon't worry - this will be explained clearly in the next chapter.",
       "code": "  printf(\"Hello World!\");\n\n  int myNum = 15;\n\n  printf(myNum); // This will cause an error"
     }
-  ]
+  ],
+  "subCategory": "Variables",
+  "subCategoryOrder": 3
 }

@@ -4,24 +4,64 @@
   "title": "C Structs & Pointers",
   "category": "C Structures",
   "categoryOrder": 4,
+  "subCategory": null,
+  "subCategoryOrder": 0,
   "order": 3,
   "sections": [
     {
       "heading": "Structures and Pointers",
-      "body": "You can use pointers with structs to make your code more efficient, especially when passing structs to functions or changing their values.\n\nTo use a pointer to a struct, just add the * symbol, like you would with other data types.\n\nTo access its members, you must use the -> operator instead of the dot . syntax:",
-      "code": "// Define a struct\nstruct Car {\n  char brand[30];\n  int year;\n};\n\nint main() {\n  struct Car car = {\"Toyota\", 2020};\n\n  // Declare a pointer to the struct\n  struct Car *ptr = &car;\n\n  // Access members using the -> operator\n  printf(\"Brand: %s\\n\", ptr->brand);\n  printf(\"Year: %d\\n\", ptr->year);\n\n  return 0;\n}"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "You can use pointers with structs to make your code more efficient, especially when passing structs to functions or changing their values."
+        },
+        {
+          "type": "text",
+          "content": "To use a pointer to a struct, just add the `*` symbol, like you would with other data types."
+        },
+        {
+          "type": "text",
+          "content": "To access its members, you must use the `->` operator instead of the dot `.` syntax:"
+        },
+        {
+          "type": "text",
+          "content": "**Try it Yourself »**"
+        }
+      ]
     },
     {
       "heading": "Passing Struct Pointers to Functions",
-      "body": "Here's how you can pass a struct pointer to a function and change its values:",
-      "code": "struct Car {\n  char brand[30];\n  int year;\n};\n\n// Function that takes a pointer to a Car struct and updates the year\nvoid updateYear(struct Car *c) {\n  c->year = 2025;  // Change the year\n}\n\nint main() {\n  struct Car myCar = {\"Toyota\", 2020};\n\n  updateYear(&myCar);  // Pass a pointer so the function can change the year\n\n  printf(\"Brand: %s\\n\", myCar.brand);\n  printf(\"Year: %d\\n\", myCar.year);\n\n  return 0;\n}"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Here's how you can pass a struct pointer to a function and change its values:"
+        },
+        {
+          "type": "text",
+          "content": "**Try it Yourself »**"
+        }
+      ]
     },
     {
       "heading": "Why Use Struct Pointers?",
-      "body": "Using pointers with structs is helpful when:\n\n- You want to avoid copying large amounts of data.\n Instead of copying a whole struct, you can just pass a pointer. This makes your program faster and uses less memory.\n- You want to change values inside a function.\n If you pass a pointer to a struct into a function, the function can change the original values.\n- You want to create structs dynamically using memory allocation.\n With pointers, you can use malloc() to create structs while the program is running.\n You will learn more about memory management in a later chapter.\n\nTip: If you're working with big programs or many values, struct pointers can help make your code cleaner and more efficient.",
-      "code": ""
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Using pointers with structs is helpful when:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "**You want to avoid copying large amounts of data.** Instead of copying a whole struct, you can just pass a pointer. This makes your program faster and uses less memory.",
+            "**You want to change values inside a function.** If you pass a pointer to a struct into a function, the function can change the original values.",
+            "**You want to create structs dynamically using memory allocation.** With pointers, you can use `malloc()` to create structs while the program is running. You will learn more about memory management in a later chapter."
+          ]
+        },
+        {
+          "type": "text",
+          "content": "**Tip:** If you're working with big programs or many values, struct pointers can help make your code cleaner and more efficient."
+        }
+      ]
     }
-  ],
-  "subCategory": null,
-  "subCategoryOrder": 0
+  ]
 }

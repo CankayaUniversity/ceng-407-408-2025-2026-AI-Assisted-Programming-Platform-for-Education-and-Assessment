@@ -4,19 +4,83 @@
   "title": "C Statements",
   "category": "C Tutorial",
   "categoryOrder": 1,
+  "subCategory": "Syntax",
+  "subCategoryOrder": 1,
   "order": 2,
   "sections": [
     {
       "heading": "Statements",
-      "body": "A computer program is a list of instructions that a computer follows.\n\nIn C, these instructions are called statements.\n\nThe following statement tells the program to print the text Hello World! to the screen:\n\nEvery statement in C must end with a semicolon ;.\n\nIf you forget the semicolon, the compiler will show an error and the program will not run:",
-      "code": "  printf(\"Hello World!\");\n\n  printf(\"Hello World!\")"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "A **computer program** is a list of instructions that a computer follows."
+        },
+        {
+          "type": "text",
+          "content": "In C, these instructions are called **statements**."
+        },
+        {
+          "type": "text",
+          "content": "The following statement tells the program to print the text `Hello World!` to the screen:"
+        },
+        {
+          "type": "code",
+          "content": "  printf(\"Hello World!\");"
+        },
+        {
+          "type": "text",
+          "content": "Every statement in C must end with a semicolon `;`."
+        },
+        {
+          "type": "text",
+          "content": "If you forget the semicolon, the compiler will show an error and the program will not run:"
+        },
+        {
+          "type": "code",
+          "content": "  printf(\"Hello World!\")"
+        }
+      ]
     },
     {
       "heading": "Many Statements",
-      "body": "Most C programs contain more than one statement.\n\nStatements are executed one by one, in the same order as they are written:\n\nThis program contains three statements:\n\n- printf(\"Hello World!\");\n- printf(\"Have a good day!\");\n- return 0;\n\nThe first statement runs first and prints Hello World!.\nThen the second statement runs and prints Have a good day!.\nFinally, the last statement runs and ends the program.\n\nRemember: Each statement is one instruction, and it must end with a semicolon.\n\nComing up: The next chapter will show you how to control output and add new lines.",
-      "code": "  printf(\"Hello World!\");\n\n  printf(\"Have a good day!\");\n\n  return 0;"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Most C programs contain more than one statement."
+        },
+        {
+          "type": "text",
+          "content": "Statements are executed one by one, in the same order as they are written:"
+        },
+        {
+          "type": "code",
+          "content": "  printf(\"Hello World!\");\n\n  printf(\"Have a good day!\");\n\n  return 0;"
+        },
+        {
+          "type": "text",
+          "content": "This program contains three statements:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "`printf(\"Hello World!\");`",
+            "`printf(\"Have a good day!\");`",
+            "`return 0;`"
+          ]
+        },
+        {
+          "type": "text",
+          "content": "The first statement runs first and prints `Hello World!`. Then the second statement runs and prints `Have a good day!`. Finally, the last statement runs and ends the program."
+        },
+        {
+          "type": "text",
+          "content": "**Remember:** Each statement is one instruction, and it must end with a semicolon."
+        },
+        {
+          "type": "text",
+          "content": "**Coming up:** The next chapter will show you how to control output and add new lines."
+        }
+      ]
     }
-  ],
-  "subCategory": "Syntax",
-  "subCategoryOrder": 1
+  ]
 }

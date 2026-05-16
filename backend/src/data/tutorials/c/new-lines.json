@@ -4,14 +4,54 @@
   "title": "C New Lines",
   "category": "C Tutorial",
   "categoryOrder": 1,
+  "subCategory": "Output",
+  "subCategoryOrder": 2,
   "order": 2,
   "sections": [
     {
       "heading": "New Lines",
-      "body": "To start a new line when printing text, you can use the \\n character:\n\nYou can also print multiple lines using a single printf() function.\nHowever, this could make the code harder to read:\n\nTip: Two \\n characters in a row will create a blank line:\n\n\\n is called an escape sequence.\n\nEscape sequences start with a backslash and represent special characters that cannot be typed directly.\n\nIn this case, \\n tells the program to move the cursor to the beginning of the next line.\n\nHere are some other common escape sequences:\n\nEscape Sequence | Description | Try it\n\\t | Inserts a horizontal tab | \n\\\\ | Inserts a backslash character (\\) | \n\\\" | Inserts a double quote character |",
-      "code": "  #include <stdio.h>\n\nint main() {\n  printf(\"Hello World!\\n\");\n\n  printf(\"I am learning C.\");\n  return 0;\n}\n\n  #include <stdio.h>\n\nint main() {\n  printf(\"Hello World!\\nI\n  am learning C.\\nAnd it is awesome!\");\n  return 0;\n}\n\n  #include <stdio.h>\n\nint main() {\n  printf(\"Hello World!\\n\\n\");\n\n  printf(\"I am learning C.\");\n  return 0;\n}"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "To start a new line when printing text, you can use the `\\n` character:"
+        },
+        {
+          "type": "code",
+          "content": "  #include <stdio.h>\n\nint main() {\n  printf(\"Hello World!\\n\");\n \n  printf(\"I am learning C.\");\n  return 0;\n}"
+        },
+        {
+          "type": "text",
+          "content": "You can also print multiple lines using a single `printf()` function. However, this could make the code harder to read:"
+        },
+        {
+          "type": "code",
+          "content": "  #include <stdio.h>\n\nint main() {\n  printf(\"Hello World!\\nI\n  am learning C.\\nAnd it is awesome!\");\n  return 0;\n}"
+        },
+        {
+          "type": "text",
+          "content": "**Tip:** Two `\\n` characters in a row will create a blank line:"
+        },
+        {
+          "type": "code",
+          "content": "  #include <stdio.h>\n\nint main() {\n  printf(\"Hello World!\\n\\n\");\n \n  printf(\"I am learning C.\");\n  return 0;\n}"
+        },
+        {
+          "type": "text",
+          "content": "`\\n` is called an **escape sequence**."
+        },
+        {
+          "type": "text",
+          "content": "Escape sequences start with a backslash and represent special characters that cannot be typed directly."
+        },
+        {
+          "type": "text",
+          "content": "In this case, `\\n` tells the program to move the cursor to the beginning of the next line."
+        },
+        {
+          "type": "text",
+          "content": "Here are some other common escape sequences:"
+        }
+      ]
     }
-  ],
-  "subCategory": "Output",
-  "subCategoryOrder": 2
+  ]
 }

@@ -4,34 +4,105 @@
   "title": "C Unions",
   "category": "C Structures",
   "categoryOrder": 4,
+  "subCategory": null,
+  "subCategoryOrder": 0,
   "order": 4,
   "sections": [
     {
       "heading": "C Unions",
-      "body": "A union is similar to a struct in that it can store members of different data types.\n\nHowever, there are some differences:\n\n- In a struct, each member has its own memory.\n- In a union, all members share the same memory, which means you can only use one of the values at a time.\n\nMost of the time, you will use structs instead of unions, as it can store and access multiple values at the same time, which is more common in everyday programs.\n\nHowever, unions are useful when you only need to store one of several possible types at a time, and you want to save memory.",
-      "code": ""
+      "blocks": [
+        {
+          "type": "text",
+          "content": "A `union` is similar to a `struct` in that it can store members of different data types."
+        },
+        {
+          "type": "text",
+          "content": "However, there are some differences:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "In a `struct`, each member has its own memory.",
+            "In a `union`, all members **share the same memory**, which means you can only use one of the values at a time."
+          ]
+        },
+        {
+          "type": "text",
+          "content": "Most of the time, you will use structs instead of unions, as it can store and access multiple values at the same time, which is more common in everyday programs."
+        },
+        {
+          "type": "text",
+          "content": "However, unions are useful when you only need to store one of several possible types at a time, and you want to save memory."
+        }
+      ]
     },
     {
       "heading": "Declare a Union",
-      "body": "To create a union, use the union \nkeyword, and then create a variable from it (just like with structs):",
-      "code": "    union\n    myUnion {        // Union declaration\n  int myNum;           // Member\n    (int)\n  char myLetter;       // Member (char)\n  char myString[30];   // Member (char array)\n\n    };\n\nint main() {\n  union myUnion u1;\n    // Create a union variable with the name \"u1\":\n  return 0;\n}"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "To create a union, use the `union` keyword, and then create a variable from it (just like with structs):"
+        },
+        {
+          "type": "code",
+          "content": "    union \n    myUnion {        // Union declaration\n  int myNum;           // Member \n    (int)\n  char myLetter;       // Member (char)\n  char myString[30];   // Member (char array)\n\n    }; \n\nint main() {\n  union myUnion u1;  \n    // Create a union variable with the name \"u1\":\n  return 0;\n}"
+        }
+      ]
     },
     {
       "heading": "Access Union Members",
-      "body": "And just like with structs, to access members of a Union, use the dot . \nsyntax.\n\nImportant: Since all members share the same memory, changing one will affect the others. Only the last assigned member holds a valid value:",
-      "code": "    union myUnion {\n  int myNum;\n  char myLetter;\n  char\n    myString[30];\n};\n\n\nint main() {\n  union myUnion u1;\n\n  u1.myNum = 1000;\n\n\n  // Since this is the last value written to the union, myNum no\n    longer holds 1000 - its value is now invalid\n  u1.myLetter = 'A';\n\n\n  printf(\"myNum: %d\\n\", u1.myNum); // This value is no longer\n    reliable\n  printf(\"myLetter: %c\\n\", u1.myLetter); // Prints 'A'\n\n\n  return 0;\n}"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "And just like with structs, to access members of a Union, use the dot `.` syntax."
+        },
+        {
+          "type": "text",
+          "content": "**Important:** Since all members share the same memory, changing one will affect the others. Only the **last assigned member** holds a valid value:"
+        },
+        {
+          "type": "code",
+          "content": "    union myUnion {\n  int myNum;\n  char myLetter;\n  char \n    myString[30];\n};\n\nint main() {\n  union myUnion u1;\n\n  u1.myNum = 1000;\n\n  // Since this is the last value written to the union, myNum no \n    longer holds 1000 - its value is now invalid\n  u1.myLetter = 'A';\n\n  printf(\"myNum: %d\\n\", u1.myNum); // This value is no longer \n    reliable\n  printf(\"myLetter: %c\\n\", u1.myLetter); // Prints 'A'\n\n  return 0;\n}"
+        }
+      ]
     },
     {
       "heading": "Size of a Union",
-      "body": "The size of a union will always be the same as the size of its largest member:\n\nSince the largest member is 36 bytes, the entire union will also be \n36 bytes.\n\nIf it was a struct instead, the size would be 40 bytes:\nmyNum (4 bytes) + \nmyString (36 bytes) = \n40 bytes total",
-      "code": "    union myUnion {\n  int myNum;\n  char\n    myString[36];\n};\n\nint main() {\n  union myUnion u1;\n  printf(\"Size of\n    union: %zu bytes\\n\", sizeof(u1));\n  return 0;\n}"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "The size of a `union` will always be the same as the size of its largest member:"
+        },
+        {
+          "type": "code",
+          "content": "    union myUnion {\n  int myNum;\n  char \n    myString[36];\n};\n\nint main() {\n  union myUnion u1;\n  printf(\"Size of \n    union: %zu bytes\\n\", sizeof(u1));\n  return 0;\n}"
+        },
+        {
+          "type": "text",
+          "content": "Since the largest member is 36 bytes, the entire `union` will also be **36 bytes**."
+        },
+        {
+          "type": "text",
+          "content": "If it was a `struct` instead, the size would be 40 bytes: `myNum` (4 bytes) + `myString` (36 bytes) = **40 bytes total**"
+        }
+      ]
     },
     {
       "heading": "When to Use Unions",
-      "body": "Use unions when:\n\n- You need to store different types in the same location\n- You only use one type at a time\n- Saving memory is very important",
-      "code": ""
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Use unions when:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "You need to store different types in the same location",
+            "You only use one type at a time",
+            "Saving memory is very important"
+          ]
+        }
+      ]
     }
-  ],
-  "subCategory": null,
-  "subCategoryOrder": 0
+  ]
 }

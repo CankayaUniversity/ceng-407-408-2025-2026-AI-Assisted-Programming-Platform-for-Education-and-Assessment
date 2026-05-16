@@ -4,19 +4,43 @@
   "title": "C Logical Operators",
   "category": "C Tutorial",
   "categoryOrder": 1,
+  "subCategory": "Operators",
+  "subCategoryOrder": 5,
   "order": 5,
   "sections": [
     {
       "heading": "Logical Operators",
-      "body": "As with comparison operators, you can also test for true or false values with logical operators.\n\nLogical operators are used to determine the logic between variables or \nvalues, by combining multiple conditions:\n\nOperator | Name | Example | Description | Try it\n&& | AND | x < 5 &&  x < 10 | Returns 1 if both statements are true | \n|| | OR | x < 5 || x < 4 | Returns 1 if one of the statements is true | \n! | NOT | !(x < 5 && x < 10) | Reverse the result, returns 0 if the result is 1 |",
-      "code": ""
+      "blocks": [
+        {
+          "type": "text",
+          "content": "As with comparison operators, you can also test for true or false values with logical operators."
+        },
+        {
+          "type": "text",
+          "content": "Logical operators are used to determine the logic between variables or values, by combining multiple conditions:"
+        }
+      ]
     },
     {
       "heading": "Real-Life Example: Login Check",
-      "body": "The example below shows how logical operators can be used in a real situation, e.g. when checking login status and access rights:\n\nResult:\n\nRemember: in C, 1 means true and 0 means false. Logical operators often become easier to understand once you start using them inside if statements, which you will learn about in the upcoming chapters.",
-      "code": "int isLoggedIn = 1;\nint isAdmin = 0;\n\nprintf(\"Regular user: %d\\n\", isLoggedIn && !isAdmin);\nprintf(\"Has access: %d\\n\", isLoggedIn || isAdmin);\nprintf(\"Not logged in: %d\\n\", !isLoggedIn);"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "The example below shows how logical operators can be used in a real situation, e.g. when checking login status and access rights:"
+        },
+        {
+          "type": "text",
+          "content": "Result:"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        },
+        {
+          "type": "text",
+          "content": "Remember: in C, `1` means true and `0` means false. Logical operators often become easier to understand once you start using them inside `if` statements, which you will learn about in the upcoming chapters."
+        }
+      ]
     }
-  ],
-  "subCategory": "Operators",
-  "subCategoryOrder": 5
+  ]
 }

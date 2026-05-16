@@ -4,34 +4,146 @@
   "title": "C Function Parameters",
   "category": "C Functions",
   "categoryOrder": 2,
+  "subCategory": null,
+  "subCategoryOrder": 0,
   "order": 2,
   "sections": [
     {
       "heading": "Parameters and Arguments",
-      "body": "Information can be passed to functions as a parameter. Parameters act as \nvariables inside the function.\n\nParameters are specified after the function name, inside the parentheses.\nYou can add as many parameters as you want, just separate them with a comma:\n\nIn the example below, \nthe function takes a string of characters with name as \nparameter. When the function is called, we pass along a name, which is used \ninside the function to print \"Hello\" and the name of each person:\n\nWhen a parameter is passed to the function, it is called an argument. So, from the example above: \nname is a parameter, while Liam, Jenny and Anja are arguments.",
-      "code": "    returnType functionName(parameter1, parameter2, parameter3) {\n\n  // code to be executed\n}\n\n  void myFunction(char name[]) {\n  printf(\"Hello %s\\n\", name);\n}\n\nint main() {\n\n  myFunction(\"Liam\");\n  myFunction(\"Jenny\");\n\n  myFunction(\"Anja\");\n  return 0;\n}\n\n// Hello Liam\n\n  // Hello Jenny\n// Hello Anja"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Information can be passed to functions as a parameter. Parameters act as variables inside the function."
+        },
+        {
+          "type": "text",
+          "content": "Parameters are specified after the function name, inside the parentheses. You can add as many parameters as you want, just separate them with a comma:"
+        },
+        {
+          "type": "syntax",
+          "content": "    returnType functionName(parameter1, parameter2, parameter3) {\n  \n  // code to be executed\n}"
+        },
+        {
+          "type": "text",
+          "content": "In the example below, the function takes a string of characters with **name** as parameter. When the function is called, we pass along a name, which is used inside the function to print \"Hello\" and the name of each person:"
+        },
+        {
+          "type": "code",
+          "content": "  void myFunction(char name[]) {\n  printf(\"Hello %s\\n\", name);\n}\n\nint main() {\n  \n  myFunction(\"Liam\");\n  myFunction(\"Jenny\");\n  \n  myFunction(\"Anja\");\n  return 0;\n}\n\n// Hello Liam\n\n  // Hello Jenny\n// Hello Anja"
+        },
+        {
+          "type": "text",
+          "content": "When a **parameter** is passed to the function, it is called an **argument**. So, from the example above: `name` is a **parameter**, while `Liam`, `Jenny` and `Anja` are **arguments**."
+        }
+      ]
     },
     {
       "heading": "Multiple Parameters",
-      "body": "Inside the function, you can add as many parameters as you want:\n\nIf we consider the \"Calculate the Sum of Numbers\" example \nfrom the previous page, we can make a more sustainable program by using function parameters:\n\nNote that when you are working with multiple parameters, the function call must \nhave the same number of arguments as there are parameters, and the arguments must be passed in the same order.",
-      "code": "  void myFunction(char name[], int age) {\n  printf(\"Hello %s.\n  You are %d years old.\\n\", name, age);\n}\n\nint main() {\n\n  myFunction(\"Liam\", 3);\n  myFunction(\"Jenny\", 14);\n\n  myFunction(\"Anja\", 30);\n  return 0;\n}\n\n// Hello Liam.\n  You are 3 years old.\n//\n  Hello Jenny. You are 14 years old.\n\n  // Hello Anja. You are 30 years old.\n\n  void calculateSum(int x, int y) {\n  int sum = x + y;\n\n  printf(\"The sum of %d + %d is: %d\\n\", x, y, sum);\n}\n\nint main() {\n\n  calculateSum(5, 3);\n  calculateSum(8, 2);\n  calculateSum(15,\n  15);\n  return 0;\n}"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Inside the function, you can add as many parameters as you want:"
+        },
+        {
+          "type": "code",
+          "content": "  void myFunction(char name[], int age) {\n  printf(\"Hello %s. \n  You are %d years old.\\n\", name, age);\n}\n\nint main() {\n  \n  myFunction(\"Liam\", 3);\n  myFunction(\"Jenny\", 14);\n  \n  myFunction(\"Anja\", 30);\n  return 0;\n}\n\n// Hello Liam. \n  You are 3 years old.\n// \n  Hello Jenny. You are 14 years old.\n\n  // Hello Anja. You are 30 years old."
+        },
+        {
+          "type": "text",
+          "content": "If we consider the \"**Calculate the Sum of Numbers**\" example from the previous page, we can make a more sustainable program by using function parameters:"
+        },
+        {
+          "type": "code",
+          "content": "  void calculateSum(int x, int y) {\n  int sum = x + y;\n  \n  printf(\"The sum of %d + %d is: %d\\n\", x, y, sum);\n}\n\nint main() {\n  \n  calculateSum(5, 3);\n  calculateSum(8, 2);\n  calculateSum(15, \n  15);\n  return 0;\n}"
+        },
+        {
+          "type": "text",
+          "content": "Note that when you are working with multiple parameters, the function call must have the same number of arguments as there are parameters, and the arguments must be passed in the same order."
+        }
+      ]
     },
     {
       "heading": "Pass Arrays as Function Parameters",
-      "body": "You can also pass arrays to a function:\n\nThe function (myFunction) takes an array as its parameter (int myNumbers[5]), and loops through the array elements with the for loop.\n\nWhen the function is called inside main(), we pass along the myNumbers \n array, which outputs the array elements.\n\nNote that when you call the function, you only need to use the name of the array when passing it as an argument myFunction(myNumbers). However, the full declaration of the array is needed in the function parameter (int myNumbers[5]).",
-      "code": "  void myFunction(int myNumbers[5]) {\n  for (int i = 0; i < 5; i++) {\n\n  printf(\"%d\\n\", myNumbers[i]);\n  }\n}\n\nint main() {\n  int\n  myNumbers[5] = {10, 20, 30, 40, 50};\n  myFunction(myNumbers);\n\n  return 0;\n}"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "You can also pass arrays to a function:"
+        },
+        {
+          "type": "code",
+          "content": "  void myFunction(int myNumbers[5]) {\n  for (int i = 0; i < 5; i++) {\n    \n  printf(\"%d\\n\", myNumbers[i]);\n  }\n}\n\nint main() {\n  int \n  myNumbers[5] = {10, 20, 30, 40, 50}; \n  myFunction(myNumbers);\n  \n  return 0;\n}"
+        },
+        {
+          "type": "text",
+          "content": "The function (`myFunction`) takes an array as its parameter (`int myNumbers[5]`), and loops through the array elements with the `for` loop."
+        },
+        {
+          "type": "text",
+          "content": "When the function is called inside `main()`, we pass along the `myNumbers` array, which outputs the array elements."
+        },
+        {
+          "type": "text",
+          "content": "**Note** that when you call the function, you only need to use the name of the array when passing it as an argument `myFunction(myNumbers)`. However, the full declaration of the array is needed in the function parameter (`int myNumbers[5]`)."
+        }
+      ]
     },
     {
       "heading": "Return Values",
-      "body": "The void keyword, used in the previous examples, indicates that the \nfunction should not return a value. If you \nwant the function to return a value, you can use a data type (such as int \nor \nfloat, etc.) instead of void, and use the return \nkeyword inside the function:\n\nThis example returns the sum of a function with two parameters:\n\nYou can also store the result in a variable:\n\nIf we consider the \"Calculate the Sum of Numbers\" example one more time, we can use return \ninstead and store the results in different variables. This will make the program \neven more flexible and easier to control:\n\nTip: If you have many \"result variables\", it is better to store the results in an array:",
-      "code": "    int myFunction(int x) {\n  return 5 + x;\n}\n\nint main() {\n\n    printf(\"Result is: %d\", myFunction(3));\n  return 0;\n}\n\n// Outputs\n  8 (5 + 3)\n\n  int myFunction(int x, int y) {\n  return x + y;\n}\n\nint main()\n  {\n  printf(\"Result is: %d\", myFunction(5, 3));\n  return 0;\n\n  }\n\n\n  // Outputs 8 (5 + 3)\n\n  int myFunction(int x, int y) {\n  return x + y;\n}\n\nint main()\n  {\n  int result = myFunction(5, 3);\n  printf(\"Result is =\n  %d\", result);\n  return 0;\n}\n\n  // Outputs 8 (5 + 3)\n\n  int calculateSum(int x, int y) {\n  return x + y;\n}\n\nint main() {\n\n  int result1 = calculateSum(5, 3);\n  int result2 = calculateSum(8, 2);\n\n  int result3 = calculateSum(15, 15);\n\n  printf(\"Result1 is:\n  %d\\n\", result1);\n  printf(\"Result2 is: %d\\n\", result2);\n\n  printf(\"Result3 is: %d\\n\", result3);\n\n  return 0;\n}\n\n  int calculateSum(int x, int y) {\n  return x + y;\n}\n\nint main() {\n\n  // Create an array\n  int resultArr[6];\n\n  //\n  Call the function with different arguments and store the results in\n  the array\n  resultArr[0] = calculateSum(5, 3);\n  resultArr[1]\n  = calculateSum(8, 2);\n  resultArr[2] = calculateSum(15, 15);\n\n  resultArr[3] = calculateSum(9, 1);\n  resultArr[4] = calculateSum(7,\n  7);\n  resultArr[5] = calculateSum(1, 1);\n\n  for (int i = 0;\n  i < 6; i++) {\n    printf(\"Result%d is = %d\\n\", i + 1,\n  resultArr[i]);\n  }\n\n  return 0;\n}"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "The `void` keyword, used in the previous examples, indicates that the function should not return a value. If you want the function to return a value, you can use a data type (such as `int` or `float`, etc.) instead of `void`, and use the `return` keyword inside the function:"
+        },
+        {
+          "type": "code",
+          "content": "    int myFunction(int x) {\n  return 5 + x;\n}\n\nint main() {\n  \n    printf(\"Result is: %d\", myFunction(3));\n  return 0;\n}\n\n// Outputs \n  8 (5 + 3)"
+        },
+        {
+          "type": "text",
+          "content": "This example returns the sum of a function with **two parameters**:"
+        },
+        {
+          "type": "code",
+          "content": "  int myFunction(int x, int y) {\n  return x + y;\n}\n\nint main() \n  {\n  printf(\"Result is: %d\", myFunction(5, 3));\n  return 0;\n\n  }\n\n  // Outputs 8 (5 + 3)"
+        },
+        {
+          "type": "text",
+          "content": "You can also store the result in a variable:"
+        },
+        {
+          "type": "code",
+          "content": "  int myFunction(int x, int y) {\n  return x + y;\n}\n\nint main() \n  { \n  int result = myFunction(5, 3); \n  printf(\"Result is = \n  %d\", result);\n  return 0;\n}\n\n  // Outputs 8 (5 + 3)"
+        },
+        {
+          "type": "text",
+          "content": "If we consider the **\"Calculate the Sum of Numbers**\" example one more time, we can use `return` instead and store the results in different variables. This will make the program even more flexible and easier to control:"
+        },
+        {
+          "type": "code",
+          "content": "  int calculateSum(int x, int y) {\n  return x + y;\n}\n\nint main() {\n  \n  int result1 = calculateSum(5, 3);\n  int result2 = calculateSum(8, 2);\n  \n  int result3 = calculateSum(15, 15);\n\n  printf(\"Result1 is: \n  %d\\n\", result1);\n  printf(\"Result2 is: %d\\n\", result2);\n  \n  printf(\"Result3 is: %d\\n\", result3);\n\n  return 0;\n}"
+        },
+        {
+          "type": "text",
+          "content": "**Tip:** If you have many \"result variables\", it is better to store the results in an array:"
+        },
+        {
+          "type": "code",
+          "content": "  int calculateSum(int x, int y) {\n  return x + y;\n}\n\nint main() {\n  \n  // Create an array\n  int resultArr[6];\n\n  // \n  Call the function with different arguments and store the results in \n  the array\n  resultArr[0] = calculateSum(5, 3);\n  resultArr[1] \n  = calculateSum(8, 2);\n  resultArr[2] = calculateSum(15, 15);\n  \n  resultArr[3] = calculateSum(9, 1);\n  resultArr[4] = calculateSum(7, \n  7);\n  resultArr[5] = calculateSum(1, 1);\n\n  for (int i = 0; \n  i < 6; i++) {\n    printf(\"Result%d is = %d\\n\", i + 1, \n  resultArr[i]);\n  }\n\n  return 0;\n}"
+        }
+      ]
     },
     {
       "heading": "Real-Life Example",
-      "body": "To demonstrate a practical example of using functions, let's create a program that converts a value from fahrenheit to celsius:",
-      "code": "  // Function to convert Fahrenheit to Celsius\nfloat toCelsius(float\n  fahrenheit) {\n  return (5.0 / 9.0) * (fahrenheit - 32.0);\n}\n\n\n  int main() {\n  // Set a fahrenheit value\n  float f_value =\n  98.8;\n\n  // Call the function with the fahrenheit value\n\n  float result = toCelsius(f_value);\n\n  // Print the fahrenheit value\n\n  printf(\"Fahrenheit: %.2f\\n\", f_value);\n\n  // Print the result\n\n  printf(\"Convert Fahrenheit to Celsius: %.2f\\n\", result);\n\n  return\n  0;\n}"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "To demonstrate a practical example of using functions, let's create a program that converts a value from fahrenheit to celsius:"
+        },
+        {
+          "type": "code",
+          "content": "  // Function to convert Fahrenheit to Celsius\nfloat toCelsius(float \n  fahrenheit) {\n  return (5.0 / 9.0) * (fahrenheit - 32.0);\n}\n\n  int main() {\n  // Set a fahrenheit value\n  float f_value = \n  98.8;\n\n  // Call the function with the fahrenheit value\n  \n  float result = toCelsius(f_value);\n\n  // Print the fahrenheit value\n  \n  printf(\"Fahrenheit: %.2f\\n\", f_value);\n\n  // Print the result\n  \n  printf(\"Convert Fahrenheit to Celsius: %.2f\\n\", result);\n\n  return \n  0;\n}"
+        }
+      ]
     }
-  ],
-  "subCategory": null,
-  "subCategoryOrder": 0
+  ]
 }

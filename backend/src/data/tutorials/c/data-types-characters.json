@@ -4,19 +4,67 @@
   "title": "C Characters",
   "category": "C Tutorial",
   "categoryOrder": 1,
+  "subCategory": "Data Types",
+  "subCategoryOrder": 4,
   "order": 2,
   "sections": [
     {
       "heading": "The char Type",
-      "body": "The char data type is used to store a \nsingle character.\n\nThe character must be surrounded by single quotes, like 'A' or 'c', and we use the %c format specifier to print it:\n\nAlternatively, if you are familiar with ASCII, you can use ASCII values to display certain characters. Note that these values are not surrounded by quotes (''), \nas they are numbers:\n\nTip: A list of all ASCII values can be found in our ASCII Table Reference.",
-      "code": "  char myGrade = 'A';\n\n  printf(\"%c\", myGrade);\n\n  char a = 65, b = 66, c = 67;\n\n  printf(\"%c\", a);\nprintf(\"%c\", b);\nprintf(\"%c\", c);"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "The `char` data type is used to store a **single **character."
+        },
+        {
+          "type": "text",
+          "content": "The character must be surrounded by single quotes, like 'A' or 'c', and we use the `%c` format specifier to print it:"
+        },
+        {
+          "type": "code",
+          "content": "  char myGrade = 'A';\n\n  printf(\"%c\", myGrade);"
+        },
+        {
+          "type": "text",
+          "content": "Alternatively, if you are familiar with ASCII, you can use ASCII values to display certain characters. Note that these values are not surrounded by quotes (`''`), as they are numbers:"
+        },
+        {
+          "type": "code",
+          "content": "  char a = 65, b = 66, c = 67;\n\n  printf(\"%c\", a);\nprintf(\"%c\", b);\nprintf(\"%c\", c);"
+        },
+        {
+          "type": "text",
+          "content": "**Tip:** A list of all ASCII values can be found in our ASCII Table Reference."
+        }
+      ]
     },
     {
       "heading": "Notes on Characters",
-      "body": "If you try to store more than a single character, it will only print the last \ncharacter:\n\nNote: Don't use the char type for storing multiple \ncharacters, as it may produce errors.\n\nTo store multiple characters (or whole words), use strings (which you will learn more about in a later chapter):\n\nFor now, just know that we use strings for storing multiple characters/text, and the char type for single characters.",
-      "code": "  char myText = 'Hello';\n\n  printf(\"%c\", myText);\n\n  char myText[] = \"Hello\";\nprintf(\"%s\", myText);"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "If you try to store more than a single character, it will only print the last character:"
+        },
+        {
+          "type": "code",
+          "content": "  char myText = 'Hello';\n\n  printf(\"%c\", myText);"
+        },
+        {
+          "type": "text",
+          "content": "**Note:** Don't use the `char` type for storing multiple characters, as it may produce errors."
+        },
+        {
+          "type": "text",
+          "content": "To store multiple characters (or whole words), use strings (which you will learn more about in a later chapter):"
+        },
+        {
+          "type": "code",
+          "content": "  char myText[] = \"Hello\";\nprintf(\"%s\", myText);"
+        },
+        {
+          "type": "text",
+          "content": "For now, just know that we use strings for storing multiple characters/text, and the char type for single characters."
+        }
+      ]
     }
-  ],
-  "subCategory": "Data Types",
-  "subCategoryOrder": 4
+  ]
 }

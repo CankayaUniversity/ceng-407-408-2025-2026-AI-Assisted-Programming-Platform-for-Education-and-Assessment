@@ -4,44 +4,148 @@
   "title": "C Strings",
   "category": "C Tutorial",
   "categoryOrder": 1,
+  "subCategory": "Strings",
+  "subCategoryOrder": 13,
   "order": 1,
   "sections": [
     {
       "heading": "Strings",
-      "body": "Strings are used for storing text/characters.\n\nFor example, \"Hello World\" is a string of characters.\n\nUnlike many other programming languages, C does not have a String type \nto easily create string variables. Instead, you must use the char type and create \nan array of characters to make a string in C:\n\nNote that you have to use double quotes (\"\").\n\nTo output the string, you can use the printf() function together with the format specifier %s to tell C that we are now working with strings:",
-      "code": "  char greetings[] = \"Hello World!\";\n\n  char greetings[] = \"Hello World!\";\n\n  printf(\"%s\", greetings);"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Strings are used for storing text/characters."
+        },
+        {
+          "type": "text",
+          "content": "For example, \"Hello World\" is a string of characters."
+        },
+        {
+          "type": "text",
+          "content": "Unlike many other programming languages, C does not have a **String type** to easily create string variables. Instead, you must use the `char` type and create an array of characters to make a string in C:"
+        },
+        {
+          "type": "code",
+          "content": "  char greetings[] = \"Hello World!\";"
+        },
+        {
+          "type": "text",
+          "content": "Note that you have to use double quotes (`\"\"`)."
+        },
+        {
+          "type": "text",
+          "content": "To output the string, you can use the `printf()` function together with the format specifier `%s` to tell C that we are now working with strings:"
+        },
+        {
+          "type": "code",
+          "content": "  char greetings[] = \"Hello World!\";\n\n  printf(\"%s\", greetings);"
+        }
+      ]
     },
     {
       "heading": "Access Strings",
-      "body": "Since strings are actually arrays in C, you can access a string by referring to its index number inside square brackets [].\n\nThis example prints the first character (0) in greetings:\n\nNote that we have to use the %c format specifier to print a \nsingle character.",
-      "code": "  char greetings[] = \"Hello World!\";\n\n  printf(\"%c\", greetings[0]);"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Since strings are actually arrays in C, you can access a string by referring to its index number inside square brackets `[]`."
+        },
+        {
+          "type": "text",
+          "content": "This example prints the **first character (0)** in **greetings**:"
+        },
+        {
+          "type": "code",
+          "content": "  char greetings[] = \"Hello World!\";\n\n  printf(\"%c\", greetings[0]);"
+        },
+        {
+          "type": "text",
+          "content": "Note that we have to use the `%c` format specifier to print a **single character**."
+        }
+      ]
     },
     {
       "heading": "Modify Strings",
-      "body": "To change the value of a specific character in a string, refer to the index number, and use \nsingle quotes:",
-      "code": "  char greetings[] = \"Hello World!\";\ngreetings[0] = 'J';\n\n  printf(\"%s\", greetings);\n// Outputs Jello World! instead of Hello\n  World!"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "To change the value of a specific character in a string, refer to the index number, and use **single quotes**:"
+        },
+        {
+          "type": "code",
+          "content": "  char greetings[] = \"Hello World!\";\ngreetings[0] = 'J';\n\n  printf(\"%s\", greetings);\n// Outputs Jello World! instead of Hello \n  World!"
+        }
+      ]
     },
     {
       "heading": "Loop Through a String",
-      "body": "You can also loop through the characters of a string, \nusing a for \nloop:\n\nAnd like we specified in the arrays loop chapter, you should use the sizeof formula (instead of manually \nwrite the size of the array in the loop condition (i \n< 5)) to make the loop more sustainable:",
-      "code": "  char carName[] = \"Volvo\";\nint i;\n\nfor (i = 0; i < 5; ++i) {\n\n  printf(\"%c\\n\", carName[i]);\n}\n\n  char carName[] = \"Volvo\";\nint length = sizeof(carName) /\n  sizeof(carName[0]);\nint i;\n\nfor (i = 0; i < length; ++i) {\n\n  printf(\"%c\\n\", carName[i]);\n}"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "You can also loop through the characters of a string, using a `for` loop:"
+        },
+        {
+          "type": "code",
+          "content": "  char carName[] = \"Volvo\";\nint i;\n\nfor (i = 0; i < 5; ++i) {\n  \n  printf(\"%c\\n\", carName[i]);\n}"
+        },
+        {
+          "type": "text",
+          "content": "And like we specified in the arrays loop chapter, you should use the *sizeof formula* (instead of manually write the size of the array in the loop condition `(i < 5)`) to make the loop more sustainable:"
+        },
+        {
+          "type": "code",
+          "content": "  char carName[] = \"Volvo\";\nint length = sizeof(carName) / \n  sizeof(carName[0]);\nint i;\n\nfor (i = 0; i < length; ++i) {\n  \n  printf(\"%c\\n\", carName[i]);\n}"
+        }
+      ]
     },
     {
       "heading": "Another Way Of Creating Strings",
-      "body": "In the examples above, we used a \"string literal\" to create a string \nvariable. This is the easiest way to create a string in C.\n\nYou should also note that you can create a string with a set of characters. This example will \nproduce the same result as the example in the beginning of this page:\n\nWhy do we include the \\0 character at the end? This is \nknown as the \"null terminating character\", and must be included when creating \nstrings using this method. It tells C that this is the end of the string.",
-      "code": "  char greetings[] = {'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd',\n  '!', '\\0'};\n\n  printf(\"%s\", greetings);"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "In the examples above, we used a \"string literal\" to create a string variable. This is the easiest way to create a string in C."
+        },
+        {
+          "type": "text",
+          "content": "You should also note that you can create a string with a set of characters. This example will produce the same result as the example in the beginning of this page:"
+        },
+        {
+          "type": "code",
+          "content": "  char greetings[] = {'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', \n  '!', '\\0'};\n\n  printf(\"%s\", greetings);"
+        },
+        {
+          "type": "text",
+          "content": "**Why do we include the `\\0` character at the end?** This is known as the \"null terminating character\", and must be included when creating strings using this method. It tells C that this is the end of the string."
+        }
+      ]
     },
     {
       "heading": "Differences",
-      "body": "The difference between the two ways of creating strings, is that the first method is easier \nto write, and you do not have to include the \\0 character, as C will do it for \nyou.\n\nYou should \nnote that the size of both arrays is the same: They both have 13 characters \n(space also counts as a character by the way), including the \\0 character:",
-      "code": "  char greetings[] = {'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd',\n  '!', '\\0'};\nchar greetings2[] = \"Hello World!\";\n\nprintf(\"%zu\\n\",\n  sizeof(greetings));   // Outputs 13\nprintf(\"%zu\\n\",\n  sizeof(greetings2));  // Outputs 13"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "The difference between the two ways of creating strings, is that the first method is easier to write, and you do not have to include the `\\0` character, as C will do it for you."
+        },
+        {
+          "type": "text",
+          "content": "You should note that the size of both arrays is the same: They both have **13 characters** (space also counts as a character by the way), including the `\\0` character:"
+        },
+        {
+          "type": "code",
+          "content": "  char greetings[] = {'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', \n  '!', '\\0'};\nchar greetings2[] = \"Hello World!\";\n\nprintf(\"%zu\\n\", \n  sizeof(greetings));   // Outputs 13\nprintf(\"%zu\\n\", \n  sizeof(greetings2));  // Outputs 13"
+        }
+      ]
     },
     {
       "heading": "Real-Life Example",
-      "body": "Use strings to create a simple welcome message:",
-      "code": "  char message[] = \"Good to see you,\";\nchar fname[] = \"John\";\n\nprintf(\"%s\n  %s!\", message, fname);"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Use strings to create a simple welcome message:"
+        },
+        {
+          "type": "code",
+          "content": "  char message[] = \"Good to see you,\";\nchar fname[] = \"John\";\n\nprintf(\"%s \n  %s!\", message, fname);"
+        }
+      ]
     }
-  ],
-  "subCategory": "Strings",
-  "subCategoryOrder": 13
+  ]
 }

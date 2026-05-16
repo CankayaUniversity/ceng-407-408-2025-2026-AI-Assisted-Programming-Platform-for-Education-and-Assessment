@@ -4,14 +4,48 @@
   "title": "C Operators",
   "category": "C Tutorial",
   "categoryOrder": 1,
+  "subCategory": "Operators",
+  "subCategoryOrder": 5,
   "order": 1,
   "sections": [
     {
       "heading": "Operators",
-      "body": "Operators are used to perform operations on variables and values.\n\nIn the example below, we use the\n+ operator to add together two values:\n\nAlthough the + operator is often used to add together two values, like in the example above, it can also be used to add together a variable and a value, or a variable and another variable:\n\nC divides the operators into the following groups:\n\n- Arithmetic operators\n- Assignment operators\n- Comparison operators\n- Logical operators\n- Bitwise operators (advanced)",
-      "code": "  int myNum = 100 + 50;\n\n  int sum1 = 100 + 50;\n  // 150 (100 + 50)\n\n  int sum2 = sum1 + 250;      // 400 (150 + 250)\n\n  int sum3 = sum2 + sum2;     // 800 (400 + 400)"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Operators are used to perform operations on variables and values."
+        },
+        {
+          "type": "text",
+          "content": "In the example below, we use the `+` **operator** to add together two values:"
+        },
+        {
+          "type": "code",
+          "content": "  int myNum = 100 + 50;"
+        },
+        {
+          "type": "text",
+          "content": "Although the `+` operator is often used to add together two values, like in the example above, it can also be used to add together a variable and a value, or a variable and another variable:"
+        },
+        {
+          "type": "code",
+          "content": "  int sum1 = 100 + 50;        \n  // 150 (100 + 50)\n\n  int sum2 = sum1 + 250;      // 400 (150 + 250)\n\n  int sum3 = sum2 + sum2;     // 800 (400 + 400)"
+        },
+        {
+          "type": "text",
+          "content": "C divides the operators into the following groups:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "Arithmetic operators",
+            "Assignment operators",
+            "Comparison operators",
+            "Logical operators",
+            "Bitwise operators (advanced)"
+          ]
+        }
+      ]
     }
-  ],
-  "subCategory": "Operators",
-  "subCategoryOrder": 5
+  ]
 }

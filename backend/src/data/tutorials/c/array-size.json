@@ -4,19 +4,67 @@
   "title": "C Array Size",
   "category": "C Tutorial",
   "categoryOrder": 1,
+  "subCategory": "Arrays",
+  "subCategoryOrder": 12,
   "order": 2,
   "sections": [
     {
       "heading": "Get Array Size",
-      "body": "To get the size of an array, you can use the sizeof operator:\n\nNote: Why did the result show 20 instead of 5, when the array contains 5 elements?\n\n- It is because the sizeof operator returns the size of a type in \nbytes.\n\nYou learned from the Data Types chapter that an int type is usually 4 bytes, so from the example above, 4 x 5 \n(4 bytes x 5 elements) = 20 bytes.\n\nKnowing the memory size of an array is great when you are working with \nlarger programs that require good memory management.\n\nBut what if you just wanted to know how many elements the array was storing?",
-      "code": "int myNumbers[] = {10, 25, 50, 75, 100};\n\nprintf(\"%zu\", sizeof(myNumbers));  // Prints 20"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "To get the size of an array, you can use the `sizeof` operator:"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        },
+        {
+          "type": "text",
+          "content": "**Note:** Why did the result show `20` instead of `5`, when the array contains 5 elements?"
+        },
+        {
+          "type": "text",
+          "content": "- It is because the `sizeof` operator returns the size of a type in **bytes**."
+        },
+        {
+          "type": "text",
+          "content": "You learned from the Data Types chapter that an `int` type is usually 4 bytes, so from the example above, 4 x 5 (*4 bytes x 5 elements*) = **20 bytes**."
+        },
+        {
+          "type": "text",
+          "content": "Knowing the memory size of an array is great when you are working with larger programs that require good memory management."
+        },
+        {
+          "type": "text",
+          "content": "But what if you just wanted to know how many elements the array was storing?"
+        }
+      ]
     },
     {
       "heading": "Get the Number of Elements",
-      "body": "If you want to find out how many elements an array has, you can use this formula, which divides the total size of the array by the size of one element:\n\nThe sizeof formula works for arrays of any type and any size:\n\nIn the next chapter, you will see how to use this formula to make loops that automatically adapt to the array size.",
-      "code": "int myNumbers[] = {10, 25, 50, 75, 100};\nint length = sizeof(myNumbers) / sizeof(myNumbers[0]);\n\nprintf(\"%d\", length);  // Prints 5\n\ndouble myValues[] = {1.1, 2.2, 3.3};\nint length = sizeof(myValues) / sizeof(myValues[0]);\n\nprintf(\"%d\", length);  // Prints 3"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "If you want to find out how many elements an array has, you can use this formula, which divides the total size of the array by the size of one element:"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        },
+        {
+          "type": "text",
+          "content": "The `sizeof` formula works for arrays of any type and any size:"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        },
+        {
+          "type": "text",
+          "content": "In the next chapter, you will see how to use this formula to make loops that automatically adapt to the array size."
+        }
+      ]
     }
-  ],
-  "subCategory": "Arrays",
-  "subCategoryOrder": 12
+  ]
 }

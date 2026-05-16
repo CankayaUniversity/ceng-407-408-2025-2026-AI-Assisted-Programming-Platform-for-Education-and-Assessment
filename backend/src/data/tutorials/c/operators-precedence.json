@@ -4,29 +4,81 @@
   "title": "C Operator Precedence",
   "category": "C Tutorial",
   "categoryOrder": 1,
+  "subCategory": "Operators",
+  "subCategoryOrder": 5,
   "order": 6,
   "sections": [
     {
       "heading": "Operator Precedence",
-      "body": "When a calculation contains more than one operator, C follows order of operations rules to decide which part to calculate first.\n\nFor example, multiplication happens before addition:",
-      "code": "int result1 = 2 + 3 * 4;     // 2 + 12 = 14\nint result2 = (2 + 3) * 4;   // 5 * 4 = 20\n\nprintf(\"%d\\n\", result1);\nprintf(\"%d\\n\", result2);"
-    },
-    {
-      "heading": "Why Does This Happen?",
-      "body": "In 2 + 3 * 4, the multiplication is done first, so the answer is 14.\n\nIf you want the addition to happen first, you must use parentheses: (2 + 3) * 4, which gives 20.\n\nTip: Always use parentheses ( ) if you want to make sure the calculation is done in the order you expect. It also makes your code easier to read.",
-      "code": ""
+      "blocks": [
+        {
+          "type": "text",
+          "content": "When a calculation contains more than one operator, C follows **order of operations** rules to decide which part to calculate first."
+        },
+        {
+          "type": "text",
+          "content": "For example, multiplication happens before addition:"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        },
+        {
+          "type": "text",
+          "content": "**Why Does This Happen?**"
+        },
+        {
+          "type": "text",
+          "content": "In `2 + 3 * 4`, the multiplication is done first, so the answer is `14`."
+        },
+        {
+          "type": "text",
+          "content": "If you want the addition to happen first, you must use parentheses: `(2 + 3) * 4`, which gives `20`."
+        },
+        {
+          "type": "text",
+          "content": "**Tip:** Always use parentheses `( )` if you want to make sure the calculation is done in the order you expect. It also makes your code easier to read."
+        }
+      ]
     },
     {
       "heading": "Order of Operations",
-      "body": "Here are some common operators in C, from highest to lowest priority:\n\n- () - Parentheses\n- *, /, % - Multiplication, Division, Modulus\n- +, - - Addition, Subtraction\n- >, <, >=, <= - Comparison\n- ==, != - Equality\n- && - Logical AND\n- || - Logical OR\n- = - Assignment",
-      "code": ""
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Here are some common operators in C, from highest to lowest priority:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "`()` - Parentheses",
+            "`*`, `/`, `%` - Multiplication, Division, Modulus",
+            "`+`, `-` - Addition, Subtraction",
+            "`>`, `<`, `>=`, `<=` - Comparison",
+            "`==`, `!=` - Equality",
+            "`&&` - Logical AND",
+            "`||` - Logical OR",
+            "`=` - Assignment"
+          ]
+        }
+      ]
     },
     {
       "heading": "Another Example",
-      "body": "Subtraction and addition are done from left to right, unless you add parentheses:\n\nRemember: Parentheses always come first. Use them to control the order of your calculations.",
-      "code": "int result1 = 10 - 2 + 5;    // (10 - 2) + 5 = 13\nint result2 = 10 - (2 + 5);  // 10 - 7 = 3\n\nprintf(\"%d\\n\", result1);\nprintf(\"%d\\n\", result2);"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Subtraction and addition are done from left to right, unless you add parentheses:"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        },
+        {
+          "type": "text",
+          "content": "**Remember:** Parentheses always come first. Use them to control the order of your calculations."
+        }
+      ]
     }
-  ],
-  "subCategory": "Operators",
-  "subCategoryOrder": 5
+  ]
 }

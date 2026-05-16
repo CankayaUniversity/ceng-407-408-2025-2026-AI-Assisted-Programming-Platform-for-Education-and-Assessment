@@ -4,24 +4,91 @@
   "title": "C Function Declaration",
   "category": "C Functions",
   "categoryOrder": 2,
+  "subCategory": null,
+  "subCategoryOrder": 0,
   "order": 4,
   "sections": [
     {
       "heading": "Function Declaration and Definition",
-      "body": "You have already learned from the previous chapters that you can create and call a function in the following way:\n\nA function consist of two parts:\n\n- Declaration: the function's name, return type, and parameters (if any)\n- Definition: the body of the function (code to be executed)\n\nFor code optimization, it is recommended to separate the declaration and the definition of the function.\n\nYou will often see C programs that have function declaration above main(), \nand function definition below main().\n\nThis will make the code \nbetter organized and easier to read:",
-      "code": "  // Create a function\nvoid myFunction() {\n  printf(\"I just got\n  executed!\");\n}\n\nint main() {\n\n  myFunction(); // call the function\n  return 0;\n}\n\n    void myFunction() { // declaration\n  //\n    the body of the function (definition)\n}\n\n  // Function declaration\nvoid myFunction();\n\n// The main method\nint main() {\n\n  myFunction();  // call the function\n  return 0;\n}\n\n// Function definition\nvoid myFunction() {\n\n  printf(\"I just got executed!\");\n}"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "You have already learned from the previous chapters that you can create and call a function in the following way:"
+        },
+        {
+          "type": "code",
+          "content": "  // Create a function\nvoid myFunction() {\n  printf(\"I just got \n  executed!\");\n}\n\nint main() {\n  \n  myFunction(); // call the function\n  return 0;\n}"
+        },
+        {
+          "type": "text",
+          "content": "A function consist of two parts:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "**Declaration:** the function's name, return type, and parameters (if any)",
+            "**Definition:** the body of the function (code to be executed)"
+          ]
+        },
+        {
+          "type": "code",
+          "content": "    void myFunction() { // declaration\n  // \n    the body of the function (definition)\n}"
+        },
+        {
+          "type": "text",
+          "content": "For code optimization, it is recommended to separate the declaration and the definition of the function."
+        },
+        {
+          "type": "text",
+          "content": "You will often see C programs that have function declaration above `main()`, and function definition below `main()`."
+        },
+        {
+          "type": "text",
+          "content": "This will make the code better organized and easier to read:"
+        },
+        {
+          "type": "code",
+          "content": "  // Function declaration\nvoid myFunction();\n\n// The main method\nint main() {\n  \n  myFunction();  // call the function\n  return 0;\n}\n\n// Function definition\nvoid myFunction() {\n  \n  printf(\"I just got executed!\");\n}"
+        }
+      ]
     },
     {
       "heading": "What About Parameters",
-      "body": "If we use the example from the function parameters chapter regarding parameters and return values:\n\nIt is considered good practice to write it like this instead:",
-      "code": "  int myFunction(int x, int y) {\n  return x + y;\n}\n\nint main()\n  {\n  int result = myFunction(5, 3);\n  printf(\"Result is =\n  %d\", result);\n  return 0;\n}\n\n  // Outputs 8 (5 + 3)\n\n  // Function declaration\nint myFunction(int x, int y);\n\n\n  // The main method\nint main() {\n  int result =\n  myFunction(5, 3); // call the function\n\n  printf(\"Result is = %d\", result);\n  return 0;\n}\n\n//\n  Function definition\nint myFunction(int x, int y) {\n\n  return x + y;\n}"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "If we use the example from the function parameters chapter regarding parameters and return values:"
+        },
+        {
+          "type": "code",
+          "content": "  int myFunction(int x, int y) {\n  return x + y;\n}\n\nint main() \n  { \n  int result = myFunction(5, 3); \n  printf(\"Result is = \n  %d\", result);\n  return 0;\n}\n\n  // Outputs 8 (5 + 3)"
+        },
+        {
+          "type": "text",
+          "content": "It is considered good practice to write it like this instead:"
+        },
+        {
+          "type": "code",
+          "content": "  // Function declaration\nint myFunction(int x, int y);\n\n  // The main method\nint main() { \n  int result = \n  myFunction(5, 3); // call the function\n  \n  printf(\"Result is = %d\", result);\n  return 0;\n}\n\n// \n  Function definition\nint myFunction(int x, int y) {\n  \n  return x + y;\n}"
+        }
+      ]
     },
     {
       "heading": "Functions Calling Other Functions",
-      "body": "As long as you declare functions first, it is also possible to use functions to call other functions:\n\nUse one function to call another function:",
-      "code": "  // Declare two functions, myFunction and myOtherFunction\nvoid\n  myFunction();\nvoid myOtherFunction();\n\nint main() {\n\n  myFunction(); // call myFunction (from main)\n  return 0;\n}\n\n// Define\n  myFunction\nvoid\n  myFunction() {\n  printf(\"Some text in myFunction\\n\");\n\n  myOtherFunction(); // call myOtherFunction (from myFunction)\n}\n\n// Define myOtherFunction\nvoid\n  myOtherFunction() {\n  printf(\"Hey! Some text in myOtherFunction\\n\");\n\n  }"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "As long as you declare functions first, it is also possible to use functions to call other functions:"
+        },
+        {
+          "type": "text",
+          "content": "Use one function to call another function:"
+        },
+        {
+          "type": "code",
+          "content": "  // Declare two functions, myFunction and myOtherFunction\nvoid \n  myFunction();\nvoid myOtherFunction();\n\nint main() {\n  \n  myFunction(); // call myFunction (from main)\n  return 0;\n}\n\n// Define \n  myFunction\nvoid \n  myFunction() {\n  printf(\"Some text in myFunction\\n\");\n  \n  myOtherFunction(); // call myOtherFunction (from myFunction)\n}\n\n// Define myOtherFunction\nvoid \n  myOtherFunction() {\n  printf(\"Hey! Some text in myOtherFunction\\n\");\n\n  }"
+        }
+      ]
     }
-  ],
-  "subCategory": null,
-  "subCategoryOrder": 0
+  ]
 }

@@ -4,19 +4,87 @@
   "title": "C Format Specifiers",
   "category": "C Tutorial",
   "categoryOrder": 1,
+  "subCategory": "Variables",
+  "subCategoryOrder": 3,
   "order": 2,
   "sections": [
     {
       "heading": "Format Specifiers",
-      "body": "Format specifiers are used together with the printf() function to print variables.\n\nYou can think of a format specifier as a placeholder that tells C what kind of value will be printed.\n\nA format specifier always starts with a percentage sign %, followed by a letter.\n\nFor example, to output the value of an int variable, \nuse the format \nspecifier %d surrounded by double quotes (\"\"), \ninside the printf() function:\n\nHow it works: %d tells C to expect an integer value, and myNum provides that value.\n\nDifferent data types use different format specifiers:\n\nTo combine both text and a variable, separate them with a comma inside the \nprintf() function:\n\nTo print different types in a single printf() function, you can use the \nfollowing:\n\nTip: Each format specifier must match the correct type of value.\n\nYou will learn more about data types later in this tutorial.",
-      "code": "  int myNum = 15;\n\n  printf(\"%d\", myNum); // Outputs 15\n\n  // Create variables\n\n  int myNum = 15;            // Integer (whole number)\n\n  float myFloatNum = 5.99;   // Floating point number\n\n  char myLetter = 'D';       // Character\n\n\n  // Print variables\n\n  printf(\"%d\\n\", myNum);\n\n  printf(\"%f\\n\", myFloatNum);\n\n  printf(\"%c\\n\", myLetter);\n\n  int myNum = 15;\n\n  printf(\"My favorite number is: %d\", myNum);\n\n  int myNum = 15;\n\n  char myLetter = 'D';\n\n  printf(\"My number is %d and my letter is %c\", myNum, myLetter);"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Format specifiers are used together with the `printf()` function to print variables."
+        },
+        {
+          "type": "text",
+          "content": "You can think of a format specifier as a **placeholder** that tells C what kind of value will be printed."
+        },
+        {
+          "type": "text",
+          "content": "A format specifier always starts with a percentage sign `%`, followed by a letter."
+        },
+        {
+          "type": "text",
+          "content": "For example, to output the value of an `int` variable, use the format specifier `%d` surrounded by double quotes (`\"\"`), inside the `printf()` function:"
+        },
+        {
+          "type": "code",
+          "content": "  int myNum = 15;\n\n  printf(\"%d\", myNum); // Outputs 15"
+        },
+        {
+          "type": "text",
+          "content": "**How it works:** `%d` tells C to expect an integer value, and `myNum` provides that value."
+        },
+        {
+          "type": "text",
+          "content": "Different data types use different format specifiers:"
+        },
+        {
+          "type": "code",
+          "content": "  // Create variables\n\n  int myNum = 15;            // Integer (whole number)\n\n  float myFloatNum = 5.99;   // Floating point number\n\n  char myLetter = 'D';       // Character\n\n  // Print variables\n\n  printf(\"%d\\n\", myNum);\n\n  printf(\"%f\\n\", myFloatNum);\n\n  printf(\"%c\\n\", myLetter);"
+        },
+        {
+          "type": "text",
+          "content": "To combine both text and a variable, separate them with a comma inside the ` printf()` function:"
+        },
+        {
+          "type": "code",
+          "content": "  int myNum = 15;\n\n  printf(\"My favorite number is: %d\", myNum);"
+        },
+        {
+          "type": "text",
+          "content": "To print different types in a single `printf()` function, you can use the following:"
+        },
+        {
+          "type": "code",
+          "content": "  int myNum = 15;\n\n  char myLetter = 'D';\n\n  printf(\"My number is %d and my letter is %c\", myNum, myLetter);"
+        },
+        {
+          "type": "text",
+          "content": "**Tip:** Each format specifier must match the correct type of value."
+        },
+        {
+          "type": "text",
+          "content": "You will learn more about data types later in this tutorial."
+        }
+      ]
     },
     {
       "heading": "Print Values Without Variables",
-      "body": "You can also print values directly without storing them in variables, as long as you use the correct format specifier:\n\nNote: Using variables is usually better, because the value can be reused and changed later.",
-      "code": "  printf(\"My favorite number is: %d\", 15);\n\n  printf(\"My favorite letter is: %c\", 'D');"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "You can also print values directly without storing them in variables, as long as you use the correct format specifier:"
+        },
+        {
+          "type": "code",
+          "content": "  printf(\"My favorite number is: %d\", 15);\n\n  printf(\"My favorite letter is: %c\", 'D');"
+        },
+        {
+          "type": "text",
+          "content": "**Note:** Using variables is usually better, because the value can be reused and changed later."
+        }
+      ]
     }
-  ],
-  "subCategory": "Variables",
-  "subCategoryOrder": 3
+  ]
 }

@@ -4,24 +4,102 @@
   "title": "C Pointer to Pointer",
   "category": "C Tutorial",
   "categoryOrder": 1,
+  "subCategory": "Memory & Pointers",
+  "subCategoryOrder": 14,
   "order": 6,
   "sections": [
     {
       "heading": "Pointer to Pointer",
-      "body": "You can also have a pointer that points to another pointer. \nThis is called a pointer to pointer (or \"double pointer\").\n\nIt might sound confusing at first, but it's just one more level of indirection: \na pointer that stores the address of another pointer.\n\nThink of it like this: \n A normal pointer is like a note with an address on it. \n A pointer to pointer is like another note telling you where that first note is kept.\n\nNote: \n Pointer to pointer is not something you need to use often as a beginner. \n However, you might see it in more advanced programs, \n so it's good to understand what it means and how it works.\n\nLet's look at a simple example to understand how this works:\n\nResult:\n\nHere's what happens step by step:\n\n- myNum holds the value 10.\n- ptr holds the address of myNum.\n- pptr holds the address of ptr.\n- *ptr gives the value of myNum.\n- **pptr also gives the value of myNum, by going through both pointers.\n\nSo:\n\n- *ptr = value of myNum\n- **pptr = value of myNum through both levels",
-      "code": "    int myNum = 10;       // normal variable\n\n    int *ptr = &myNum;    // pointer to int\n\n    int **pptr = &ptr;    // pointer to pointer\n\n\n    printf(\"myNum = %d\\n\", myNum);\n\n    printf(\"*ptr = %d\\n\", *ptr);\n\n    printf(\"**pptr = %d\\n\", **pptr);"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "You can also have a **pointer that points to another pointer**. This is called a **pointer to pointer** (or \"double pointer\")."
+        },
+        {
+          "type": "text",
+          "content": "It might sound confusing at first, but it's just one more level of indirection: a pointer that stores the *address of another pointer*."
+        },
+        {
+          "type": "text",
+          "content": "**Think of it like this:** A normal pointer is like a note with an address on it. A pointer to pointer is like another note telling you where that first note is kept."
+        },
+        {
+          "type": "text",
+          "content": "**Note:** Pointer to pointer is not something you need to use often as a beginner. However, you might see it in more advanced programs, so it's good to understand what it means and how it works."
+        },
+        {
+          "type": "text",
+          "content": "Let's look at a simple example to understand how this works:"
+        },
+        {
+          "type": "code",
+          "content": "    int myNum = 10;       // normal variable\n\n    int *ptr = &myNum;    // pointer to int\n\n    int **pptr = &ptr;    // pointer to pointer\n\n    printf(\"myNum = %d\\n\", myNum);\n\n    printf(\"*ptr = %d\\n\", *ptr);\n\n    printf(\"**pptr = %d\\n\", **pptr);"
+        },
+        {
+          "type": "text",
+          "content": "Result:"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        },
+        {
+          "type": "text",
+          "content": "Here's what happens step by step:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "`myNum` holds the value `10`.",
+            "`ptr` holds the address of `myNum`.",
+            "`pptr` holds the address of `ptr`.",
+            "`*ptr` gives the value of `myNum`.",
+            "`**pptr` also gives the value of `myNum`, by going through both pointers."
+          ]
+        },
+        {
+          "type": "text",
+          "content": "So:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "`*ptr` = value of `myNum`",
+            "`**pptr` = value of `myNum` through both levels"
+          ]
+        }
+      ]
     },
     {
       "heading": "Changing Values Through a Pointer to Pointer",
-      "body": "Since **pptr accesses the original variable, \nyou can use it to change the value of the variable too:",
-      "code": "    int myNum = 5;\n\n    int *ptr = &myNum;\n\n    int **pptr = &ptr;\n\n\n    **pptr = 20; // changes myNum\n\n\n    printf(\"myNum = %d\\n\", myNum); // prints 20"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Since `**pptr` accesses the original variable, you can use it to change the value of the variable too:"
+        },
+        {
+          "type": "code",
+          "content": "    int myNum = 5;\n\n    int *ptr = &myNum;\n\n    int **pptr = &ptr;\n\n    **pptr = 20; // changes myNum\n\n    printf(\"myNum = %d\\n\", myNum); // prints 20"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        }
+      ]
     },
     {
       "heading": "Summary",
-      "body": "- A pointer to pointer stores the address of another pointer.\n- *ptr gives the value of a variable.\n- **pptr gives the same value by following two levels of indirection.\n- They can be useful when passing pointers to functions or working with complex data structures.",
-      "code": ""
+      "blocks": [
+        {
+          "type": "list",
+          "items": [
+            "A **pointer to pointer** stores the address of another pointer.",
+            "`*ptr` gives the value of a variable.",
+            "`**pptr` gives the same value by following two levels of indirection.",
+            "They can be useful when passing pointers to functions or working with complex data structures."
+          ]
+        }
+      ]
     }
-  ],
-  "subCategory": "Memory & Pointers",
-  "subCategoryOrder": 14
+  ]
 }

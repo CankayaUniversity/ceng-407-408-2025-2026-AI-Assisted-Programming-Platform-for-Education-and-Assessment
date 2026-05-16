@@ -4,24 +4,68 @@
   "title": "C Memory Management",
   "category": "C Memory",
   "categoryOrder": 6,
+  "subCategory": null,
+  "subCategoryOrder": 0,
   "order": 1,
   "sections": [
     {
       "heading": "",
-      "body": "Memory management is the process of handling how much memory a program uses through different operations.",
-      "code": ""
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Memory management is the process of handling how much memory a program uses through different operations."
+        }
+      ]
     },
     {
       "heading": "Memory in C",
-      "body": "Understanding how memory works in C is important. When you create a basic variable, C will automatically reserve space for that variable. An int variable for example, will typically occupy 4 bytes of memory, while a double variable will occupy 8 bytes of memory.\n\nYou can use the sizeof operator to find the size of different types:\n\nWhy is it important to know?\n\nIf you create a program that occupies too much, or unnecessary memory, it can result in slow and poor performance.\n\nIn C, you have to manage memory yourself. It is a complicated task, but is also quite powerful when used correctly: Properly managing the computer memory optimizes the performance of the program, so it is useful that you know how to release memory when it is no longer required and only use as little as necessary for the task.\n\nIn previous chapters you learned about memory addresses and pointers.\n\nBoth have an importance when it comes to memory management, since it is possible to work directly with memory through pointers.\n\nBut be careful; pointers must be handled with care, since it is possible to damage data stored in other memory addresses.",
-      "code": "  int myInt;\nfloat myFloat;\ndouble myDouble;\nchar myChar;\n\n\nprintf(\"%zu\\n\", sizeof(myInt));      // 4 bytes\nprintf(\"%zu\\n\", sizeof(myFloat));\n  // 4 bytes\n\n  printf(\"%zu\\n\", sizeof(myDouble));   // 8 bytes\nprintf(\"%zu\\n\", sizeof(myChar));     // 1 byte"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Understanding how memory works in C is important. When you create a basic variable, C will automatically reserve space for that variable. An `int` variable for example, will typically occupy 4 bytes of memory, while a `double` variable will occupy 8 bytes of memory."
+        },
+        {
+          "type": "text",
+          "content": "You can use the `sizeof` operator to find the size of different types:"
+        },
+        {
+          "type": "code",
+          "content": "  int myInt;\nfloat myFloat;\ndouble myDouble;\nchar myChar;\n\nprintf(\"%zu\\n\", sizeof(myInt));      // 4 bytes\nprintf(\"%zu\\n\", sizeof(myFloat));    \n  // 4 bytes\n\n  printf(\"%zu\\n\", sizeof(myDouble));   // 8 bytes\nprintf(\"%zu\\n\", sizeof(myChar));     // 1 byte"
+        },
+        {
+          "type": "text",
+          "content": "**Why is it important to know?**"
+        },
+        {
+          "type": "text",
+          "content": "If you create a program that occupies too much, or unnecessary memory, it can result in slow and poor performance."
+        },
+        {
+          "type": "text",
+          "content": "In C, you have to manage memory yourself. It is a complicated task, but is also quite powerful when used correctly: Properly managing the computer memory optimizes the performance of the program, so it is useful that you know how to release memory when it is no longer required and only use as little as necessary for the task."
+        },
+        {
+          "type": "text",
+          "content": "In previous chapters you learned about **memory addresses** and **pointers**."
+        },
+        {
+          "type": "text",
+          "content": "Both have an importance when it comes to memory management, since it is possible to work directly with memory through **pointers**."
+        },
+        {
+          "type": "text",
+          "content": "But be careful; **pointers must be handled with care**, since it is possible to damage data stored in other memory addresses."
+        }
+      ]
     },
     {
       "heading": "Memory Management",
-      "body": "Memory management is the process of handling how much memory a program uses through allocation, reallocation and deallocation (often referred to as \"freeing\"). We will introduce each of these topics in the following chapters.",
-      "code": ""
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Memory management is the process of handling how much memory a program uses through allocation, reallocation and deallocation (often referred to as \"freeing\"). We will introduce each of these topics in the following chapters."
+        }
+      ]
     }
-  ],
-  "subCategory": null,
-  "subCategoryOrder": 0
+  ]
 }

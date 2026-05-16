@@ -4,49 +4,185 @@
   "title": "C Structures",
   "category": "C Structures",
   "categoryOrder": 4,
+  "subCategory": null,
+  "subCategoryOrder": 0,
   "order": 1,
   "sections": [
     {
       "heading": "Structures",
-      "body": "Structures (also called structs) are a way to group several related variables into one place.\n\nEach variable in the structure is \nknown as a member of the structure.\n\nUnlike an array, a structure can contain many \ndifferent data types (int, float, char, etc.).",
-      "code": ""
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Structures (also called structs) are a way to group several related variables into one place."
+        },
+        {
+          "type": "text",
+          "content": "Each variable in the structure is known as a **member** of the structure."
+        },
+        {
+          "type": "text",
+          "content": "Unlike an array, a structure can contain many different data types (`int`, `float`, `char`, etc.)."
+        }
+      ]
     },
     {
       "heading": "Create a Structure",
-      "body": "You can create a structure by using the struct \nkeyword and declare each of its members inside curly braces:\n\nTo access the structure, you must create a variable of it.\n\nUse the struct keyword \ninside the main() method, followed by the name \nof the structure and then the name of the structure variable:\n\nCreate a struct variable with the name \"s1\":",
-      "code": "  struct MyStructure {   // Structure declaration\n  int myNum;           // Member (int\n  variable)\n  char myLetter;       // Member (char variable)\n};\n  // End the structure with a semicolon\n\n  struct myStructure {\n  int myNum;\n  char myLetter;\n};\n\nint main()\n  {\n  struct myStructure s1;\n  return 0;\n}"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "You can create a structure by using the `struct` keyword and declare each of its members inside curly braces:"
+        },
+        {
+          "type": "code",
+          "content": "  struct MyStructure {   // Structure declaration\n  int myNum;           // Member (int \n  variable)\n  char myLetter;       // Member (char variable)\n}; \n  // End the structure with a semicolon"
+        },
+        {
+          "type": "text",
+          "content": "To access the structure, you must create a variable of it."
+        },
+        {
+          "type": "text",
+          "content": "Use the `struct` keyword inside the `main()` method, followed by the name of the structure and then the name of the structure variable:"
+        },
+        {
+          "type": "text",
+          "content": "Create a struct variable with the name \"s1\":"
+        },
+        {
+          "type": "code",
+          "content": "  struct myStructure {\n  int myNum;\n  char myLetter;\n};\n\nint main() \n  {\n  struct myStructure s1;\n  return 0;\n}"
+        }
+      ]
     },
     {
       "heading": "Access Structure Members",
-      "body": "To access members of a structure, use the dot syntax (.):\n\nNow you can easily create multiple structure variables with different values, using just one structure:",
-      "code": "    // Create a structure called myStructure\nstruct myStructure {\n\n    int myNum;\n  char myLetter;\n};\n\nint main() {\n  // Create a structure variable\n    of myStructure called s1\n  struct myStructure s1;\n\n\n  // Assign values to members of s1\n  s1.myNum = 13;\n\n    s1.myLetter = 'B';\n\n  // Print values\n  printf(\"My\n    number: %d\\n\", s1.myNum);\n  printf(\"My letter: %c\\n\", s1.myLetter);\n\n\n  return 0;\n}\n\n    // Create different struct variables\nstruct myStructure s1;\nstruct myStructure s2;\n\n\n// Assign values to different struct variables\ns1.myNum = 13;\ns1.myLetter = 'B';\n\n\ns2.myNum = 20;\ns2.myLetter = 'C';"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "To access members of a structure, use the dot syntax (`.`):"
+        },
+        {
+          "type": "code",
+          "content": "    // Create a structure called myStructure\nstruct myStructure {\n  \n    int myNum;\n  char myLetter;\n};\n\nint main() {\n  // Create a structure variable \n    of myStructure called s1\n  struct myStructure s1;\n\n  // Assign values to members of s1\n  s1.myNum = 13;\n  \n    s1.myLetter = 'B';\n\n  // Print values\n  printf(\"My \n    number: %d\\n\", s1.myNum);\n  printf(\"My letter: %c\\n\", s1.myLetter);\n\n  return 0;\n}"
+        },
+        {
+          "type": "text",
+          "content": "Now you can easily create multiple structure variables with different values, using just one structure:"
+        },
+        {
+          "type": "code",
+          "content": "    // Create different struct variables\nstruct myStructure s1;\nstruct myStructure s2;\n\n// Assign values to different struct variables\ns1.myNum = 13;\ns1.myLetter = 'B';\n\ns2.myNum = 20;\ns2.myLetter = 'C';"
+        }
+      ]
     },
     {
       "heading": "What About Strings in Structures?",
-      "body": "Remember that strings in C are actually an array of characters, and \nunfortunately, you can't assign a value to an array like this:\n\nAn error will occur:\n\nHowever, there is a solution for this! You can use the strcpy() \nfunction and assign the value to s1.myString, like this:\n\nResult:",
-      "code": "    struct myStructure {\n\n    int myNum;\n  char myLetter;\n  char myString[30];  //\n    String\n};\n\nint main() {\n  struct myStructure s1;\n\n\n    // Trying to assign a value to the string\n  s1.myString = \"Some text\";\n\n  // Trying to print the value\n  printf(\"My string: %s\",\n    s1.myString);\n\n  return 0;\n}\n\n    struct myStructure {\n  int myNum;\n  char myLetter;\n\n    char myString[30]; // String\n};\n\nint main() {\n\n    struct myStructure s1;\n\n  // Assign a value to the string using\n    the strcpy function\n  strcpy(s1.myString, \"Some text\");\n\n\n    // Print the value\n  printf(\"My string: %s\", s1.myString);\n\n\n    return 0;\n}"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Remember that strings in C are actually an array of characters, and unfortunately, you can't assign a value to an array like this:"
+        },
+        {
+          "type": "code",
+          "content": "    struct myStructure {\n  \n    int myNum;\n  char myLetter;\n  char myString[30];  // \n    String\n};\n\nint main() {\n  struct myStructure s1;\n\n    // Trying to assign a value to the string\n  s1.myString = \"Some text\";\n\n  // Trying to print the value\n  printf(\"My string: %s\", \n    s1.myString);\n\n  return 0;\n}"
+        },
+        {
+          "type": "text",
+          "content": "An error will occur:"
+        },
+        {
+          "type": "text",
+          "content": "However, there is a solution for this! You can use the `strcpy()` function and assign the value to `s1.myString`, like this:"
+        },
+        {
+          "type": "code",
+          "content": "    struct myStructure {\n  int myNum;\n  char myLetter;\n  \n    char myString[30]; // String\n};\n\nint main() {\n  \n    struct myStructure s1;\n\n  // Assign a value to the string using \n    the strcpy function\n  strcpy(s1.myString, \"Some text\");\n\n    // Print the value\n  printf(\"My string: %s\", s1.myString);\n\n    return 0;\n}"
+        },
+        {
+          "type": "text",
+          "content": "Result:"
+        }
+      ]
     },
     {
       "heading": "Simpler Syntax",
-      "body": "You can also assign values to members of a structure variable at declaration time, \nin a single line.\n\nJust insert the values in a comma-separated list\ninside curly braces {}. Note that you don't \nhave to use the strcpy() function for string \nvalues with this \ntechnique:\n\nNote: The order of the inserted values must match the order of \n the variable types declared in the structure (13 for int, 'B' for char, etc).",
-      "code": "    // Create a structure\nstruct myStructure {\n\n    int myNum;\n  char myLetter;\n  char myString[30];\n};\n\nint main() {\n\n      // Create a structure variable and assign values to it\n  struct myStructure s1 = {13,\n    'B', \"Some text\"};\n\n  // Print values\n  printf(\"%d %c %s\", s1.myNum, s1.myLetter,\n    s1.myString);\n\n\n  return 0;\n}"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "You can also assign values to members of a structure variable at declaration time, in a single line."
+        },
+        {
+          "type": "text",
+          "content": "Just insert the values in a comma-separated list inside curly braces `{}`. Note that you don't have to use the `strcpy()` function for string values with this technique:"
+        },
+        {
+          "type": "code",
+          "content": "    // Create a structure\nstruct myStructure {\n  \n    int myNum;\n  char myLetter;\n  char myString[30];\n};\n\nint main() {\n\n      // Create a structure variable and assign values to it\n  struct myStructure s1 = {13, \n    'B', \"Some text\"};\n\n  // Print values\n  printf(\"%d %c %s\", s1.myNum, s1.myLetter, \n    s1.myString);\n\n  return 0;\n}"
+        },
+        {
+          "type": "text",
+          "content": "**Note:** The order of the inserted values must match the order of the variable types declared in the structure (13 for int, 'B' for char, etc)."
+        }
+      ]
     },
     {
       "heading": "Copy Structures",
-      "body": "You can also assign one structure to another.\n\nIn the following example, the values of s1 are copied to s2:",
-      "code": "    struct myStructure s1 = {13, 'B', \"Some text\"};\nstruct myStructure s2;\n\n\ns2 = s1;"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "You can also assign one structure to another."
+        },
+        {
+          "type": "text",
+          "content": "In the following example, the values of s1 are copied to s2:"
+        },
+        {
+          "type": "code",
+          "content": "    struct myStructure s1 = {13, 'B', \"Some text\"};\nstruct myStructure s2;\n\ns2 = s1;"
+        }
+      ]
     },
     {
       "heading": "Modify Values",
-      "body": "If you want to change/modify a value, you can use the dot syntax (.).\n\nAnd to modify a \nstring value, the strcpy() function is useful again:\n\nModifying values are especially useful when you copy structure values:\n\nImagine you have to write a program to store different information about Cars, such as brand, model, \nand year. What's great about structures is that you can create a \nsingle \"Car template\" and use it for every cars you make. See below for a real life example.",
-      "code": "    struct myStructure {\n  int myNum;\n\n    char myLetter;\n  char myString[30];\n};\n\nint main() {\n\n    // Create a structure variable and assign values to it\n  struct\n    myStructure s1 = {13, 'B', \"Some text\"};\n\n  // Modify values\n\n    s1.myNum = 30;\n  s1.myLetter = 'C';\n  strcpy(s1.myString,\n    \"Something else\");\n\n  // Print values\n  printf(\"%d %c\n    %s\", s1.myNum, s1.myLetter, s1.myString);\n\n  return 0;\n}\n\n    // Create a structure variable and assign values to it\nstruct\n    myStructure s1 = {13, 'B', \"Some text\"};\n\n// Create another structure\n    variable\nstruct myStructure s2;\n\n// Copy s1 values to s2\ns2 =\n    s1;\n\n// Change s2 values\ns2.myNum = 30;\ns2.myLetter = 'C';\nstrcpy(s2.myString,\n    \"Something else\");\n\n// Print values\nprintf(\"%d %c\n    %s\\n\", s1.myNum, s1.myLetter, s1.myString);\nprintf(\"%d %c\n    %s\\n\", s2.myNum, s2.myLetter, s2.myString);"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "If you want to change/modify a value, you can use the dot syntax (`.`)."
+        },
+        {
+          "type": "text",
+          "content": "And to modify a string value, the `strcpy()` function is useful again:"
+        },
+        {
+          "type": "code",
+          "content": "    struct myStructure {\n  int myNum;\n  \n    char myLetter;\n  char myString[30];\n};\n\nint main() {\n  \n    // Create a structure variable and assign values to it\n  struct \n    myStructure s1 = {13, 'B', \"Some text\"};\n\n  // Modify values\n  \n    s1.myNum = 30;\n  s1.myLetter = 'C';\n  strcpy(s1.myString, \n    \"Something else\");\n\n  // Print values\n  printf(\"%d %c \n    %s\", s1.myNum, s1.myLetter, s1.myString);\n\n  return 0;\n}"
+        },
+        {
+          "type": "text",
+          "content": "Modifying values are especially useful when you copy structure values:"
+        },
+        {
+          "type": "code",
+          "content": "    // Create a structure variable and assign values to it\nstruct \n    myStructure s1 = {13, 'B', \"Some text\"};\n\n// Create another structure \n    variable\nstruct myStructure s2;\n\n// Copy s1 values to s2\ns2 = \n    s1;\n\n// Change s2 values\ns2.myNum = 30;\ns2.myLetter = 'C';\nstrcpy(s2.myString, \n    \"Something else\");\n\n// Print values\nprintf(\"%d %c \n    %s\\n\", s1.myNum, s1.myLetter, s1.myString);\nprintf(\"%d %c \n    %s\\n\", s2.myNum, s2.myLetter, s2.myString);"
+        },
+        {
+          "type": "text",
+          "content": "Imagine you have to write a program to store different information about Cars, such as brand, model, and year. What's great about structures is that you can create a single \"Car template\" and use it for every cars you make. See below for a real life example."
+        }
+      ]
     },
     {
       "heading": "Real-Life Example",
-      "body": "Use a structure to store different information about Cars:",
-      "code": "  struct Car {\n  char brand[30];\n  char model[30];\n  int\n  year;\n};\n\nint main() {\n  struct Car car1 = {\"BMW\", \"X5\",\n  1999};\n  struct Car car2 = {\"Ford\", \"Mustang\", 1969};\n  struct\n  Car car3 = {\"Toyota\", \"Corolla\", 2011};\n\n  printf(\"%s %s %d\\n\",\n  car1.brand, car1.model, car1.year);\n  printf(\"%s %s %d\\n\", car2.brand,\n  car2.model, car2.year);\n  printf(\"%s %s %d\\n\", car3.brand, car3.model,\n  car3.year);\n\n  return 0;\n}"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Use a structure to store different information about Cars:"
+        },
+        {
+          "type": "code",
+          "content": "  struct Car {\n  char brand[30];\n  char model[30];\n  int \n  year;\n};\n\nint main() {\n  struct Car car1 = {\"BMW\", \"X5\", \n  1999};\n  struct Car car2 = {\"Ford\", \"Mustang\", 1969};\n  struct \n  Car car3 = {\"Toyota\", \"Corolla\", 2011};\n\n  printf(\"%s %s %d\\n\", \n  car1.brand, car1.model, car1.year);\n  printf(\"%s %s %d\\n\", car2.brand, \n  car2.model, car2.year);\n  printf(\"%s %s %d\\n\", car3.brand, car3.model, \n  car3.year);\n\n  return 0;\n}"
+        }
+      ]
     }
-  ],
-  "subCategory": null,
-  "subCategoryOrder": 0
+  ]
 }

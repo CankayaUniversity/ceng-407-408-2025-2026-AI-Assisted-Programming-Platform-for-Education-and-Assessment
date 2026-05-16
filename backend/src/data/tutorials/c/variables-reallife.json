@@ -4,19 +4,55 @@
   "title": "C Variables Real-Life",
   "category": "C Tutorial",
   "categoryOrder": 1,
+  "subCategory": "Variables",
+  "subCategoryOrder": 3,
   "order": 6,
   "sections": [
     {
       "heading": "Real-Life Example",
-      "body": "Often in our examples, we simplify variable names to match their data type (myInt \nor myNum for int types, myChar for char types, \nand so on). This is done to avoid confusion.\n\nIn real programs, variables often represent real-world data.\n\nThe following example stores information about a college student:\n\nNotice: Each variable stores a different type of information, but they are all used together in one program.",
-      "code": "  // Student data\n\n  int studentID = 15;\n\n  int studentAge = 23;\n\n  float studentFee = 75.25;\n\n  char studentGrade = 'B';\n\n\n  // Print variables\n\n  printf(\"Student ID: %d\\n\", studentID);\n\n  printf(\"Student age: %d\\n\", studentAge);\n\n  printf(\"Student fee: %f\\n\", studentFee);\n\n  printf(\"Student grade: %c\", studentGrade);"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Often in our examples, we simplify variable names to match their data type (myInt or myNum for `int` types, myChar for `char` types, and so on). This is done to avoid confusion."
+        },
+        {
+          "type": "text",
+          "content": "In real programs, variables often represent real-world data."
+        },
+        {
+          "type": "text",
+          "content": "The following example stores information about a college student:"
+        },
+        {
+          "type": "code",
+          "content": "  // Student data\n\n  int studentID = 15;\n\n  int studentAge = 23;\n\n  float studentFee = 75.25;\n\n  char studentGrade = 'B';\n\n  // Print variables\n\n  printf(\"Student ID: %d\\n\", studentID);\n\n  printf(\"Student age: %d\\n\", studentAge);\n\n  printf(\"Student fee: %f\\n\", studentFee);\n\n  printf(\"Student grade: %c\", studentGrade);"
+        },
+        {
+          "type": "text",
+          "content": "**Notice:** Each variable stores a different type of information, but they are all used together in one program."
+        }
+      ]
     },
     {
       "heading": "Calculate the Area of a Rectangle",
-      "body": "Variables are often used to store values, perform calculations, and then show the result.\n\nIn this example, we calculate the area of a rectangle:\n\nTip: Calculations are usually done first, and the result is stored in a variable before being printed.",
-      "code": "  // Create variables\n\n  int length = 4;\n\n  int width = 6;\n\n  int area;\n\n\n  // Calculate the area\n\n  area = length * width;\n\n\n  // Print the result\n\n  printf(\"Length is: %d\\n\", length);\n\n  printf(\"Width is: %d\\n\", width);\n\n  printf(\"Area of the rectangle is: %d\", area);"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Variables are often used to store values, perform calculations, and then show the result."
+        },
+        {
+          "type": "text",
+          "content": "In this example, we calculate the area of a rectangle:"
+        },
+        {
+          "type": "code",
+          "content": "  // Create variables\n\n  int length = 4;\n\n  int width = 6;\n\n  int area;\n\n  // Calculate the area\n\n  area = length * width;\n\n  // Print the result\n\n  printf(\"Length is: %d\\n\", length);\n\n  printf(\"Width is: %d\\n\", width);\n\n  printf(\"Area of the rectangle is: %d\", area);"
+        },
+        {
+          "type": "text",
+          "content": "**Tip:** Calculations are usually done first, and the result is stored in a variable before being printed."
+        }
+      ]
     }
-  ],
-  "subCategory": "Variables",
-  "subCategoryOrder": 3
+  ]
 }

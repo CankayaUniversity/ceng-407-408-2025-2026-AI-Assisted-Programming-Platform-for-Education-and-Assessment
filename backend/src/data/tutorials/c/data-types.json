@@ -4,24 +4,48 @@
   "title": "C Data Types",
   "category": "C Tutorial",
   "categoryOrder": 1,
+  "subCategory": "Data Types",
+  "subCategoryOrder": 4,
   "order": 1,
   "sections": [
     {
       "heading": "Data Types",
-      "body": "As explained in the Variables chapter, a variable in C must be a specified \ndata type, \nand you must use a format specifier inside the printf() function to display it:",
-      "code": "  // Create variables\nint myNum = 5;             // Integer (whole number)\nfloat\n  myFloatNum = 5.99;   // Floating point number\nchar myLetter = 'D';       //\n  Character\n\n// Print variables\nprintf(\"%d\\n\", myNum);\n\n  printf(\"%f\\n\", myFloatNum);\nprintf(\"%c\\n\", myLetter);"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "As explained in the Variables chapter, a variable in C must be a specified **data type**, and you must use a **format specifier **inside the `printf()` function to display it:"
+        },
+        {
+          "type": "code",
+          "content": "  // Create variables\nint myNum = 5;             // Integer (whole number)\nfloat \n  myFloatNum = 5.99;   // Floating point number\nchar myLetter = 'D';       // \n  Character\n\n// Print variables\nprintf(\"%d\\n\", myNum);\n\n  printf(\"%f\\n\", myFloatNum);\nprintf(\"%c\\n\", myLetter);"
+        }
+      ]
     },
     {
       "heading": "Basic Data Types",
-      "body": "The data type specifies the size and type of information the variable will store.\n\nIn this tutorial, we will focus on the most basic ones:\n\nData Type | Size | Description | Example\nint | 2 or 4 bytes | Stores whole numbers, without decimals | 1\nfloat | 4 bytes | Stores fractional numbers, containing one or more decimals. Sufficient for \nstoring 6-7 decimal digits | 1.99\ndouble | 8 bytes | Stores fractional numbers, containing one or more decimals. Sufficient for \nstoring 15 decimal digits | 1.99\nchar | 1 byte | Stores a single character/letter/number, or ASCII values | 'A'",
-      "code": ""
+      "blocks": [
+        {
+          "type": "text",
+          "content": "The data type specifies the size and type of information the variable will store."
+        },
+        {
+          "type": "text",
+          "content": "In this tutorial, we will focus on the most basic ones:"
+        }
+      ]
     },
     {
       "heading": "Basic Format Specifiers",
-      "body": "There are different format specifiers for each data type. Here are some of \nthem:\n\nFormat Specifier | Data Type | Try it\n%d or %i | int | \n%f or %F | float | \n%lf | double | \n%c | char | \n%s | Used for strings (text), which you will learn more about in a later chapter |\n\nNote: It is important that you use the correct format specifier for the specified data type. \nIf not, the program may produce errors or even crash.",
-      "code": ""
+      "blocks": [
+        {
+          "type": "text",
+          "content": "There are different format specifiers for each data type. Here are some of them:"
+        },
+        {
+          "type": "text",
+          "content": "**Note:** It is important that you use the correct format specifier for the specified data type. If not, the program may produce errors or even crash."
+        }
+      ]
     }
-  ],
-  "subCategory": "Data Types",
-  "subCategoryOrder": 4
+  ]
 }

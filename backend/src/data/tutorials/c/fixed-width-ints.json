@@ -4,29 +4,77 @@
   "title": "C Fixed-Width Integers",
   "category": "C More",
   "categoryOrder": 8,
+  "subCategory": null,
+  "subCategoryOrder": 0,
   "order": 7,
   "sections": [
     {
       "heading": "Fixed-Width Integers",
-      "body": "In C, the size of int, short, and long types can vary depending on your computer and system. \nFor example, an int might take up 2 bytes on one system, and 4 bytes on another.\n\nTo make programs behave the same everywhere, C provides fixed-width integer types in the <stdint.h> header. \nThese types always have the same size (number of bits), no matter which computer you are on.\n\nThe most common fixed-width types are:\n\nType | Size | Range | Printf Specifier\nint8_t | 8 bits (1 byte) | -128 to 127 | %d\nuint8_t | 8 bits (1 byte) | 0 to 255 | %u\nint16_t | 16 bits (2 bytes) | -32,768 to 32,767 | %d\nuint16_t | 16 bits (2 bytes) | 0 to 65,535 | %u\nint32_t | 32 bits (4 bytes) | -2,147,483,648 to 2,147,483,647 | %d\nuint32_t | 32 bits (4 bytes) | 0 to 4,294,967,295 | %u\nint64_t | 64 bits (8 bytes) | -9,223,372,036,854,775,808 to 9,223,372,036,854,775,807 | %lld\nuint64_t | 64 bits (8 bytes) | 0 to 18,446,744,073,709,551,615 | %llu\n\nThe letter u stands for unsigned, which means the type can only store \nnon-negative values (0 and up). \nThis doubles the maximum positive value compared to the signed version, but you lose the ability to store negative numbers.",
-      "code": ""
+      "blocks": [
+        {
+          "type": "text",
+          "content": "In C, the size of `int`, `short`, and `long` types can vary depending on your computer and system. For example, an `int` might take up 2 bytes on one system, and 4 bytes on another."
+        },
+        {
+          "type": "text",
+          "content": "To make programs behave the same everywhere, C provides **fixed-width integer types** in the `<stdint.h>` header. These types always have the same size (number of bits), no matter which computer you are on."
+        },
+        {
+          "type": "text",
+          "content": "The most common fixed-width types are:"
+        },
+        {
+          "type": "text",
+          "content": "The letter `u` stands for **unsigned**, which means the type can only store **non-negative values** (0 and up). This doubles the maximum positive value compared to the signed version, but you lose the ability to store negative numbers."
+        }
+      ]
     },
     {
       "heading": "Using Fixed-Width Integers",
-      "body": "",
-      "code": "#include <stdio.h>\n#include <stdint.h>  // needed for fixed-width integers\n\nint main() {\n  int8_t a = 100;        // 8-bit integer\n  int16_t b = 30000;     // 16-bit integer\n  int32_t c = 2000000;   // 32-bit integer\n  int64_t d = 9000000000; // 64-bit integer\n\n  printf(\"%d\\n\", a);\n  printf(\"%d\\n\", b);\n  printf(\"%d\\n\", c);\n  printf(\"%lld\\n\", d); // use %lld for 64-bit\n  return 0;\n}"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "**Try it Yourself »**"
+        }
+      ]
     },
     {
       "heading": "When to Use Fixed-Width Integers?",
-      "body": "For most everyday programs, you don't need these types - a normal \nint is usually fine.\n\nBut fixed-width integers are essential when:\n\n- You are writing embedded systems (programs for small devices, like microcontrollers).\n- You are working with file formats where exact sizes matter.\n- You are sending data across networks and need consistent results on different machines.",
-      "code": ""
+      "blocks": [
+        {
+          "type": "text",
+          "content": "For most everyday programs, you don't need these types - a normal `int` is usually fine."
+        },
+        {
+          "type": "text",
+          "content": "But fixed-width integers are **essential** when:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "You are writing **embedded systems** (programs for small devices, like microcontrollers).",
+            "You are working with **file formats** where exact sizes matter.",
+            "You are sending data across **networks** and need consistent results on different machines."
+          ]
+        }
+      ]
     },
     {
       "heading": "Real Life Example",
-      "body": "Imagine you are building a program that shows the battery level of a device. \nSince the battery percentage will always be between 0 and 100, you don't need a large type like int. \nInstead, you can use uint8_t, which is exactly 1 byte (8 bits) and can store values from 0 to 255:\n\nHere we save memory by using a uint8_t, which is perfect for storing values in a small, well-defined range like a battery percentage.",
-      "code": "#include <stdio.h>\n#include <stdint.h>\n\nint main() {\n  uint8_t battery = 87; // battery level percentage\n\n  printf(\"Battery level is %u out of 100\\n\", battery);\n\n  return 0;\n}"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Imagine you are building a program that shows the battery level of a device. Since the battery percentage will always be between 0 and 100, you don't need a large type like `int`. Instead, you can use `uint8_t`, which is exactly 1 byte (8 bits) and can store values from 0 to 255:"
+        },
+        {
+          "type": "text",
+          "content": "**Try it Yourself »**"
+        },
+        {
+          "type": "text",
+          "content": "Here we save memory by using a `uint8_t`, which is perfect for storing values in a small, well-defined range like a battery percentage."
+        }
+      ]
     }
-  ],
-  "subCategory": null,
-  "subCategoryOrder": 0
+  ]
 }

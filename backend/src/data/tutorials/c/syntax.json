@@ -4,19 +4,70 @@
   "title": "C Syntax",
   "category": "C Tutorial",
   "categoryOrder": 1,
+  "subCategory": "Syntax",
+  "subCategoryOrder": 1,
   "order": 1,
   "sections": [
     {
       "heading": "Syntax",
-      "body": "You have already seen the following code a couple of times in the first chapters. Let's break it down and understand what each part does:",
-      "code": "  #include <stdio.h>\n\nint main() {\n  printf(\"Hello World!\");\n\n  return 0;\n}"
-    },
-    {
-      "heading": "Example explained",
-      "body": "Line 1: #include <stdio.h> tells C to include a header file.\nThis header lets us use input/output functions such as printf() (used in line 4).\n\nDon't worry if you don't understand how  #include <stdio.h> works. Just think of it as something that (almost) always appears in your program.\n\nLine 2: A blank line. C ignores extra spaces and blank lines, but we use them to make the code easier to read.\n\nLine 3: main() is a special function. Your program starts running here.\nAny code inside the curly brackets {} will be executed.\n\nLine 4: printf() is a function used to output (print) text to the screen.\nIn our example, it prints Hello World!.\n\nNote: Every C statement ends with a semicolon ;\n\nNote: The body of int main() could also be written as:\nint main(){printf(\"Hello World!\");return 0;}\n\nRemember: The compiler ignores extra spaces and new lines, but using multiple lines makes code easier to read.\n\nLine 5: return 0 ends the main() function and sends a value back to the operating system.\n\nReturning 0 usually means \"everything worked\". You will learn more about return values later.\n\nLine 6: Do not forget the closing curly bracket } to end the main() function.",
-      "code": ""
+      "blocks": [
+        {
+          "type": "text",
+          "content": "You have already seen the following code a couple of times in the first chapters. Let's break it down and understand what each part does:"
+        },
+        {
+          "type": "code",
+          "content": "  #include <stdio.h>\n\nint main() {\n  printf(\"Hello World!\");\n \n  return 0;\n}"
+        },
+        {
+          "type": "text",
+          "content": "**Example explained**"
+        },
+        {
+          "type": "text",
+          "content": "**Line 1:** `#include <stdio.h>` tells C to include a **header file**. This header lets us use input/output functions such as `printf()` (used in line 4)."
+        },
+        {
+          "type": "text",
+          "content": "Don't worry if you don't understand how `#include <stdio.h>` works. Just think of it as something that (almost) always appears in your program."
+        },
+        {
+          "type": "text",
+          "content": "**Line 2:** A blank line. C ignores extra spaces and blank lines, but we use them to make the code easier to read."
+        },
+        {
+          "type": "text",
+          "content": "**Line 3:** `main()` is a special function. Your program starts running here. Any code inside the curly brackets `{}` will be executed."
+        },
+        {
+          "type": "text",
+          "content": "**Line 4:** `printf()` is a function used to output (print) text to the screen. In our example, it prints `Hello World!`."
+        },
+        {
+          "type": "text",
+          "content": "**Note:** Every C statement ends with a semicolon `;`"
+        },
+        {
+          "type": "text",
+          "content": "**Note:** The body of `int main()` could also be written as: `int main(){printf(\"Hello World!\");return 0;}`"
+        },
+        {
+          "type": "text",
+          "content": "**Remember:** The compiler ignores extra spaces and new lines, but using multiple lines makes code easier to read."
+        },
+        {
+          "type": "text",
+          "content": "**Line 5:** `return 0` ends the `main()` function and sends a value back to the operating system."
+        },
+        {
+          "type": "text",
+          "content": "Returning `0` usually means \"everything worked\". You will learn more about return values later."
+        },
+        {
+          "type": "text",
+          "content": "**Line 6:** Do not forget the closing curly bracket `}` to end the `main()` function."
+        }
+      ]
     }
-  ],
-  "subCategory": "Syntax",
-  "subCategoryOrder": 1
+  ]
 }

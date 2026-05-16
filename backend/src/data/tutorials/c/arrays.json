@@ -4,34 +4,114 @@
   "title": "C Arrays",
   "category": "C Tutorial",
   "categoryOrder": 1,
+  "subCategory": "Arrays",
+  "subCategoryOrder": 12,
   "order": 1,
   "sections": [
     {
       "heading": "Arrays",
-      "body": "Arrays are used to store multiple values in a single variable, instead of declaring separate variables for each \nvalue.\n\nTo create an array, define the data type (like int) and specify the name \nof the array followed by square brackets [].\n\nTo insert values to it, use a comma-separated list inside curly braces, and \nmake sure all values are of the same data type:\n\nWe have now created a variable that holds an array of four integers.",
-      "code": "  int myNumbers[] = {25,\n  50, 75, 100};"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Arrays are used to store multiple values in a single variable, instead of declaring separate variables for each value."
+        },
+        {
+          "type": "text",
+          "content": "To create an array, define the data type (like `int`) and specify the name of the array followed by **square brackets []**."
+        },
+        {
+          "type": "text",
+          "content": "To insert values to it, use a comma-separated list inside curly braces, and make sure all values are of the same data type:"
+        },
+        {
+          "type": "code",
+          "content": "  int myNumbers[] = {25, \n  50, 75, 100};"
+        },
+        {
+          "type": "text",
+          "content": "We have now created a variable that holds an array of four integers."
+        }
+      ]
     },
     {
       "heading": "Access the Elements of an Array",
-      "body": "To access an array element, refer to its index number.\n\nArray indexes start with 0: [0] is the first element. [1] is the second element, etc.\n\nThis statement accesses the value of the first element [0] in \nmyNumbers:",
-      "code": "  int myNumbers[] = {25, 50, 75, 100};\n\n  printf(\"%d\", myNumbers[0]);\n\n// Outputs 25"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "To access an array element, refer to its** index number**."
+        },
+        {
+          "type": "text",
+          "content": "Array indexes start with **0**: [0] is the first element. [1] is the second element, etc."
+        },
+        {
+          "type": "text",
+          "content": "This statement accesses the value of the **first element [0]** in `myNumbers`:"
+        },
+        {
+          "type": "code",
+          "content": "  int myNumbers[] = {25, 50, 75, 100};\n\n  printf(\"%d\", myNumbers[0]);\n\n// Outputs 25"
+        }
+      ]
     },
     {
       "heading": "Change an Array Element",
-      "body": "To change the value of a specific element, refer to the index number:",
-      "code": "  myNumbers[0] = 33;\n\n  int myNumbers[] = {25, 50, 75, 100};\nmyNumbers[0] = 33;\n\n\n  printf(\"%d\", myNumbers[0]);\n\n\n  // Now outputs 33 instead of 25"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "To change the value of a specific element, refer to the index number:"
+        },
+        {
+          "type": "code",
+          "content": "  myNumbers[0] = 33;"
+        },
+        {
+          "type": "code",
+          "content": "  int myNumbers[] = {25, 50, 75, 100};\nmyNumbers[0] = 33;\n\n  printf(\"%d\", myNumbers[0]);\n\n  // Now outputs 33 instead of 25"
+        }
+      ]
     },
     {
       "heading": "Set Array Size",
-      "body": "Another common way to create arrays, is to specify the size of the array, and add \nelements later:\n\nUsing this method, you should know the number of array elements in advance, \nin order for the program to store enough memory.\n\nYou are not able to change the size of the array after creation.",
-      "code": "  // Declare an array of four integers:\nint myNumbers[4];\n\n// Add\n  elements\nmyNumbers[0] = 25;\nmyNumbers[1] = 50;\nmyNumbers[2] = 75;\n\n  myNumbers[3] = 100;"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Another common way to create arrays, is to specify the size of the array, and add elements later:"
+        },
+        {
+          "type": "code",
+          "content": "  // Declare an array of four integers:\nint myNumbers[4];\n\n// Add \n  elements\nmyNumbers[0] = 25;\nmyNumbers[1] = 50;\nmyNumbers[2] = 75;\n\n  myNumbers[3] = 100;"
+        },
+        {
+          "type": "text",
+          "content": "Using this method, **you should know the number of array elements in advance,** in order for the program to store enough memory."
+        },
+        {
+          "type": "text",
+          "content": "You are not able to change the size of the array after creation."
+        }
+      ]
     },
     {
       "heading": "Avoid Mixing Data Types",
-      "body": "It is important to note that all elements in an array must be of the same \ndata type.\n\nThis means you cannot mix different types of values, like integers and \nfloating point numbers, in the same array:\n\nIn the example above, the values 3.15 and 5.99 will be truncated to 3 and 5. In some cases it might also result in an error, so \nit is important to always make sure that the elements in the array are of the \nsame type.",
-      "code": "  int myArray[] = {25, 50, 75,\n  3.15, 5.99};"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "It is important to note that all elements in an array **must be of the same data type**."
+        },
+        {
+          "type": "text",
+          "content": "This means you cannot mix different types of values, like **integers** and **floating point** numbers, in the same array:"
+        },
+        {
+          "type": "code",
+          "content": "  int myArray[] = {25, 50, 75, \n  3.15, 5.99};"
+        },
+        {
+          "type": "text",
+          "content": "In the example above, the values `3.15` and `5.99` will be truncated to `3` and `5`. In some cases it might also result in an error, so it is important to always make sure that the elements in the array are of the same type."
+        }
+      ]
     }
-  ],
-  "subCategory": "Arrays",
-  "subCategoryOrder": 12
+  ]
 }

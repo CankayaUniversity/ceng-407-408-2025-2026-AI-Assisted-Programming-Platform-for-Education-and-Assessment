@@ -4,24 +4,112 @@
   "title": "C Variables",
   "category": "C Tutorial",
   "categoryOrder": 1,
+  "subCategory": "Variables",
+  "subCategoryOrder": 3,
   "order": 1,
   "sections": [
     {
       "heading": "Variables",
-      "body": "Variables are containers for storing data values, like numbers and characters.\n\nYou can think of a variable as a named box where you keep a value that can be used later.\n\nIn C, variables must have a specific type, which tells the program what kind of data the variable can store.\n\n- int - stores whole numbers (integers), such as 123 or -123\n- float - stores numbers with decimals, such as 19.99 or -19.99\n- char - stores a single character, such as 'a' or 'B'.\n Characters are surrounded by single quotes",
-      "code": ""
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Variables are containers for storing data values, like numbers and characters."
+        },
+        {
+          "type": "text",
+          "content": "You can think of a variable as a named box where you keep a value that can be used later."
+        },
+        {
+          "type": "text",
+          "content": "In C, variables must have a specific **type**, which tells the program what kind of data the variable can store."
+        },
+        {
+          "type": "list",
+          "items": [
+            "`int` - stores whole numbers (integers), such as `123` or `-123`",
+            "`float` - stores numbers with decimals, such as `19.99` or `-19.99`",
+            "`char` - stores a single character, such as `'a'` or `'B'`. Characters are surrounded by **single quotes**"
+          ]
+        }
+      ]
     },
     {
       "heading": "Declaring (Creating) Variables",
-      "body": "To create a variable, you must specify the type and give the variable a name.\n\nYou can also assign a value at the same time:\n\nWhere type is one of the C data types (such as int),\nand variableName is the name you choose (for example x or myNum).\n\nThe equal sign = is used to assign a value to the variable.\n\nSo, to create a variable that should store a number, look at the following example:\n\nCreate a variable named myNum of type int and assign the value 15:\n\nYou can also declare a variable first and assign a value later:\n\nTip: Variable names should be meaningful, so your code is easier to understand.",
-      "code": "  type variableName = value;\n\n  int myNum = 15;\n\n  // Declare a variable\n\n  int myNum;\n\n\n  // Assign a value later\n\n  myNum = 15;"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "To create a variable, you must specify the **type** and give the variable a **name**."
+        },
+        {
+          "type": "text",
+          "content": "You can also assign a value at the same time:"
+        },
+        {
+          "type": "syntax",
+          "content": "  type variableName = value;"
+        },
+        {
+          "type": "text",
+          "content": "Where *type* is one of the C data types (such as `int`), and *variableName* is the name you choose (for example **x** or **myNum**)."
+        },
+        {
+          "type": "text",
+          "content": "The equal sign `=` is used to assign a value to the variable."
+        },
+        {
+          "type": "text",
+          "content": "So, to create a variable that should store a number, look at the following example:"
+        },
+        {
+          "type": "text",
+          "content": "Create a variable named **myNum** of type `int` and assign the value **15**:"
+        },
+        {
+          "type": "code",
+          "content": "  int myNum = 15;"
+        },
+        {
+          "type": "text",
+          "content": "You can also declare a variable first and assign a value later:"
+        },
+        {
+          "type": "code",
+          "content": "  // Declare a variable\n\n  int myNum;\n\n  // Assign a value later\n\n  myNum = 15;"
+        },
+        {
+          "type": "text",
+          "content": "**Tip:** Variable names should be meaningful, so your code is easier to understand."
+        }
+      ]
     },
     {
       "heading": "Output Variables",
-      "body": "You learned from the output chapter that you can print text using the printf() function:\n\nIn many other programming languages (like Python, Java, and C++), you would normally use a \nprint function to display the value of a variable. However, this is not possible in C:\n\nTo print variables in C, you must use something called format specifiers.\n\nDon't worry - this will be explained clearly in the next chapter.",
-      "code": "  printf(\"Hello World!\");\n\n  int myNum = 15;\n\n  printf(myNum); // This will cause an error"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "You learned from the output chapter that you can print text using the `printf()` function:"
+        },
+        {
+          "type": "code",
+          "content": "  printf(\"Hello World!\");"
+        },
+        {
+          "type": "text",
+          "content": "In many other programming languages (like Python, Java, and C++), you would normally use a **print function** to display the value of a variable. However, this is not possible in C:"
+        },
+        {
+          "type": "code",
+          "content": "  int myNum = 15;\n\n  printf(myNum); // This will cause an error"
+        },
+        {
+          "type": "text",
+          "content": "To print variables in C, you must use something called format specifiers."
+        },
+        {
+          "type": "text",
+          "content": "Don't worry - this will be explained clearly in the next chapter."
+        }
+      ]
     }
-  ],
-  "subCategory": "Variables",
-  "subCategoryOrder": 3
+  ]
 }

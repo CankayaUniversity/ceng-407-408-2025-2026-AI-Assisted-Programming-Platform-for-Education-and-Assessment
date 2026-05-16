@@ -4,14 +4,30 @@
   "title": "C Decimal Precision",
   "category": "C Tutorial",
   "categoryOrder": 1,
+  "subCategory": "Data Types",
+  "subCategoryOrder": 4,
   "order": 4,
   "sections": [
     {
       "heading": "Set Decimal Precision",
-      "body": "You have probably already noticed that if you print a floating point number, \nthe output will show many digits after the decimal point:\n\nIf you want to remove the extra zeros (set decimal precision), you can use a \ndot (.) followed by a number that specifies how many digits that should be shown \nafter the decimal point:",
-      "code": "  float myFloatNum = 3.5;\ndouble myDoubleNum = 19.99;\n\n\n  printf(\"%f\\n\", myFloatNum);\n  // Outputs 3.500000\nprintf(\"%lf\", myDoubleNum); // Outputs\n  19.990000\n\n  float myFloatNum = 3.5;\n\nprintf(\"%f\\n\", myFloatNum);   // Default will show 6 digits after the decimal point\nprintf(\"%.1f\\n\",\n  myFloatNum); // Only show 1 digit\nprintf(\"%.2f\\n\", myFloatNum); // Only\n  show 2 digits\nprintf(\"%.4f\", myFloatNum);   // Only show 4 digits"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "You have probably already noticed that if you print a floating point number, the output will show many digits after the decimal point:"
+        },
+        {
+          "type": "code",
+          "content": "  float myFloatNum = 3.5;\ndouble myDoubleNum = 19.99;\n\n  printf(\"%f\\n\", myFloatNum); \n  // Outputs 3.500000\nprintf(\"%lf\", myDoubleNum); // Outputs \n  19.990000"
+        },
+        {
+          "type": "text",
+          "content": "If you want to remove the extra zeros (set decimal precision), you can use a dot (`.`) followed by a number that specifies how many digits that should be shown after the decimal point:"
+        },
+        {
+          "type": "code",
+          "content": "  float myFloatNum = 3.5;\n\nprintf(\"%f\\n\", myFloatNum);   // Default will show 6 digits after the decimal point\nprintf(\"%.1f\\n\", \n  myFloatNum); // Only show 1 digit\nprintf(\"%.2f\\n\", myFloatNum); // Only \n  show 2 digits\nprintf(\"%.4f\", myFloatNum);   // Only show 4 digits"
+        }
+      ]
     }
-  ],
-  "subCategory": "Data Types",
-  "subCategoryOrder": 4
+  ]
 }

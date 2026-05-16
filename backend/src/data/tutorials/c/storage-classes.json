@@ -4,34 +4,122 @@
   "title": "C Storage Classes",
   "category": "C More",
   "categoryOrder": 8,
+  "subCategory": null,
+  "subCategoryOrder": 0,
   "order": 5,
   "sections": [
     {
       "heading": "C Storage Classes",
-      "body": "Storage classes define the lifetime, visibility, and memory location of variables.\n\nThere are four main storage class specifiers in C:\n\n- auto\n- static\n- register\n- extern\n\nScope defines where a variable can be used, and \nstorage classes define how long it lasts and where it's stored. This chapter continues from the C Scope chapter.",
-      "code": ""
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Storage classes define the **lifetime**, **visibility**, and **memory location** of variables."
+        },
+        {
+          "type": "text",
+          "content": "There are four main storage class specifiers in C:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "`auto`",
+            "`static`",
+            "`register`",
+            "`extern`"
+          ]
+        },
+        {
+          "type": "text",
+          "content": "**Scope** defines where a variable can be used, and **storage classes** define how long it lasts and where it's stored. This chapter continues from the C Scope chapter."
+        }
+      ]
     },
     {
       "heading": "auto",
-      "body": "The auto keyword is used for local variables. It is default for variables declared inside functions, so it's rarely used explicitly.",
-      "code": "int main() {\n  auto int x = 50;  // Same as just: int x = 50;\n  printf(\"%d\\n\", x);\n  return 0;\n}"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "The `auto` keyword is used for local variables. It is default for variables declared inside functions, so it's rarely used explicitly."
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        }
+      ]
     },
     {
       "heading": "static",
-      "body": "The static keyword changes how a variable or function behaves in terms of lifetime and visibility:\n\n- Static local variables keep their value between function calls.\n- Static global variables/functions are not visible outside their file.\n\nResult:\n\nTry to remove the static keyword from the example to see the difference.",
-      "code": "void count() {\n  static int myNum = 0; // Keeps its value between calls\n  myNum++;\n  printf(\"num = %d\\n\", myNum);\n}\n\nint main() {\n  count();\n  count();\n  count();\n  return 0;\n}\n\nnum = 1\nnum = 2\nnum = 3"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "The `static` keyword changes how a variable or function behaves in terms of **lifetime** and **visibility**:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "**Static local variables** keep their value between function calls.",
+            "**Static global variables/functions** are not visible outside their file."
+          ]
+        },
+        {
+          "type": "text",
+          "content": "Result:"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        },
+        {
+          "type": "text",
+          "content": "Try to remove the `static` keyword from the example to see the difference."
+        }
+      ]
     },
     {
       "heading": "register",
-      "body": "The register keyword suggests that the variable should be stored in a CPU register (for faster access).\n\nYou cannot take the address of a register variable using &.\n\nNote: The register keyword is mostly obsolete - modern compilers automatically choose the best variables to keep in registers, so you usually don't need to use it.",
-      "code": "int main() {\n  register int counter = 0;\n  printf(\"Counter: %d\\n\", counter);\n  return 0;\n}"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "The `register` keyword suggests that the variable should be stored in a CPU register (for faster access)."
+        },
+        {
+          "type": "text",
+          "content": "You cannot take the address of a `register` variable using `&`."
+        },
+        {
+          "type": "text",
+          "content": "**Note:** The `register` keyword is mostly obsolete - modern compilers automatically choose the best variables to keep in registers, so you usually don't need to use it."
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        }
+      ]
     },
     {
       "heading": "extern",
-      "body": "The extern keyword tells the compiler that a variable or function is defined in another file.\n\nIt is commonly used when working with multiple source files.\n\nFile 1: main.c\n\nFile 2: data.c\n\nCompile both files together:",
-      "code": "#include <stdio.h>\n\nextern int shared;  // Declared here, defined in another file\n\nint main() {\n  printf(\"shared = %d\\n\", shared);\n  return 0;\n}\n\nint shared = 50;  // Definition of the variable\n\ngcc main.c data.c -o program"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "The `extern` keyword tells the compiler that a variable or function is defined in another file."
+        },
+        {
+          "type": "text",
+          "content": "It is commonly used when working with **multiple source files**."
+        },
+        {
+          "type": "text",
+          "content": "File 1: `main.c`"
+        },
+        {
+          "type": "text",
+          "content": "File 2: `data.c`"
+        },
+        {
+          "type": "text",
+          "content": "Compile both files together:"
+        }
+      ]
     }
-  ],
-  "subCategory": null,
-  "subCategoryOrder": 0
+  ]
 }

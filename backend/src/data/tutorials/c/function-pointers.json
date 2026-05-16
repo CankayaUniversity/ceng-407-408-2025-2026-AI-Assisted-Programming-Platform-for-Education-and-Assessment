@@ -4,54 +4,225 @@
   "title": "C Function Pointers",
   "category": "C Functions",
   "categoryOrder": 2,
+  "subCategory": "Function Pointers",
+  "subCategoryOrder": 1,
   "order": 1,
   "sections": [
     {
       "heading": "Function Pointer",
-      "body": "A function pointer is like a normal pointer, but instead of pointing to a variable, it points to a function.\n\nThis means it stores the address of a function, allowing you to call that function using the pointer.\n\nFunction pointers let you decide which function to run while the program is running, or when you want to pass a function as an argument to another function.\n\nThink of it like saving a phone number - the pointer knows where the function lives in memory, so you can \"call\" it later.",
-      "code": ""
+      "blocks": [
+        {
+          "type": "text",
+          "content": "A **function pointer** is like a normal pointer, but instead of pointing to a variable, it points to a **function**."
+        },
+        {
+          "type": "text",
+          "content": "This means it stores the *address of a function*, allowing you to call that function using the pointer."
+        },
+        {
+          "type": "text",
+          "content": "Function pointers let you decide which function to run while the program is running, or when you want to pass a function as an argument to another function."
+        },
+        {
+          "type": "text",
+          "content": "Think of it like saving a phone number - the pointer knows *where* the function lives in memory, so you can \"call\" it later."
+        }
+      ]
     },
     {
       "heading": "Declaring a Function Pointer",
-      "body": "The general syntax for declaring a function pointer is:\n\nFor example:\n\nThis means ptr is a pointer to a function that takes two int values and returns an int.",
-      "code": "    returnType (*pointerName)(parameterType1, parameterType2, ...);\n\n  int (*ptr)(int, int);"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "The general syntax for declaring a function pointer is:"
+        },
+        {
+          "type": "code",
+          "content": "    returnType (*pointerName)(parameterType1, parameterType2, ...);"
+        },
+        {
+          "type": "text",
+          "content": "For example:"
+        },
+        {
+          "type": "code",
+          "content": "  int (*ptr)(int, int);"
+        },
+        {
+          "type": "text",
+          "content": "This means `ptr` is a pointer to a function that takes two `int` values and returns an `int`."
+        }
+      ]
     },
     {
       "heading": "Assigning a Function to a Pointer",
-      "body": "You can assign a function to a pointer in two ways:\n\nBoth are the same, because the function's name already represents its address in memory.",
-      "code": "  ptr = add;\n\n  ptr = &add;"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "You can assign a function to a pointer in two ways:"
+        },
+        {
+          "type": "code",
+          "content": "  ptr = add;\n\n  ptr = &add;"
+        },
+        {
+          "type": "text",
+          "content": "Both are the same, because the function's name already represents its address in memory."
+        }
+      ]
     },
     {
       "heading": "Calling a Function Through a Pointer",
-      "body": "Once the pointer is assigned, you can call the function in two ways:\n\nBoth are valid and do the same thing.",
-      "code": "  ptr(5, 3);\n\n  (*ptr)(5, 3);"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Once the pointer is assigned, you can call the function in two ways:"
+        },
+        {
+          "type": "code",
+          "content": "  ptr(5, 3);\n\n  (*ptr)(5, 3);"
+        },
+        {
+          "type": "text",
+          "content": "Both are valid and do the same thing."
+        }
+      ]
     },
     {
       "heading": "Function Pointer Example",
-      "body": "Now that you know how to declare and assign a function pointer, let's see a complete example:\n\nA pointer to a function that adds two numbers:\n\nHere:\n\n- ptr is a pointer to the function add().\n- ptr(5, 3) calls the function using the pointer.\n\nThis works exactly the same as calling add(5, 3).\n\nNote: A function name itself points to the start of its code in memory. \n That means a function name already acts like a pointer! \n Declaring a function pointer just gives you a variable that can hold that address - so you can change it or pass it around.",
-      "code": "    int add(int a, int b) {\n\n      return a + b;\n\n    }\n\n\n    int main() {\n\n      int (*ptr)(int, int) = add;\n\n      int result = ptr(5, 3);\n\n      printf(\"Result: %d\", result);\n\n      return 0;\n\n    }"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Now that you know how to declare and assign a function pointer, let's see a complete example:"
+        },
+        {
+          "type": "text",
+          "content": "A pointer to a function that adds two numbers:"
+        },
+        {
+          "type": "code",
+          "content": "    int add(int a, int b) {\n\n      return a + b;\n\n    }\n\n    int main() {\n\n      int (*ptr)(int, int) = add;\n\n      int result = ptr(5, 3);\n\n      printf(\"Result: %d\", result);\n\n      return 0;\n\n    }"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        },
+        {
+          "type": "text",
+          "content": "Here:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "`ptr` is a pointer to the function `add()`.",
+            "`ptr(5, 3)` calls the function using the pointer."
+          ]
+        },
+        {
+          "type": "text",
+          "content": "This works exactly the same as calling `add(5, 3)`."
+        },
+        {
+          "type": "text",
+          "content": "**Note:** A function name itself points to the start of its code in memory. That means a function name already acts like a pointer! Declaring a function pointer just gives you a variable that can hold that address - so you can change it or pass it around."
+        }
+      ]
     },
     {
       "heading": "Passing a Function as an Argument",
-      "body": "Function pointers can be passed to other functions - this is called a callback.\n\nIt allows a function to call another function that you provide as input.\n\nPassing a function pointer to another function:\n\nHere, greet() takes another function as a parameter and calls it. \nThis is commonly used in event-driven programs or libraries that need user-provided callback functions.",
-      "code": "    void greetMorning() { printf(\"Good morning!\\n\"); }\n\n    void greetEvening() { printf(\"Good evening!\\n\"); }\n\n\n    void greet(void (*func)()) {\n\n      func();\n\n    }\n\n\n    int main() {\n\n      greet(greetMorning);\n\n      greet(greetEvening);\n\n      return 0;\n\n    }"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Function pointers can be passed to other functions - this is called a **callback**."
+        },
+        {
+          "type": "text",
+          "content": "It allows a function to call another function that you provide as input."
+        },
+        {
+          "type": "text",
+          "content": "Passing a function pointer to another function:"
+        },
+        {
+          "type": "code",
+          "content": "    void greetMorning() { printf(\"Good morning!\\n\"); }\n\n    void greetEvening() { printf(\"Good evening!\\n\"); }\n\n    void greet(void (*func)()) {\n\n      func();\n\n    }\n\n    int main() {\n\n      greet(greetMorning);\n\n      greet(greetEvening);\n\n      return 0;\n\n    }"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        },
+        {
+          "type": "text",
+          "content": "Here, `greet()` takes another function as a parameter and calls it. This is commonly used in event-driven programs or libraries that need user-provided callback functions."
+        }
+      ]
     },
     {
       "heading": "Function Pointer Array",
-      "body": "You can also store several function pointers in an array, so you can choose which function to run while the program is running.\n\nThis example runs three different functions using an array of function pointers:\n\nThis is often used for simple menus, command lists, or calculators - anywhere you want to call different functions based on user input.\n\nA simple calculator using an array of function pointers:\n\nIn this program:\n\n- All three math functions (add(), subtract(), and multiply()) are stored in an array.\n- The user picks which one to run by entering a number.\n- The correct function is then called using the pointer array.\n\nThis is a simple example of how function pointer arrays make programs more flexible and reusable.",
-      "code": "    void add() { printf(\"Add\\n\"); }\n\n    void subtract() { printf(\"Subtract\\n\"); }\n\n    void multiply() { printf(\"Multiply\\n\"); }\n\n\n    int main() {\n\n      void (*operations[3])() = { add, subtract, multiply };\n\n      for (int i = 0; i < 3; i++) {\n\n        operations[i]();\n\n      }\n\n      return 0;\n\n    }\n\n    void add(int a, int b) { printf(\"Result: %d\\n\", a + b); }\n\n    void subtract(int a, int b) { printf(\"Result: %d\\n\", a - b); }\n\n    void multiply(int a, int b) { printf(\"Result: %d\\n\", a * b); }\n\n\n    int main() {\n\n      int choice, x = 10, y = 5;\n\n\n      void (*operations[3])(int, int) = { add, subtract, multiply };\n\n\n      printf(\"x = %d, y = %d\\n\\n\", x, y);\n  printf(\"Choose an operation:\\n\");\n\n      printf(\"0: Add\\n1: Subtract\\n2: Multiply\\n\");\n\n      scanf(\"%d\", &choice);\n\n\n      if (choice >= 0 && choice < 3) {\n\n        operations[choice](x, y);\n\n      } else {\n\n        printf(\"Invalid choice!\\n\");\n\n      }\n\n\n      return 0;\n\n    }"
-    },
-    {
-      "heading": "Function Pointer vs Normal Function",
-      "body": "Normal Function | Function Pointer\nCalled directly by its name | Called using a pointer\nThe function is decided before the program runs | You can choose which function to call while the program is running\nGood for simple code | Good for flexible and reusable code",
-      "code": ""
+      "blocks": [
+        {
+          "type": "text",
+          "content": "You can also store several function pointers in an array, so you can choose which function to run while the program is running."
+        },
+        {
+          "type": "text",
+          "content": "This example runs three different functions using an array of function pointers:"
+        },
+        {
+          "type": "code",
+          "content": "    void add() { printf(\"Add\\n\"); }\n\n    void subtract() { printf(\"Subtract\\n\"); }\n\n    void multiply() { printf(\"Multiply\\n\"); }\n\n    int main() {\n\n      void (*operations[3])() = { add, subtract, multiply };\n\n      for (int i = 0; i < 3; i++) {\n\n        operations[i]();\n\n      }\n\n      return 0;\n\n    }"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        },
+        {
+          "type": "text",
+          "content": "This is often used for simple menus, command lists, or calculators - anywhere you want to call different functions based on user input."
+        },
+        {
+          "type": "text",
+          "content": "A simple calculator using an array of function pointers:"
+        },
+        {
+          "type": "code",
+          "content": "    void add(int a, int b) { printf(\"Result: %d\\n\", a + b); }\n\n    void subtract(int a, int b) { printf(\"Result: %d\\n\", a - b); }\n\n    void multiply(int a, int b) { printf(\"Result: %d\\n\", a * b); }\n\n    int main() {\n\n      int choice, x = 10, y = 5;\n\n      void (*operations[3])(int, int) = { add, subtract, multiply };\n\n      printf(\"x = %d, y = %d\\n\\n\", x, y);\n  printf(\"Choose an operation:\\n\");\n\n      printf(\"0: Add\\n1: Subtract\\n2: Multiply\\n\");\n\n      scanf(\"%d\", &choice);\n\n      if (choice >= 0 && choice < 3) {\n\n        operations[choice](x, y);\n\n      } else {\n\n        printf(\"Invalid choice!\\n\");\n\n      }\n\n      return 0;\n\n    }"
+        },
+        {
+          "type": "text",
+          "content": "Run Example »"
+        },
+        {
+          "type": "text",
+          "content": "In this program:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "All three math functions (`add()`, `subtract()`, and `multiply()`) are stored in an array.",
+            "The user picks which one to run by entering a number.",
+            "The correct function is then called using the pointer array."
+          ]
+        },
+        {
+          "type": "text",
+          "content": "This is a simple example of how function pointer arrays make programs more flexible and reusable."
+        }
+      ]
     },
     {
       "heading": "Summary",
-      "body": "- A function pointer stores the address of a function.\n- You can declare, assign, and call functions through it.\n- It allows passing functions as arguments to other functions.\n- Useful for callbacks, menus, and flexible program design.",
-      "code": ""
+      "blocks": [
+        {
+          "type": "list",
+          "items": [
+            "A function pointer stores the address of a function.",
+            "You can declare, assign, and call functions through it.",
+            "It allows passing functions as arguments to other functions.",
+            "Useful for callbacks, menus, and flexible program design."
+          ]
+        }
+      ]
     }
-  ],
-  "subCategory": "Function Pointers",
-  "subCategoryOrder": 1
+  ]
 }

@@ -4,14 +4,50 @@
   "title": "C Memory Size",
   "category": "C Tutorial",
   "categoryOrder": 1,
+  "subCategory": "Data Types",
+  "subCategoryOrder": 4,
   "order": 5,
   "sections": [
     {
       "heading": "Get the Memory Size",
-      "body": "We introduced in the data types chapter that the memory size of a variable varies depending on the type:\n\nData Type | Size\nint | 2 or 4 bytes\nfloat | 4 bytes\ndouble | 8 bytes\nchar | 1 byte\n\nThe memory size refers to how much space a type occupies in the computer's memory.\n\nTo actually get the size (in bytes) of a data type or variable, use the sizeof operator:\n\nNote that we use the %zu format specifier to print the result, instead of %d. This is because the compiler expects the sizeof operator to return a value of type size_t, which is an unsigned integer type. On some computers it might work with %d, but it is safer and more portable to use %zu, which is specifically designed for printing size_t values.\n\nKnowing the size of data types helps you understand how much memory your program uses.\nThis is important when writing larger programs or working with limited memory, because it can affect both performance and efficiency.\n\nFor example, the size of a char type is 1 byte. Which means if you have an array of 1000 char values, it will occupy 1000 bytes (1 KB) of memory.\n\nUsing the right data type for the right purpose will save memory and improve the performance of your program.\n\nYou will learn more about the sizeof operator later in this tutorial, and how to use it in different scenarios.",
-      "code": "  int myInt;\nfloat myFloat;\ndouble myDouble;\nchar myChar;\n\n\nprintf(\"%zu\\n\", sizeof(myInt));\nprintf(\"%zu\\n\", sizeof(myFloat));\n\n  printf(\"%zu\\n\", sizeof(myDouble));\nprintf(\"%zu\\n\", sizeof(myChar));"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "We introduced in the data types chapter that the memory size of a variable varies depending on the type:"
+        },
+        {
+          "type": "text",
+          "content": "The memory size refers to how much space a type occupies in the *computer's memory*."
+        },
+        {
+          "type": "text",
+          "content": "To actually get the size (in bytes) of a data type or variable, use the `sizeof` operator:"
+        },
+        {
+          "type": "code",
+          "content": "  int myInt;\nfloat myFloat;\ndouble myDouble;\nchar myChar;\n\nprintf(\"%zu\\n\", sizeof(myInt));\nprintf(\"%zu\\n\", sizeof(myFloat));\n\n  printf(\"%zu\\n\", sizeof(myDouble));\nprintf(\"%zu\\n\", sizeof(myChar));"
+        },
+        {
+          "type": "text",
+          "content": "Note that we use the `%zu` format specifier to print the result, instead of `%d`. This is because the compiler expects the `sizeof` operator to return a value of type `size_t`, which is an unsigned integer type. On some computers it might work with `%d`, but it is safer and more portable to use `%zu`, which is specifically designed for printing `size_t` values."
+        },
+        {
+          "type": "text",
+          "content": "Knowing the size of data types helps you understand how much memory your program uses. This is important when writing larger programs or working with limited memory, because it can affect both performance and efficiency."
+        },
+        {
+          "type": "text",
+          "content": "For example, the size of a `char` type is 1 byte. Which means if you have an array of 1000 `char` values, it will occupy 1000 bytes (1 KB) of memory."
+        },
+        {
+          "type": "text",
+          "content": "Using the right data type for the right purpose will **save memory** and** improve the performance** of your program."
+        },
+        {
+          "type": "text",
+          "content": "You will learn more about the `sizeof` operator later in this tutorial, and how to use it in different scenarios."
+        }
+      ]
     }
-  ],
-  "subCategory": "Data Types",
-  "subCategoryOrder": 4
+  ]
 }

@@ -1299,8 +1299,8 @@ export default function StudentWorkspace({
             </>
           )}
         </SectionCard>
-        </Box>{/* end AI mentor scroll wrapper */}
-        )}{/* end !examMode guard around AI Mentor Chat */}
+        </Box>
+        )}
       </Box>
 
       {/* ── Expanded tutorial overlay ────────────────────────────────────────── */}

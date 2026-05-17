@@ -37,7 +37,9 @@ import CheckCircleOutlineIcon  from "@mui/icons-material/CheckCircleOutline";
 import LightbulbIcon           from "@mui/icons-material/Lightbulb";
 import AddCommentIcon          from "@mui/icons-material/AddComment";
 import BugReportIcon           from "@mui/icons-material/BugReport";
-import PrintIcon               from "@mui/icons-material/Print";
+import PictureAsPdfIcon        from "@mui/icons-material/PictureAsPdf";
+import InfoOutlinedIcon        from "@mui/icons-material/InfoOutlined";
+import LightbulbOutlinedIcon   from "@mui/icons-material/LightbulbOutlined";
 import AccessTimeIcon          from "@mui/icons-material/AccessTime";
 import ArrowBackIcon           from "@mui/icons-material/ArrowBack";
 import ChevronLeftIcon         from "@mui/icons-material/ChevronLeft";
@@ -59,6 +61,360 @@ import SubmissionHistory   from "./SubmissionHistory";
 import EditorTabBar        from "./EditorTabBar";
 import InteractiveTerminal from "./InteractiveTerminal";
 import { wsUrl }           from "../../wsBase";
+
+// ── Tutorial content rendering ───────────────────────────────────────────────
+//
+// Tutorials use a block-based schema (text / code / syntax / note / goodtoknow
+// / list). Legacy tutorials still use { body, code }. This renderer handles
+// both — it mirrors TutorialModal but is sized for the side panel.
+
+const _inlineMd = (text) => {
+  if (!text) return "";
+  return DOMPurify.sanitize(marked.parse(text, { breaks: true, gfm: true }));
+};
+
+function TutorialSectionContent({ section, monacoLang }) {
+  // New schema — render blocks in order.
+  if (Array.isArray(section?.blocks) && section.blocks.length > 0) {
+    return (
+      <Stack spacing={1.25}>
+        {section.blocks.map((block, i) => (
+          <TutorialBlock key={i} block={block} monacoLang={monacoLang} />
+        ))}
+      </Stack>
+    );
+  }
+
+  // Legacy schema — body text + trailing code.
+  if (section?.body || section?.code) {
+    return (
+      <>
+        {section.body && (
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: "block", mb: section.code ? 1.5 : 0, lineHeight: 1.8, whiteSpace: "pre-wrap" }}
+          >
+            {section.body}
+          </Typography>
+        )}
+        {section.code && (
+          <TutorialCodeBlock code={section.code} monacoLang={monacoLang} />
+        )}
+      </>
+    );
+  }
+
+  return (
+    <Typography variant="caption" color="text.secondary" sx={{ p: 1 }}>
+      No content available for this section.
+    </Typography>
+  );
+}
+
+function TutorialBlock({ block, monacoLang }) {
+  switch (block?.type) {
+    case "text":
+      return (
+        <Box
+          sx={{
+            color: "text.secondary",
+            lineHeight: 1.65,
+            fontSize: "0.8rem",
+            "& p":      { my: 0.4 },
+            "& strong": { color: "text.primary", fontWeight: 700 },
+            "& em":     { fontStyle: "italic" },
+            "& code":   {
+              fontFamily: '"Fira Mono", "Cascadia Code", monospace',
+              fontSize:   "0.85em",
+              px: 0.5, py: 0.1,
+              borderRadius: 0.5,
+              bgcolor: "action.hover",
+              color: "text.primary",
+            },
+            "& a": { color: "primary.main", textDecoration: "none" },
+            "& a:hover": { textDecoration: "underline" },
+          }}
+          dangerouslySetInnerHTML={{ __html: _inlineMd(block.content) }}
+        />
+      );
+    case "code":
+      return <TutorialCodeBlock code={block.content} monacoLang={monacoLang} />;
+    case "syntax":
+      return <TutorialCodeBlock code={block.content} monacoLang={monacoLang} syntaxLabel />;
+    case "note":
+    case "goodtoknow":
+      return (
+        <Alert
+          severity={block.type === "note" ? "warning" : "info"}
+          icon={block.type === "note" ? <InfoOutlinedIcon fontSize="small" /> : <LightbulbOutlinedIcon fontSize="small" />}
+          sx={{ borderRadius: 1.5, py: 0.25, "& .MuiAlert-message": { fontSize: "0.78rem" } }}
+        >
+          <Box
+            sx={{
+              lineHeight: 1.55,
+              "& p":      { my: 0.2 },
+              "& strong": { fontWeight: 700 },
+              "& code":   {
+                fontFamily: '"Fira Mono", "Cascadia Code", monospace',
+                fontSize:   "0.85em",
+                px: 0.5, py: 0.1,
+                borderRadius: 0.5,
+                bgcolor: "rgba(0,0,0,0.08)",
+              },
+            }}
+            dangerouslySetInnerHTML={{ __html: _inlineMd(block.content) }}
+          />
+        </Alert>
+      );
+    case "list":
+      return (
+        <Box
+          component="ul"
+          sx={{
+            my: 0.4, pl: 2.5,
+            color: "text.secondary",
+            fontSize: "0.8rem",
+            lineHeight: 1.65,
+            "& li":     { mb: 0.3 },
+            "& strong": { color: "text.primary", fontWeight: 700 },
+            "& code":   {
+              fontFamily: '"Fira Mono", "Cascadia Code", monospace',
+              fontSize: "0.85em",
+              px: 0.5, py: 0.1, borderRadius: 0.5,
+              bgcolor: "action.hover", color: "text.primary",
+            },
+          }}
+        >
+          {(block.items ?? []).map((it, i) => (
+            <li key={i} dangerouslySetInnerHTML={{ __html: _inlineMd(it) }} />
+          ))}
+        </Box>
+      );
+    default:
+      return block?.content
+        ? <Typography variant="caption" sx={{ whiteSpace: "pre-wrap" }}>{String(block.content)}</Typography>
+        : null;
+  }
+}
+
+function TutorialCodeBlock({ code, monacoLang, syntaxLabel = false }) {
+  const lines  = (code ?? "").split("\n").length;
+  const height = `${Math.min(Math.max(lines * 18 + 16, 60), 320)}px`;
+  return (
+    <Box>
+      {syntaxLabel && (
+        <Typography
+          variant="caption"
+          sx={{
+            display: "inline-block",
+            mb: 0.4, px: 0.8, py: 0.15,
+            borderRadius: 1,
+            bgcolor: "primary.main",
+            color: "primary.contrastText",
+            fontWeight: 700, fontSize: 9,
+            letterSpacing: 0.6, textTransform: "uppercase",
+          }}
+        >
+          Syntax
+        </Typography>
+      )}
+      <Box sx={{ borderRadius: 1.5, overflow: "hidden", border: 1, borderColor: "divider" }}>
+        <Editor
+          height={height}
+          language={monacoLang}
+          value={code ?? ""}
+          theme="vs-dark"
+          options={{
+            readOnly: true,
+            minimap: { enabled: false },
+            fontSize: 12,
+            lineNumbers: "off",
+            scrollBeyondLastLine: false,
+            padding: { top: 8, bottom: 8 },
+            automaticLayout: true,
+            scrollbar: { vertical: "hidden", horizontal: "auto" },
+          }}
+        />
+      </Box>
+    </Box>
+  );
+}
+
+// ── PDF export of a single tutorial section ──────────────────────────────────
+//
+// Generates a real PDF (no print dialog) with jsPDF. Walks the section's
+// blocks and renders each one with a style appropriate to its type.
+async function exportSectionToPDF(tutorial, section) {
+  let jsPDFCtor;
+  try {
+    const mod = await import("jspdf");
+    jsPDFCtor = mod.jsPDF ?? mod.default;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("Failed to load jsPDF — is the dependency installed?", err);
+    alert("PDF export library not available. Please run `npm install` in the frontend folder.");
+    return;
+  }
+
+  const doc = new jsPDFCtor({ unit: "pt", format: "a4" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const M = 48;                       // page margin
+  const innerW = pageW - M * 2;
+  let y = M;
+
+  const ensureSpace = (need) => {
+    if (y + need > pageH - M) {
+      doc.addPage();
+      y = M;
+    }
+  };
+
+  // Strip markdown to plain text (light-touch — handles bold/italic/inline code/links).
+  const mdToPlain = (md) => {
+    if (!md) return "";
+    return String(md)
+      .replace(/```[\s\S]*?```/g, (m) => m.replace(/```/g, ""))
+      .replace(/`([^`]+)`/g, "$1")
+      .replace(/\*\*([^*]+)\*\*/g, "$1")
+      .replace(/\*([^*]+)\*/g, "$1")
+      .replace(/_([^_]+)_/g, "$1")
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      .replace(/\\n/g, "\n");
+  };
+
+  const drawText = (text, opts = {}) => {
+    const {
+      size = 11, style = "normal", color = [40, 40, 40], indent = 0,
+    } = opts;
+    doc.setFont("helvetica", style);
+    doc.setFontSize(size);
+    doc.setTextColor(color[0], color[1], color[2]);
+    const lines = doc.splitTextToSize(text, innerW - indent);
+    const lineH = size * 1.35;
+    for (const line of lines) {
+      ensureSpace(lineH);
+      doc.text(line, M + indent, y);
+      y += lineH;
+    }
+  };
+
+  const drawCode = (code) => {
+    const size = 9;
+    const lineH = size * 1.4;
+    doc.setFont("courier", "normal");
+    doc.setFontSize(size);
+    const rawLines = (code ?? "").split("\n");
+    // Wrap lines that exceed page width.
+    const wrapped = [];
+    for (const ln of rawLines) {
+      const parts = doc.splitTextToSize(ln.length === 0 ? " " : ln, innerW - 16);
+      for (const p of parts) wrapped.push(p);
+    }
+    const boxH = wrapped.length * lineH + 12;
+    ensureSpace(boxH);
+    // Background panel.
+    doc.setFillColor(245, 247, 250);
+    doc.setDrawColor(220, 224, 230);
+    doc.roundedRect(M, y, innerW, boxH, 4, 4, "FD");
+    doc.setTextColor(30, 30, 40);
+    let cy = y + 10 + size;
+    for (const line of wrapped) {
+      if (cy > pageH - M) {
+        doc.addPage();
+        y = M;
+        cy = y + 10 + size;
+        doc.setFillColor(245, 247, 250);
+        doc.setDrawColor(220, 224, 230);
+        // continuation panel — height unknown so just continue without box this page
+      }
+      doc.text(line, M + 8, cy);
+      cy += lineH;
+    }
+    y += boxH + 6;
+  };
+
+  const drawCallout = (text, kind) => {
+    const isNote = kind === "note";
+    const size = 10;
+    const lineH = size * 1.4;
+    const lines = doc.splitTextToSize(mdToPlain(text), innerW - 20);
+    const boxH = lines.length * lineH + 14;
+    ensureSpace(boxH);
+    doc.setFillColor(...(isNote ? [255, 248, 225] : [227, 242, 253]));
+    doc.setDrawColor(...(isNote ? [255, 193, 7]   : [33, 150, 243]));
+    doc.roundedRect(M, y, innerW, boxH, 4, 4, "FD");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(size);
+    doc.setTextColor(...(isNote ? [120, 90, 0] : [10, 70, 130]));
+    doc.text(isNote ? "Note" : "Good to know", M + 10, y + 12);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(40, 40, 40);
+    let cy = y + 12 + lineH;
+    for (const line of lines) {
+      doc.text(line, M + 10, cy);
+      cy += lineH;
+    }
+    y += boxH + 6;
+  };
+
+  // ── Header ────────────────────────────────────────────────────────────────
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.setTextColor(20, 20, 20);
+  const title = tutorial?.title || "Tutorial";
+  doc.text(title, M, y);
+  y += 22;
+
+  if (section?.heading) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(60, 60, 60);
+    doc.text(section.heading, M, y);
+    y += 18;
+  }
+  doc.setDrawColor(200, 200, 200);
+  doc.line(M, y, pageW - M, y);
+  y += 14;
+
+  // ── Body ──────────────────────────────────────────────────────────────────
+  if (Array.isArray(section?.blocks) && section.blocks.length > 0) {
+    for (const block of section.blocks) {
+      switch (block.type) {
+        case "text":
+          drawText(mdToPlain(block.content), { size: 11 });
+          y += 4;
+          break;
+        case "code":
+          drawCode(block.content);
+          break;
+        case "syntax":
+          drawText("SYNTAX", { size: 9, style: "bold", color: [25, 118, 210] });
+          drawCode(block.content);
+          break;
+        case "note":
+        case "goodtoknow":
+          drawCallout(block.content, block.type);
+          break;
+        case "list":
+          for (const item of (block.items ?? [])) {
+            drawText("• " + mdToPlain(item), { size: 11, indent: 8 });
+          }
+          y += 4;
+          break;
+        default:
+          if (block.content) drawText(mdToPlain(String(block.content)));
+      }
+    }
+  } else {
+    if (section?.body) { drawText(section.body); y += 6; }
+    if (section?.code) drawCode(section.code);
+  }
+
+  const safeName = (s) => String(s ?? "tutorial").replace(/[^a-z0-9-_]+/gi, "_").slice(0, 60);
+  doc.save(`${safeName(tutorial?.title)}-${safeName(section?.heading)}.pdf`);
+}
 
 function monacoLanguage(value) {
   if (value === "csharp") return "csharp";
@@ -726,15 +1082,9 @@ export default function StudentWorkspace({
                         <Tooltip title="Export as PDF">
                           <IconButton
                             size="small"
-                            onClick={() => {
-                              // Store title for the print header, then trigger browser print
-                              document.title = `${selectedTutorial.title} — ${selectedSection.heading}`;
-                              window.print();
-                              // Restore title after a short delay
-                              setTimeout(() => { document.title = "AI Programming Platform"; }, 2000);
-                            }}
+                            onClick={() => exportSectionToPDF(selectedTutorial, selectedSection)}
                           >
-                            <PrintIcon fontSize="small" />
+                            <PictureAsPdfIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
                         <Tooltip title={tutorialExpanded ? "Collapse" : "Expand"}>
@@ -750,44 +1100,15 @@ export default function StudentWorkspace({
                       {selectedSection.heading}
                     </Typography>
 
-                    {/* Content — data-print-tutorial marks it for @media print */}
+                    {/* Content */}
                     <Box
                       data-print-tutorial="true"
                       sx={{ maxHeight: tutorialExpanded ? "none" : 480, overflowY: tutorialExpanded ? "visible" : "auto", pr: 0.5 }}
                     >
-                      {selectedSection.body && (
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          sx={{ display: "block", mb: selectedSection.code ? 1.5 : 0, lineHeight: 1.8, whiteSpace: "pre-wrap" }}
-                        >
-                          {selectedSection.body}
-                        </Typography>
-                      )}
-                      {selectedSection.code && (
-                        <Box sx={{ borderRadius: 1.5, overflow: "hidden", border: 1, borderColor: "divider" }}>
-                          <Editor
-                            height={`${Math.min(Math.max(selectedSection.code.split("\n").length * 19 + 16, 60), 320)}px`}
-                            language={tutorialLanguage ?? "c"}
-                            value={selectedSection.code}
-                            theme="vs-dark"
-                            options={{
-                              readOnly: true,
-                              minimap: { enabled: false },
-                              fontSize: 12,
-                              lineNumbers: "off",
-                              scrollBeyondLastLine: false,
-                              padding: { top: 8, bottom: 8 },
-                              automaticLayout: true,
-                            }}
-                          />
-                        </Box>
-                      )}
-                      {!selectedSection.body && !selectedSection.code && (
-                        <Typography variant="caption" color="text.secondary" sx={{ p: 1 }}>
-                          No content available for this section.
-                        </Typography>
-                      )}
+                      <TutorialSectionContent
+                        section={selectedSection}
+                        monacoLang={tutorialLanguage ?? "c"}
+                      />
                     </Box>
                   </Box>
                 )}

@@ -40,6 +40,13 @@ const STARTER_CODE = {
 };
 
 let _nextFileId = 2; // file id counter (1 is reserved for the initial file)
+const MAX_MENTOR_HISTORY_MESSAGES = 20;
+const INITIAL_RUN_CONTEXT = {
+  runStatus: "idle",
+  stdout: "",
+  stderr: "",
+  errorMessage: "",
+};
 
 // ── Code cache: survives navigation (module-level) AND page refresh (localStorage) ──
 // Reads always check the in-memory Map first (fast), then fall back to localStorage.
@@ -94,13 +101,14 @@ export default function ProblemPage() {
   const [selectedLanguage, setSelectedLanguage] = useState("python");
   const [running,          setRunning]          = useState(false);
   const [chatInput,        setChatInput]        = useState("");
-  const [chat,             setChat]             = useState([
-    { role: "assistant", content: "Hi! Ask for hints about your code." },
-  ]);
+  const [mentorLocale,     setMentorLocale]     = useState("en");
+  const [chat,             setChat]             = useState([]);
   const [chatLoading,      setChatLoading]      = useState(false);
+  const [activeLineNumber, setActiveLineNumber] = useState(1);
   const [hintCount,        setHintCount]        = useState(0);
   const [submissions,      setSubmissions]      = useState([]);
   const [submissionsLoading, setSubmissionsLoading] = useState(false);
+  const [lastRunContext,   setLastRunContext]   = useState(INITIAL_RUN_CONTEXT);
 
   // ── Flashcard state ──────────────────────────────────────────────────────
   const [hasSolvedProblem,    setHasSolvedProblem]    = useState(false);  // true after allPassed in this session
@@ -134,6 +142,22 @@ export default function ProblemPage() {
 
   // Concatenate all files for submission (Judge0 is single-file; files are for organisation)
   const allCode = files.map((f) => f.content).join("\n\n");
+
+  function buildFocusedCodeContext(content, lineNumber, radius = 4) {
+    const lines = (content || "").split(/\r?\n/);
+    const safeLine = Math.min(Math.max(lineNumber || 1, 1), Math.max(lines.length, 1));
+    const start = Math.max(1, safeLine - radius);
+    const end = Math.min(lines.length, safeLine + radius);
+
+    return lines
+      .slice(start - 1, end)
+      .map((line, index) => {
+        const currentLine = start + index;
+        const marker = currentLine === safeLine ? ">" : " ";
+        return `${marker} ${currentLine}: ${line}`;
+      })
+      .join("\n");
+  }
 
   // ── File tab actions (Phase 7) ───────────────────────────────────────────
   function addFile() {
@@ -216,6 +240,7 @@ export default function ProblemPage() {
 
         termWriterRef.current?.clear();
         termWriterRef.current?.write(`\x1b[36mLoaded: ${problem.title}\x1b[0m\r\n`);
+        setLastRunContext(INITIAL_RUN_CONTEXT);
 
         setSubmissionsLoading(true);
         const subRes = await api(`/api/student/history?problemId=${problemId}`, {
@@ -231,17 +256,16 @@ export default function ProblemPage() {
         }).catch(() => ({ data: [] }));
         if (cancelled) return;
 
-        const logs    = aiRes?.data ?? [];
-        const greeting = { role: "assistant", content: "Hi! Ask for hints about your code." };
+        const logs = aiRes?.data ?? [];
         if (logs.length > 0) {
-          const restored = [greeting];
+          const restored = [];
           for (const log of logs.slice().reverse()) {
             if (log.studentQuestion) restored.push({ role: "user",      content: log.studentQuestion });
             if (log.responseText)    restored.push({ role: "assistant", content: log.responseText });
           }
           setChat(restored);
         } else {
-          setChat([greeting]);
+          setChat([]);
         }
       } catch (err) {
         if (!cancelled) {
@@ -294,6 +318,12 @@ export default function ProblemPage() {
     setRunning(true);
     termClear();
     termWrite("\x1b[33mRunning tests…\x1b[0m\r\n");
+    setLastRunContext({
+      runStatus: "running",
+      stdout: "",
+      stderr: "",
+      errorMessage: "",
+    });
     try {
       const result = await api("/api/execute", {
         method:    "POST",
@@ -306,13 +336,46 @@ export default function ProblemPage() {
         }),
       });
       termWrite(`mode: ${result.mode}\r\nallPassed: ${result.allPassed}\r\n`);
+      const stdoutParts = [];
+      const stderrParts = [];
+      const compileParts = [];
+      let firstFailingStatus = "";
+
       for (const r of result.results ?? []) {
         const icon = r.passed ? "\x1b[32m✓\x1b[0m" : "\x1b[31m✗\x1b[0m";
         termWrite(`\r\n${icon} Test ${r.index} — ${r.status}\r\n`);
-        if (r.stdout)        termWrite(`stdout:\r\n${r.stdout.replace(/\n/g, "\r\n")}\r\n`);
-        if (r.stderr)        termWrite(`\x1b[31mstderr:\r\n${r.stderr.replace(/\n/g, "\r\n")}\x1b[0m\r\n`);
-        if (r.compileOutput) termWrite(`\x1b[33mcompile:\r\n${r.compileOutput.replace(/\n/g, "\r\n")}\x1b[0m\r\n`);
+        if (!r.passed && !firstFailingStatus) firstFailingStatus = r.status ?? "";
+        if (r.stdout) {
+          stdoutParts.push(`Test ${r.index} stdout:\n${r.stdout}`);
+          termWrite(`stdout:\r\n${r.stdout.replace(/\n/g, "\r\n")}\r\n`);
+        }
+        if (r.stderr) {
+          stderrParts.push(`Test ${r.index} stderr:\n${r.stderr}`);
+          termWrite(`\x1b[31mstderr:\r\n${r.stderr.replace(/\n/g, "\r\n")}\x1b[0m\r\n`);
+        }
+        if (r.compileOutput) {
+          compileParts.push(`Test ${r.index} compile:\n${r.compileOutput}`);
+          termWrite(`\x1b[33mcompile:\r\n${r.compileOutput.replace(/\n/g, "\r\n")}\x1b[0m\r\n`);
+        }
       }
+
+      const normalizedStatus = result.allPassed
+        ? "accepted"
+        : compileParts.length > 0
+          ? "compile_error"
+          : stderrParts.length > 0
+            ? "runtime_error"
+            : firstFailingStatus.toLowerCase().includes("time")
+              ? "time_limit_exceeded"
+              : "wrong_answer";
+
+      setLastRunContext({
+        runStatus: normalizedStatus,
+        stdout: stdoutParts.join("\n---\n"),
+        stderr: stderrParts.join("\n---\n"),
+        errorMessage: compileParts.join("\n---\n"),
+      });
+
       const subRes = await api(`/api/student/history?problemId=${selectedProblem.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       }).catch(() => ({ data: [] }));
@@ -324,6 +387,12 @@ export default function ProblemPage() {
       }
     } catch (err) {
       termWrite(`\x1b[31m[error] ${err.message}\x1b[0m\r\n`);
+      setLastRunContext({
+        runStatus: "execution_error",
+        stdout: "",
+        stderr: "",
+        errorMessage: err.message,
+      });
     } finally {
       setRunning(false);
     }
@@ -389,6 +458,10 @@ export default function ProblemPage() {
     const message = overrideMessage ?? chatInput.trim();
     const mode    = overrideMode    ?? "practice";
     if (!message || !selectedProblem) return;
+    const conversationHistory = chat
+      .filter((m) => (m.role === "user" || m.role === "assistant") && m.content?.trim() && !m.error)
+      .slice(-MAX_MENTOR_HISTORY_MESSAGES)
+      .map((m) => ({ role: m.role, content: m.content }));
 
     setChat((prev) => [
       ...prev,
@@ -407,8 +480,16 @@ export default function ProblemPage() {
           assignmentText:  selectedProblem.description,
           studentCode:     allCode,
           studentQuestion: message,
-          runStatus:       "idle",
+          runStatus:       lastRunContext.runStatus,
+          stdout:          lastRunContext.stdout,
+          stderr:          lastRunContext.stderr,
+          errorMessage:    lastRunContext.errorMessage,
           language:        selectedLanguage,
+          mentorLocale,
+          activeFileName:  activeFile?.name,
+          activeLineNumber,
+          selectedCodeContext: buildFocusedCodeContext(code, activeLineNumber),
+          conversationHistory,
           mode,
           hintLevel:       overrideMode === "hint" ? hintCount : undefined,
         }),
@@ -440,6 +521,20 @@ export default function ProblemPage() {
                 return next;
               });
             }
+            if (data.error) {
+              setChat((prev) => {
+                const next = [...prev];
+                const last = next[next.length - 1];
+                const details = data.details ? ` (${data.details})` : "";
+                const content = `[error] ${data.error}${details}`;
+                if (last?.role === "assistant") {
+                  next[next.length - 1] = { ...last, content, error: true };
+                } else {
+                  next.push({ role: "assistant", content, error: true });
+                }
+                return next;
+              });
+            }
           } catch { /* ignore malformed SSE lines */ }
         }
       }
@@ -449,9 +544,9 @@ export default function ProblemPage() {
         const last = next[next.length - 1];
         // Replace the empty streaming bubble with the error
         if (last?.role === "assistant" && last.streaming) {
-          next[next.length - 1] = { role: "assistant", content: `[error] ${err.message}` };
+          next[next.length - 1] = { role: "assistant", content: `[error] ${err.message}`, error: true };
         } else {
-          next.push({ role: "assistant", content: `[error] ${err.message}` });
+          next.push({ role: "assistant", content: `[error] ${err.message}`, error: true });
         }
         return next;
       });
@@ -461,7 +556,12 @@ export default function ProblemPage() {
         const next = [...prev];
         const last = next[next.length - 1];
         if (last?.role === "assistant" && last.streaming) {
-          next[next.length - 1] = { ...last, streaming: false };
+          next[next.length - 1] = {
+            ...last,
+            content: last.content || "[error] Mentor did not return a visible response.",
+            error: last.error || !last.content,
+            streaming: false,
+          };
         }
         return next;
       });
@@ -508,11 +608,14 @@ export default function ProblemPage() {
       onFileRename={renameFile}
       code={code}
       setCode={setCode}
+      onCursorLineChange={setActiveLineNumber}
       // Phase 6 — terminal ref
       termWriterRef={termWriterRef}
       chat={chat}
       chatInput={chatInput}
       setChatInput={setChatInput}
+      mentorLocale={mentorLocale}
+      setMentorLocale={setMentorLocale}
       sendChat={sendChat}
       sendHint={sendHint}
       hintCount={hintCount}

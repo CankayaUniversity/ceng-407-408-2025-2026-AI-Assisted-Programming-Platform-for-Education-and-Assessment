@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { PolicyAction } from "@prisma/client";
+import { assessMentorReply } from "../services/mentorQuality";
 import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/requireAuth";
 import {
@@ -8,18 +9,22 @@ import {
   getMentorReplyStream,
   type MentorRequestInput,
 } from "../services/mentor";
-import { applyPolicyWithRetry } from "../services/policy";
-import { validateMentorReply } from "../services/validator";
-import { firstErrorLine } from "../services/mentorContext";
 import { detectMentorIntent } from "../services/mentorIntent";
+import { applyPolicyWithRetry, validateMentorReplyWithQuality } from "../services/policy";
 import { aiChatSchema } from "../lib/schemas";
 
 const router = Router();
 
 const PROMPT_VERSION = "mentor_v2";
-const VALIDATOR_MODEL = process.env.OLLAMA_VALIDATOR_MODEL ?? "validator-heuristic";
+const MAX_CONVERSATION_HISTORY_MESSAGES = 20;
+const VALIDATOR_MODEL = process.env.OLLAMA_VALIDATOR_MODEL ?? process.env.OLLAMA_MODEL ?? "gemma4:26b";
 
 router.use(requireAuth);
+
+type StoredAiLogMessage = {
+  studentQuestion: string | null;
+  responseText: string | null;
+};
 
 function parseMentorBody(body: Record<string, unknown>): MentorRequestInput {
   const studentQuestion =
@@ -64,7 +69,7 @@ function parseMentorBody(body: Record<string, unknown>): MentorRequestInput {
               (message as { role?: unknown }).role === "assistant") &&
             typeof (message as { content?: unknown }).content === "string",
         )
-        .slice(-6)
+        .slice(-MAX_CONVERSATION_HISTORY_MESSAGES)
     : null;
 
   return {
@@ -139,58 +144,60 @@ function parseSubmissionId(body: Record<string, unknown>): number | undefined {
   return undefined;
 }
 
-function buildMentorFallback(input: MentorRequestInput): string {
-  const question = (input.studentQuestion ?? "").trim();
-  const runStatus = (input.runStatus ?? "").trim().toLowerCase();
-  const errorLine = firstErrorLine(input);
-  const intent = detectMentorIntent(question);
-  const isTurkish = input.mentorLocale === "tr";
+function compactConversationHistory(
+  messages: NonNullable<MentorRequestInput["conversationHistory"]>,
+): NonNullable<MentorRequestInput["conversationHistory"]> {
+  const seen = new Set<string>();
+  const compacted: NonNullable<MentorRequestInput["conversationHistory"]> = [];
 
-  if (errorLine) {
-    if (isTurkish) {
-      return `İlk incelemen gereken hata: \`${errorLine}\`. Önce bu satırı veya hemen önceki satırı düzeltmeyi dene, sonra kodu yeniden çalıştır.`;
-    }
-    return `The first error to inspect is: \`${errorLine}\`. Start by fixing that line or the line immediately before it, then run the code again.`;
+  for (const message of messages.slice().reverse()) {
+    const content = message.content.trim();
+    if (!content) continue;
+
+    const key = `${message.role}:${content}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    compacted.unshift({ role: message.role, content });
   }
 
-  if (intent === "runtime") {
-    if (isTurkish) {
-      return "Bakabilirim, ama terminaldeki gerçek hata metnine ihtiyacım var. Kodu çalıştırıp ilk hata satırını buraya yapıştır.";
-    }
-    return "I can take a look, but I need the exact error text from the terminal. Run the code and paste the first error line here.";
-  }
-
-  if (question) {
-    if (isTurkish) {
-      return "Kontrol etmemi istediğin satırı veya davranışı net yaz; odaklı bir ipucu ya da küçük bir örnek verebilirim.";
-    }
-    return "Tell me the exact line or behavior you want checked, and I can give a focused hint or a tiny example.";
-  }
-
-  if (runStatus === "idle") {
-    if (isTurkish) {
-      return "Kodu bir kez çalıştır, sonra ilk hata satırını veya kontrol etmemi istediğin satırı gönder.";
-    }
-    return "Run the code once, then send the first error line or the line you want checked.";
-  }
-
-  if (isTurkish) {
-    return "Takıldığın kısmı göster; sonraki adımda yardımcı olabilirim.";
-  }
-  return "Show me the exact part you are stuck on, and I can help with the next step.";
+  return compacted.slice(-MAX_CONVERSATION_HISTORY_MESSAGES);
 }
 
-function toPolicyAction(action: string): PolicyAction {
-  switch (action) {
-    case "allow":
-      return PolicyAction.allow;
-    case "rewrite":
-      return PolicyAction.rewrite;
-    case "block":
-      return PolicyAction.block;
-    default:
-      return PolicyAction.fallback_safe_hint;
+async function enrichInputWithStoredHistory(
+  input: MentorRequestInput,
+  userId: number,
+  problemId: number | undefined,
+): Promise<MentorRequestInput> {
+  const providedHistory = compactConversationHistory(input.conversationHistory ?? []);
+
+  if (providedHistory.length > 0 || problemId === undefined) {
+    input.conversationHistory = providedHistory;
+    return input;
   }
+
+  const logs: StoredAiLogMessage[] = await prisma.aiLog.findMany({
+    where: { userId, problemId },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: 10,
+    select: { studentQuestion: true, responseText: true },
+  });
+
+  const storedHistory = logs
+    .slice()
+    .reverse()
+    .flatMap((log) => {
+      const messages: NonNullable<MentorRequestInput["conversationHistory"]> = [];
+      if (log.studentQuestion) messages.push({ role: "user", content: log.studentQuestion });
+      if (log.responseText) messages.push({ role: "assistant", content: log.responseText });
+      return messages;
+    });
+
+  input.conversationHistory = compactConversationHistory([
+    ...storedHistory,
+    ...(input.conversationHistory ?? []),
+  ]);
+
+  return input;
 }
 
 // ── Exam-mode guard (group-aware) ─────────────────────────────────────────────
@@ -212,13 +219,41 @@ async function isUserInExamMode(userId: number): Promise<boolean> {
   return membership !== null;
 }
 
-async function runValidator(input: MentorRequestInput, mentorReply: string) {
-  return validateMentorReply({
-    studentQuestion: input.studentQuestion ?? "",
-    mentorReply,
-    runStatus: input.runStatus ?? "",
-  });
+function toPolicyAction(action: "allow" | "rewrite" | "block"): PolicyAction {
+  if (action === "rewrite") return PolicyAction.rewrite;
+  if (action === "block") return PolicyAction.block;
+  return PolicyAction.allow;
 }
+
+function getRequestFlags(input: MentorRequestInput): string[] {
+  const flags: string[] = [];
+  if (detectMentorIntent(input.studentQuestion) === "solution") {
+    flags.push("direct_solution_request");
+  }
+  return flags;
+}
+
+
+async function validateAndRepairMentorReply(input: MentorRequestInput, mentorRaw: string) {
+  const startedAt = Date.now();
+
+  const validator = await validateMentorReplyWithQuality(input, mentorRaw);
+
+  const policy = await applyPolicyWithRetry({
+    mentorReply: mentorRaw,
+    validator,
+    studentQuestion: input.studentQuestion,
+    originalInput: input,
+  });
+
+  return {
+    validator,
+    policy,
+    latencyMsValidator: Date.now() - startedAt,
+    requestFlags: getRequestFlags(input),
+  };
+}
+
 
 async function handleAiRequest(req: Request, res: Response) {
   const parsed = aiChatSchema.safeParse(req.body);
@@ -236,8 +271,12 @@ async function handleAiRequest(req: Request, res: Response) {
   }
 
   const body = req.body as Record<string, unknown>;
-  const input = parseMentorBody(body);
   const problemId = parseProblemId(body);
+  const input = await enrichInputWithStoredHistory(
+    parseMentorBody(body),
+    req.auth!.userId,
+    problemId,
+  );
   const submissionId = parseSubmissionId(body);
   const mode = typeof body.mode === "string" ? body.mode.trim().toLowerCase() : "practice";
 
@@ -245,20 +284,19 @@ async function handleAiRequest(req: Request, res: Response) {
   const result = await getMentorReply(input);
   const latencyMsMentor = Date.now() - mentorStartedAt;
 
-  const fallbackUsed = !result.success;
-  const mentorRaw = result.success ? result.mentorReply : buildMentorFallback(input);
-  const mentorModel = result.success ? getMentorModelName(input) : "fallback-local";
+  if (!result.success) {
+    res.status(503).json({
+      success: false,
+      error: "Mentor service unavailable.",
+      details: result.error,
+    });
+    return;
+  }
 
-  const validatorStartedAt = Date.now();
-  const validator = await runValidator(input, mentorRaw);
-  const latencyMsValidator = Date.now() - validatorStartedAt;
-
-  const policy = await applyPolicyWithRetry({
-    mentorReply: mentorRaw,
-    validator,
-    studentQuestion: input.studentQuestion,
-    originalInput: input,
-  });
+  const mentorRaw = result.mentorReply;
+  const mentorModel = getMentorModelName(input);
+  const validation = await validateAndRepairMentorReply(input, mentorRaw);
+  const finalText = validation.policy.finalText.trim() ? validation.policy.finalText : mentorRaw;
 
   const problem =
     problemId !== undefined ? await prisma.problem.findUnique({ where: { id: problemId } }) : null;
@@ -294,14 +332,16 @@ async function handleAiRequest(req: Request, res: Response) {
         promptVersion: PROMPT_VERSION,
         modelName: mentorModel,
         studentQuestion: input.studentQuestion ?? null,
-        responseText: policy.finalText,
+        responseText: finalText,
         requestPayload: body as object,
         responsePayload: {
           mentorRaw,
-          mentorError: result.success ? null : result.error,
-          validator,
-          policyAction: policy.action,
-          fallbackUsed,
+          mentorError: null,
+          validator: validation.validator,
+          finalValidator: validation.policy.finalValidator ?? null,
+          policyAction: validation.policy.action,
+          requestFlags: validation.requestFlags,
+          fallbackUsed: false,
         },
       },
     });
@@ -335,24 +375,30 @@ async function handleAiRequest(req: Request, res: Response) {
         mentorModel,
         validatorModel: VALIDATOR_MODEL,
         mentorRaw,
-        validatorJson: validator as object,
-        policyAction: toPolicyAction(policy.action),
-        finalText: policy.finalText,
-        rewriteCount: policy.rewriteCount,
+        validatorJson: {
+          initial: validation.validator,
+          final: validation.policy.finalValidator ?? null,
+          requestFlags: validation.requestFlags,
+        },
+        policyAction: toPolicyAction(validation.policy.action),
+        finalText,
+        rewriteCount: validation.policy.rewriteCount,
         latencyMsMentor,
-        latencyMsValidator: validator.source === "ai" ? latencyMsValidator : null,
-        errorCode: result.success ? null : (result.error ?? "mentor_error"),
+        latencyMsValidator: validation.latencyMsValidator,
+        errorCode: null,
       },
     });
   }
 
   res.json({
     success: true,
-    mentorReply: policy.finalText,
-    fallbackUsed,
-    ...(result.success ? {} : { warning: "Mentor service unavailable, fallback reply used." }),
-    validator,
-    policyAction: policy.action,
+    mentorReply: finalText,
+    fallbackUsed: false,
+    validator: validation.validator,
+    finalValidator: validation.policy.finalValidator ?? null,
+    policyAction: validation.policy.action,
+    rewriteCount: validation.policy.rewriteCount,
+    requestFlags: validation.requestFlags,
   });
 }
 
@@ -369,61 +415,62 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
     return;
   }
 
+  const body = req.body as Record<string, unknown>;
+  const problemId = parseProblemId(body);
+  const input = await enrichInputWithStoredHistory(
+    parseMentorBody(body),
+    req.auth!.userId,
+    problemId,
+  );
+
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no");
   res.flushHeaders();
 
-  const body = req.body as Record<string, unknown>;
-  const input = parseMentorBody(body);
-
-  let fullText = "";
-  let streamError = false;
+  let mentorRaw = "";
+  let finalText = "";
+  let mentorError: string | null = null;
+  let validation: Awaited<ReturnType<typeof validateAndRepairMentorReply>>;
   const isHint = (typeof body.mode === "string" ? body.mode.trim().toLowerCase() : "") === "hint";
+  const mentorStartedAt = Date.now();
 
   try {
     for await (const token of getMentorReplyStream(input)) {
-      if (res.writableEnded) break;
-      fullText += token;
-      res.write(`data: ${JSON.stringify({ token })}\n\n`);
+      mentorRaw += token;
       // Hint mode: stop after the first complete sentence
-      if (isHint && /[.?!]/.test(fullText.trimEnd().slice(-1))) break;
+      if (isHint && /[.?!]/.test(mentorRaw.trimEnd().slice(-1))) break;
     }
   } catch (err) {
-    streamError = true;
-    const fallback = buildMentorFallback(input);
-    fullText = fallback;
-
-    if (!res.writableEnded) {
-      res.write(`data: ${JSON.stringify({ token: fallback })}\n\n`);
-    }
-  }
-
-  if (!res.writableEnded) {
+    mentorError = err instanceof Error ? err.message : "mentor_stream_error";
+    console.warn("[ai/stream] mentor stream failed:", mentorError);
+    res.write(`event: error\ndata: ${JSON.stringify({ error: "Mentor service unavailable.", details: mentorError })}\n\n`);
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     res.end();
+    return;
   }
 
-  if (!streamError && fullText.trim()) {
-    const problemId = parseProblemId(body);
-    const mode = typeof body.mode === "string" ? body.mode.trim().toLowerCase() : "practice";
+  const latencyMsMentor = Date.now() - mentorStartedAt;
 
+  try {
+    validation = await validateAndRepairMentorReply(input, mentorRaw);
+    finalText = validation.policy.finalText.trim() ? validation.policy.finalText : mentorRaw;
+  } catch (err) {
+    const details = err instanceof Error ? err.message : "mentor_validation_error";
+    console.warn("[ai/stream] mentor validation failed:", details);
+    res.write(`event: error\ndata: ${JSON.stringify({ error: "Mentor validation failed.", details })}\n\n`);
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+    res.end();
+    return;
+  }
+
+  const mode = typeof body.mode === "string" ? body.mode.trim().toLowerCase() : "practice";
+
+  if (problemId !== undefined && finalText.trim()) {
     Promise.resolve().then(async () => {
       try {
-        const validator = await runValidator(input, fullText);
-
-        const policy = await applyPolicyWithRetry({
-          mentorReply: fullText,
-          validator,
-          studentQuestion: input.studentQuestion,
-          originalInput: input,
-        });
-
-        const problem =
-          problemId !== undefined
-            ? await prisma.problem.findUnique({ where: { id: problemId } })
-            : null;
+        const problem = await prisma.problem.findUnique({ where: { id: problemId } });
 
         if (problem) {
           const linkedAttempt = await prisma.submissionAttempt.findFirst({
@@ -442,12 +489,15 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
               promptVersion: PROMPT_VERSION,
               modelName: getMentorModelName(input),
               studentQuestion: input.studentQuestion ?? null,
-              responseText: policy.finalText,
+              responseText: finalText,
               requestPayload: body as object,
               responsePayload: {
-                mentorRaw: fullText,
-                validator,
-                policyAction: policy.action,
+                mentorRaw,
+                validator: validation.validator,
+                finalValidator: validation.policy.finalValidator ?? null,
+                policyAction: validation.policy.action,
+                requestFlags: validation.requestFlags,
+                fallbackUsed: false,
                 streamed: true,
               },
             },
@@ -460,13 +510,17 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
               attemptId: linkedAttempt?.id ?? null,
               mentorModel: getMentorModelName(input),
               validatorModel: VALIDATOR_MODEL,
-              mentorRaw: fullText,
-              validatorJson: validator as object,
-              policyAction: toPolicyAction(policy.action),
-              finalText: policy.finalText,
-              rewriteCount: policy.rewriteCount,
-              latencyMsMentor: 0,
-              latencyMsValidator: validator.source === "ai" ? 0 : null,
+              mentorRaw,
+              validatorJson: {
+                initial: validation.validator,
+                final: validation.policy.finalValidator ?? null,
+                requestFlags: validation.requestFlags,
+              },
+              policyAction: toPolicyAction(validation.policy.action),
+              finalText,
+              rewriteCount: validation.policy.rewriteCount,
+              latencyMsMentor,
+              latencyMsValidator: validation.latencyMsValidator,
               errorCode: null,
             },
           });
@@ -497,6 +551,13 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
       }
     });
   }
+
+  if (!res.writableEnded) {
+    res.write(`data: ${JSON.stringify({ token: finalText })}\n\n`);
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+    res.end();
+  }
+
 });
 
 router.post("/chat", handleAiRequest);

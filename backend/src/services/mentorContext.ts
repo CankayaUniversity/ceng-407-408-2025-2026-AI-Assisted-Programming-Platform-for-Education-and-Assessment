@@ -1,5 +1,8 @@
 import type { MentorConversationMessage } from "./mentorQuality";
 
+const MAX_RECENT_HISTORY_MESSAGES = 16;
+const MAX_HISTORY_MESSAGE_CHARS = 800;
+
 export type MentorContextInput = {
   problemDescription?: string | null;
   assignmentText?: string | null;
@@ -29,6 +32,15 @@ export function firstNonEmptyLine(text: string | null | undefined): string {
 
 export function firstErrorLine(input: MentorContextInput): string {
   return firstNonEmptyLine(input.errorMessage || input.stderr);
+}
+
+function truncateHistoryContent(content: string): string {
+  const normalized = normalizeText(content).replace(/\s+\n/g, "\n");
+  if (normalized.length <= MAX_HISTORY_MESSAGE_CHARS) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, MAX_HISTORY_MESSAGE_CHARS - 3).trimEnd()}...`;
 }
 
 export function formatMentorContext(input: MentorContextInput): string {
@@ -64,11 +76,16 @@ export function formatMentorContext(input: MentorContextInput): string {
 export function formatRecentHistory(input: MentorContextInput): string {
   const history = (input.conversationHistory ?? [])
     .filter((message) => message.content.trim())
-    .slice(-4);
+    .slice(-MAX_RECENT_HISTORY_MESSAGES);
 
   if (history.length === 0) return "(none)";
 
   return history
-    .map((message) => `${message.role === "assistant" ? "Previous mentor" : "Previous student"}: ${message.content}`)
+    .map(
+      (message) =>
+        `${message.role === "assistant" ? "Previous mentor" : "Previous student"}: ${truncateHistoryContent(
+          message.content,
+        )}`,
+    )
     .join("\n");
 }

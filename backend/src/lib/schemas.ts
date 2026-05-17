@@ -67,6 +67,18 @@ export const aiChatSchema = z.object({
   stdout:             z.string().optional().nullable(),
   stderr:             z.string().optional().nullable(),
   language:           z.string().optional().nullable(),
+  mentorLocale:       z.enum(["en", "tr"]).optional().nullable(),
+  modelOverride:      z.string().optional().nullable(),
+  activeFileName:     z.string().optional().nullable(),
+  activeLineNumber:   z.number().int().positive().optional().nullable(),
+  cursorLine:         z.number().int().positive().optional().nullable(),
+  lineNumber:         z.number().int().positive().optional().nullable(),
+  selectedCodeContext:z.string().optional().nullable(),
+  codeContext:        z.string().optional().nullable(),
+  conversationHistory:z.array(z.object({
+    role:    z.enum(["user", "assistant"]),
+    content: z.string(),
+  })).optional().nullable(),
   mode:               z.string().optional().nullable(),
   hintLevel:          z.number().int().optional().nullable(),
 });

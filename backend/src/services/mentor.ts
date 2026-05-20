@@ -657,6 +657,61 @@ async function* streamOllamaTokens(
     const decoder = new TextDecoder();
     let pending = "";
 
+    // ── Live artifact filter ─────────────────────────────────────────────
+    // Drop chain-of-thought (<think>...</think>) and a single "Mentor reply:"
+    // style prefix before the tokens reach the client. We buffer until we
+    // know whether we're inside a thinking block or still consuming the
+    // leading prefix; nothing leaves this generator until both have cleared.
+    let buffer = "";
+    let inThink = false;
+    let prefixCleared = false;
+    const PREFIX_RE = /^\s*(?:ai\s*)?(?:mentor|assistant|response)(?:\s*reply)?\s*:\s*/i;
+
+    function* drainBuffer(): Generator<string> {
+      while (buffer.length > 0) {
+        if (inThink) {
+          const end = buffer.indexOf("</think>");
+          if (end === -1) { buffer = ""; return; } // wait for more
+          buffer = buffer.slice(end + "</think>".length);
+          inThink = false;
+        } else {
+          const start = buffer.indexOf("<think>");
+          if (start === -1) {
+            // No think tag in flight — emit everything except any unsafe
+            // trailing partial like "<thi" that might still grow.
+            const safeCut = buffer.lastIndexOf("<");
+            const tail = safeCut >= 0 ? buffer.slice(safeCut) : "";
+            const flushable = safeCut >= 0 && /^<th?i?n?k?>?$/i.test(tail)
+              ? buffer.slice(0, safeCut)
+              : buffer;
+            if (!prefixCleared) {
+              const stripped = flushable.replace(PREFIX_RE, "");
+              if (stripped.length < flushable.length || stripped.trim().length > 0) {
+                prefixCleared = true;
+                if (stripped.length > 0) yield stripped;
+              }
+              buffer = flushable === buffer ? "" : tail;
+              return;
+            }
+            if (flushable.length > 0) yield flushable;
+            buffer = flushable === buffer ? "" : tail;
+            return;
+          }
+          const before = buffer.slice(0, start);
+          if (before.length > 0) {
+            if (!prefixCleared) {
+              const stripped = before.replace(PREFIX_RE, "");
+              if (stripped.length > 0) { prefixCleared = true; yield stripped; }
+            } else {
+              yield before;
+            }
+          }
+          buffer = buffer.slice(start + "<think>".length);
+          inThink = true;
+        }
+      }
+    }
+
     while (true) {
       const { value, done } = await reader.read();
       if (done) break;
@@ -669,9 +724,18 @@ async function* streamOllamaTokens(
         try {
           const obj = JSON.parse(trimmed) as { response?: string; done?: boolean };
           if (typeof obj.response === "string" && obj.response.length > 0) {
-            yield obj.response;
+            buffer += obj.response;
+            yield* drainBuffer();
           }
-          if (obj.done) return;
+          if (obj.done) {
+            // Flush any safe remaining content (in case we stopped mid-buffer)
+            if (!inThink && buffer.length > 0) {
+              const final = prefixCleared ? buffer : buffer.replace(PREFIX_RE, "");
+              if (final.length > 0) yield final;
+              buffer = "";
+            }
+            return;
+          }
         } catch { /* malformed line — skip */ }
       }
     }

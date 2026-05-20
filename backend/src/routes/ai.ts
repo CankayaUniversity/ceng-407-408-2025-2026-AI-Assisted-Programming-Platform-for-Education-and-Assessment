@@ -572,9 +572,21 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
     textToStream = buildMentorFallback(input);
   }
 
-  // ── Step 3: if validation altered the text, push a {replace} event so the
-  // client can overwrite what it streamed. If nothing changed, do nothing.
-  if (!res.writableEnded && textToStream !== rawText) {
+  // ── Step 3: only push a {replace} event when the pipeline made a
+  // SUBSTANTIVE change, not a cosmetic one. The raw stream includes
+  // model artifacts (Mentor reply: prefixes, <think> blocks, trailing
+  // User: lines) that the policy strips silently — those alone are
+  // not worth a visible bubble swap. Compare the meaningful content:
+  // strip artifacts and whitespace from both sides, then check.
+  const normalize = (s: string): string =>
+    s
+      .replace(/<think>[\s\S]*?<\/think>/gi, "")
+      .replace(/^(?:ai\s*)?(?:mentor|assistant|response)\s*reply\s*:\s*/i, "")
+      .replace(/^(?:ai\s*)?(?:mentor|assistant)\s*:\s*/i, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  if (!res.writableEnded && normalize(textToStream) !== normalize(rawText)) {
     res.write(`data: ${JSON.stringify({ replace: textToStream })}\n\n`);
   }
 

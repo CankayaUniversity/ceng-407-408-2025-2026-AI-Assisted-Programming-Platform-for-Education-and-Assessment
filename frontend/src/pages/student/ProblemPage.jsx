@@ -30,6 +30,23 @@ function extForLanguage(lang) {
   return map[lang] ?? "txt";
 }
 
+/**
+ * Detect whether the student's message is in Turkish so the backend can
+ * activate the mentor's Turkish prompt rules. Heuristic — checks for
+ * Turkish-specific letters (ç, ğ, ı, ö, ş, ü) or a small set of common
+ * Turkish stopwords. Returns "tr" or "en". Anything ambiguous defaults to
+ * English so the mentor stays in its primary mode.
+ */
+function detectMentorLocale(message) {
+  const text = (message ?? "").toLowerCase();
+  if (!text) return "en";
+  if (/[çğıöşü]/.test(text)) return "tr";
+  if (/\b(merhaba|selam|nasıl|nedir|nasil|neden|nerede|ne zaman|bana|kodum|hata|yardım|yardim|açıkla|aciklayabilir|bir|şu|şey|degil|değil|ile|için|icin|olur|olmaz|var|yok)\b/.test(text)) {
+    return "tr";
+  }
+  return "en";
+}
+
 const STARTER_CODE = {
   python:     "# Write your solution here\n# Read input with: input() or int(input())\n# Example: n = int(input()); arr = list(map(int, input().split()))\n",
   javascript: `const readline = require('readline');
@@ -785,6 +802,11 @@ export default function ProblemPage() {
           stdout:              lastRunResult?.stdout  ?? null,
           stderr:              lastRunResult?.stderr  ?? null,
           language:            selectedLanguage,
+          // Locale hint — detect Turkish from the student's message and pass
+          // it through so the mentor activates its Turkish prompts, Turkish
+          // fallbacks, and Turkish-aware intent detection. Falls back to
+          // English when the message has no clear Turkish-letter signal.
+          mentorLocale:        detectMentorLocale(message),
           mode,
           // Bug #8 fix: use explicitly passed hintLevel to avoid closure stale-value bug
           hintLevel:           mode === "hint" ? (overrideHintLevel ?? hintCount) : undefined,

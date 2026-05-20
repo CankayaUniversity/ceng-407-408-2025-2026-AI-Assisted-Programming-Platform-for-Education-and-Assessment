@@ -48,6 +48,7 @@ function detectQuestionMode(message: string): "casual" | "meta" | "solution" | "
 }
 
 const CODE_LINE_PATTERNS = [
+  // Python / generic
   /^\s*def\s+/,
   /^\s*class\s+/,
   /^\s*function\s+/,
@@ -56,6 +57,8 @@ const CODE_LINE_PATTERNS = [
   /^\s*var\s+/,
   /^\s*if\s*\(/,
   /^\s*if\s+/,
+  /^\s*elif\s+/,
+  /^\s*else\s*:/,
   /^\s*for\s*\(/,
   /^\s*for\s+/,
   /^\s*while\s*\(/,
@@ -65,6 +68,36 @@ const CODE_LINE_PATTERNS = [
   /^\s*input\(/,
   /^\s*console\.log\(/,
   /^\s*\w+\s*=\s*.+$/,
+  // C / C++ patterns
+  /^\s*#include\b/,
+  /^\s*using\s+namespace\b/,
+  /^\s*using\s+std::/,
+  /^\s*(?:int|float|double|char|bool|void|long|short|unsigned|signed|size_t|auto)\s+\w+/,
+  /^\s*(?:int|float|double|char|bool|void|long|auto)\s*\**\s*\w+\s*\(/,
+  /^\s*std::/,
+  /^\s*cin\s*>>/,
+  /^\s*cout\s*<</,
+  /^\s*scanf\s*\(/,
+  /^\s*printf\s*\(/,
+  /^\s*vector\s*</,
+  /^\s*array\s*</,
+  /^\s*map\s*</,
+  /^\s*set\s*</,
+  // Java patterns
+  /^\s*(?:public|private|protected|static|final)\b/,
+  /^\s*System\.out\./,
+  /^\s*Scanner\s+\w+/,
+  /^\s*new\s+\w+/,
+  // C# patterns
+  /^\s*Console\.(?:Write|Read)/,
+  /^\s*namespace\s+\w+/,
+  /^\s*using\s+System/,
+  // JavaScript / TypeScript additions
+  /^\s*(?:export|import)\b/,
+  /^\s*async\s+function/,
+  // Generic statements
+  /^\s*\w+\s*\+\+\s*;?$/,
+  /^\s*\w+\s*\[\s*\w+\s*\]/,
 ];
 
 function countCodeLikeLines(text: string): number {
@@ -111,6 +144,31 @@ function containsAssignmentWalkthrough(text: string): boolean {
   return hits >= 4;
 }
 
+// Catch numbered solution walkthroughs ("Step 1:... Step 2:..." or
+// "1. Initialize... 2. Fill..."). A mentor never structures answers this way.
+function containsStepWalkthrough(text: string): boolean {
+  const stepN = text.match(/(?:^|\n)\s*(?:step\s*)?\d+\s*[.:)]\s+/gi) ?? [];
+  if (stepN.length >= 3) return true;
+  const stepHeader = text.match(/\bstep\s*\d+\s*[:.]\s*/gi) ?? [];
+  return stepHeader.length >= 2;
+}
+
+// Catch self-contradicting refusals like
+//   "I can't give the full solution. Let's continue with [code]"
+//   "I won't write the code. However, here is..."
+// The mentor saying NO and then providing the answer anyway.
+function containsSelfContradictingRefusal(text: string): boolean {
+  const refuse = /\b(?:i\s*(?:can'?t|cannot|won'?t)|i'?m\s+sorry|can'?t\s+(?:provide|give|write))\b[^.!?\n]{0,80}\b(?:solution|full\s+code|final\s+code|answer)\b/i;
+  if (!refuse.test(text)) return false;
+
+  // After the refusal sentence, look for a "but here is..." style continuation
+  // OR a code block in the same reply.
+  const continuation =
+    /\b(?:but\s+here|however\b|let'?s\s+continue|here'?s\s+how|here\s+is\s+how|step\s*1|let\s+me\s+show)/i;
+  const hasCodeBlock = /```/.test(text);
+  return continuation.test(text) || hasCodeBlock;
+}
+
 function containsExactFinalEdit(text: string): boolean {
   return [
     /replace\s+.+\s+with\s+.+/i,
@@ -138,12 +196,22 @@ function heuristicValidate(input: ValidateInput): ValidatorResult {
     violations.push("explicit_solution_language");
   }
 
-  if (codeLikeLines >= 6) {
+  // Mentor replies should default to ZERO code. Three or more code-like lines
+  // is already a solution-shaped reply.
+  if (codeLikeLines >= 3) {
     violations.push("contains_code_solution");
   }
 
-  if (containsAssignmentWalkthrough(mentorReply) && sentenceCount >= 5) {
+  if (containsAssignmentWalkthrough(mentorReply) && sentenceCount >= 4) {
     violations.push("assignment_walkthrough");
+  }
+
+  if (containsStepWalkthrough(mentorReply)) {
+    violations.push("step_walkthrough");
+  }
+
+  if (containsSelfContradictingRefusal(mentorReply)) {
+    violations.push("self_contradicting_refusal");
   }
 
   if (questionMode === "casual" || questionMode === "meta") {
@@ -178,20 +246,19 @@ function heuristicValidate(input: ValidateInput): ValidatorResult {
     violations.push("solution_seek_exact_fix");
   }
 
-  // Length thresholds intentionally generous for code_help — a normal helpful
-  // mentor reply explaining a bug + suggesting an approach often runs 6-8
-  // sentences with line breaks. Earlier (tighter) limits caused frequent false
-  // positives that triggered the rewrite pipeline and produced worse output.
+  // Mentor replies must stay short. These limits are intentionally tight —
+  // a Socratic mentor's job is 1-3 sentences, not paragraphs.
   if (questionMode === "casual" || questionMode === "meta") {
-    if (sentenceCount > 4 || lineCount > 8) {
+    if (sentenceCount > 2 || lineCount > 4) {
       violations.push("overly_long_response");
     }
   } else if (questionMode === "code_help") {
-    if (sentenceCount > 10 || lineCount > 20) {
+    if (sentenceCount > 4 || lineCount > 8) {
       violations.push("overly_long_response");
     }
   } else if (questionMode === "solution") {
-    if (sentenceCount > 5 || lineCount > 10) {
+    // For solution-seek requests, refusal + one question = 2 sentences max.
+    if (sentenceCount > 2 || lineCount > 4) {
       violations.push("overly_long_response");
     }
   }
@@ -200,7 +267,9 @@ function heuristicValidate(input: ValidateInput): ValidatorResult {
     violations.includes("contains_code_solution") ||
     violations.includes("explicit_solution_language") ||
     violations.includes("solution_seek_leak") ||
-    violations.includes("solution_seek_exact_fix")
+    violations.includes("solution_seek_exact_fix") ||
+    violations.includes("step_walkthrough") ||
+    violations.includes("self_contradicting_refusal")
   ) {
     return {
       riskScore: 0.92,

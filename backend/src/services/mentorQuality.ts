@@ -117,6 +117,42 @@ function questionRefersToEditor(question: string): boolean {
   return explicitEditorReference || contextualPointer;
 }
 
+// Detect whether a reply is Socratic — ends with a question that prompts
+// thinking, OR contains a precise concept/line pointer rather than just a
+// declarative explanation. A mentor reply lacking BOTH is a lecture, not a
+// guided question.
+function isSocratic(reply: string): boolean {
+  const trimmed = reply.trim();
+  if (!trimmed) return false;
+  // Easy positive: ends with a question mark.
+  if (/[?]\s*$/.test(trimmed)) return true;
+  if (/[?]\s*[\)\]"']*\s*$/.test(trimmed)) return true;
+  // Question mark anywhere in the last 40 chars (handles trailing emoji etc.)
+  if (trimmed.slice(-40).includes("?")) return true;
+  // Concept-pointer phrasing — "consider X", "think about X", "look at line N"
+  if (
+    /\b(consider|think about|notice|look at|focus on|check|examine|ask yourself|inspect|trace through)\b/i.test(trimmed) ||
+    /\bline\s+\d+\b/i.test(trimmed) ||
+    // Turkish equivalents
+    /\b(düşün|incele|bak|kontrol et|dikkat et)\b/i.test(trimmed)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+// Detect un-asked-for code blocks. A mentor reply with a code block when the
+// student didn't ask for one is a quality smell.
+function hasUnsolicitedCodeBlock(reply: string, question: string): boolean {
+  const hasFence = /```/.test(reply);
+  if (!hasFence) return false;
+  const asksForCode =
+    /\b(example|show me|pseudo[-\s]?code|snippet|how would.*look|nasıl yaz|örnek|sözde\s*kod|göster)\b/i.test(
+      question,
+    );
+  return !asksForCode;
+}
+
 export function assessMentorReply(input: MentorQualityInput): MentorQualityResult {
   const reply = input.reply.trim();
   const question = (input.studentQuestion ?? "").trim();
@@ -148,6 +184,19 @@ export function assessMentorReply(input: MentorQualityInput): MentorQualityResul
 
   if (questionRefersToEditor(question) && !mentionsFocusedContext(reply, input.selectedCodeContext)) {
     reasons.push("ignores_focused_line");
+  }
+
+  // ── Socratic check ─────────────────────────────────────────────────────
+  // For substantive replies (not greetings/meta), require a question or a
+  // concept pointer. A pure declarative explanation is a lecture, not
+  // mentorship.
+  if (reply.length > 80 && !isSocratic(reply)) {
+    reasons.push("non_socratic_declarative");
+  }
+
+  // ── Unsolicited code block ─────────────────────────────────────────────
+  if (hasUnsolicitedCodeBlock(reply, question)) {
+    reasons.push("unsolicited_code_block");
   }
 
   return { ok: reasons.length === 0, reasons };

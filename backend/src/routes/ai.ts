@@ -486,16 +486,11 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
     );
   }
 
-  // ── Step 1: open SSE channel immediately so the client can render tokens
-  // the moment Ollama produces them. We still buffer the full reply on the
-  // server so the validator/policy/quality pipeline can audit the final text
-  // and, if needed, send a {replace} event to overwrite the streamed draft.
-  res.setHeader("Content-Type",      "text/event-stream");
-  res.setHeader("Cache-Control",     "no-cache");
-  res.setHeader("Connection",        "keep-alive");
-  res.setHeader("X-Accel-Buffering", "no");
-  res.flushHeaders();
-
+  // ── Step 1: BUFFER the full model output before sending anything to the
+  // client. Streaming raw tokens means students would see solutions appear
+  // briefly on screen before the validator could redact them — unacceptable
+  // for a mentor. We collect the full reply first, validate it, then stream
+  // the APPROVED text word-by-word so the UX still feels alive.
   let rawText    = "";
   let modelError = false;
   const streamStartedAt = Date.now();
@@ -503,18 +498,8 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
   try {
     for await (const chunk of streamMentorTokens(input)) {
       rawText += chunk;
-      if (!res.writableEnded) {
-        res.write(`data: ${JSON.stringify({ token: chunk })}\n\n`);
-      }
-
-      // Hint-mode early stop: cut after the first complete sentence on
-      // levels 0-1 only. Higher levels intentionally allow longer hints
-      // (and at level 3+ may include a short pseudo-code block) — cutting
-      // them at the first sentence would drop the explanatory content.
       if (isHint && (input.hintLevel ?? 0) < 2) {
         const t = rawText.trimEnd();
-        // Skip the early-break if the reply already opened a code fence —
-        // we must let it close, or the rendered output is broken.
         const openFence = (rawText.match(/```/g) ?? []).length % 2 === 1;
         if (!openFence && /[a-zA-Z0-9][.!?](\s|$)/.test(t.slice(-4))) break;
       }
@@ -522,57 +507,41 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
   } catch {
     modelError = true;
     rawText = buildMentorFallback(input);
-    // Tell the client to discard whatever fragmentary text it has and show
-    // the fallback instead.
-    if (!res.writableEnded) {
-      res.write(`data: ${JSON.stringify({ replace: rawText })}\n\n`);
-    }
   }
 
   if (!rawText.trim()) {
     rawText = buildMentorFallback(input);
-    if (!res.writableEnded) {
-      res.write(`data: ${JSON.stringify({ replace: rawText })}\n\n`);
-    }
   }
 
-  // ── Step 2: validate + apply policy on the buffered reply.
+  // ── Step 2: validate + apply policy. The student has NOT seen anything
+  // yet, so we can safely replace bad replies without any flicker.
   //
-  // The streaming path treats the validator's decisions very differently from
-  // the non-stream path. The student has ALREADY seen the streamed reply by
-  // the time we get here. Visibly replacing it is jarring — so we only do it
-  // when safety actually demands it.
-  //
-  //   block   → genuine safety violation (solution leak, exact-fix directive,
-  //             6+ lines of code). REPLACE the streamed text with the safe
-  //             hint so the student doesn't see the solution.
-  //   rewrite → soft stylistic flag (too long, wrong tone, runtime guess).
-  //             LEAVE THE STREAMED TEXT ALONE. Calling the mentor a second
-  //             time risks producing a worse answer that ends up as the
-  //             safeFallback ("I can help with that...") — which is exactly
-  //             the bug students were seeing. The first reply is what they
-  //             read; we keep it.
-  //   allow   → no action.
-  //
-  // Quality assessment runs only for logging/audit now — it does NOT swap
-  // the bubble. A "generic_fallback" or "echoes_question" reply is annoying
-  // but not worth interrupting the student to overwrite.
+  //   block   → use the policy's safe alternative text.
+  //   rewrite → run quality check; if the reply is also non-Socratic or
+  //             contains a code block when not asked, use generic guidance.
+  //             Otherwise let the original through.
+  //   allow   → use as-is, but still run quality and replace with generic
+  //             guidance on serious quality failures (unsolicited code,
+  //             non-Socratic lecture, transcript artifact).
   let textToStream = rawText;
   let validator: Awaited<ReturnType<typeof runValidator>> | null = null;
   let policy:    Awaited<ReturnType<typeof applyPolicyWithRetry>> | null = null;
   let latencyMsValidator: number | null = null;
   let qualityReasons: string[] = [];
 
+  const SERIOUS_QUALITY_REASONS = new Set([
+    "transcript_artifact",
+    "unsolicited_code_block",
+    "non_socratic_declarative",
+    "generic_fallback",
+    "echoes_question",
+  ]);
+
   try {
     const validatorStartedAt = Date.now();
     validator           = await runValidator(input, rawText);
     latencyMsValidator  = Date.now() - validatorStartedAt;
 
-    // Only run the rewrite pipeline if the validator BLOCKED. For rewrite we
-    // skip the retry entirely and keep the streamed text. This avoids the
-    // chain: rewrite → second mentor call → quality fail → safeFallback,
-    // which was overwriting good replies with a generic "I can help with that"
-    // message.
     if (validator.decision === "block") {
       policy = await applyPolicyWithRetry({
         mentorReply:    rawText,
@@ -581,45 +550,40 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
         originalInput:  input,
       });
       textToStream = policy.finalText;
-    }
+    } else {
+      const quality = assessMentorReply({
+        reply:               rawText,
+        studentQuestion:     input.studentQuestion ?? undefined,
+        selectedCodeContext: input.selectedCodeContext ?? undefined,
+        stderr:              input.stderr ?? undefined,
+        errorMessage:        input.errorMessage ?? undefined,
+        conversationHistory: input.conversationHistory ?? undefined,
+      });
+      qualityReasons = quality.reasons;
 
-    // Quality check is logged but never used to swap the bubble in the
-    // streaming path — only block events do that.
-    const quality = assessMentorReply({
-      reply:               textToStream,
-      studentQuestion:     input.studentQuestion ?? undefined,
-      selectedCodeContext: input.selectedCodeContext ?? undefined,
-      stderr:              input.stderr ?? undefined,
-      errorMessage:        input.errorMessage ?? undefined,
-      conversationHistory: input.conversationHistory ?? undefined,
-    });
-    if (!quality.ok) qualityReasons = quality.reasons;
+      const hasSerious = quality.reasons.some((r) => SERIOUS_QUALITY_REASONS.has(r));
+      if (validator.decision === "rewrite" || hasSerious) {
+        textToStream = qualityDeflection(input);
+      }
+    }
   } catch {
-    // Validator pipeline crashed — keep the streamed text rather than
-    // overwriting it with a fallback. The reply was probably fine; the
-    // validator was the problem.
+    // Validator pipeline crashed — fall back to the raw reply rather than
+    // discarding it entirely. The mentor itself was probably fine.
   }
 
-  // ── Step 3: only push a {replace} event on a real block decision.
-  // Cosmetic differences (whitespace, transcript-artifact stripping) are
-  // ignored. The normalize() guard is kept as belt-and-suspenders for the
-  // rare case where the block path produces text that happens to closely
-  // match the raw stream after normalization.
-  const normalize = (s: string): string =>
-    s
-      .replace(/<think>[\s\S]*?<\/think>/gi, "")
-      .replace(/^(?:ai\s*)?(?:mentor|assistant|response)\s*reply\s*:\s*/i, "")
-      .replace(/^(?:ai\s*)?(?:mentor|assistant)\s*:\s*/i, "")
-      .replace(/\s+/g, " ")
-      .trim();
+  // ── Step 3: stream the APPROVED text word-by-word for a natural feel.
+  res.setHeader("Content-Type",      "text/event-stream");
+  res.setHeader("Cache-Control",     "no-cache");
+  res.setHeader("Connection",        "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders();
 
-  const shouldReplace =
-    !res.writableEnded &&
-    validator?.decision === "block" &&
-    normalize(textToStream) !== normalize(rawText);
-
-  if (shouldReplace) {
-    res.write(`data: ${JSON.stringify({ replace: textToStream })}\n\n`);
+  const words = textToStream.split(" ");
+  for (let i = 0; i < words.length; i++) {
+    if (res.writableEnded) break;
+    const chunk = (i === 0 ? "" : " ") + words[i];
+    res.write(`data: ${JSON.stringify({ token: chunk })}\n\n`);
+    await new Promise<void>((r) => setTimeout(r, 15));
   }
 
   if (!res.writableEnded) {
@@ -702,5 +666,122 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
 
 router.post("/chat", handleAiRequest);
 router.post("/hint", handleAiRequest);
+
+// ── DEBUG-ONLY: full-pipeline diagnostic endpoint ─────────────────────────────
+//
+// Returns every intermediate stage of the mentor pipeline (prompt, raw model
+// output, validator decision, policy outcome, quality flags) as one big JSON.
+// Intended for the test-mentor script in backend/scripts/ — never for end users.
+//
+// SAFETY: returns 404 unless AI_DEBUG_ENABLED=true is set in the environment.
+// In production this env var should NEVER be set.
+import { buildPrompt, callModel } from "../services/mentor";
+
+router.post("/chat/debug", async (req: Request, res: Response) => {
+  if (process.env.AI_DEBUG_ENABLED !== "true") {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+
+  const body  = req.body as Record<string, unknown>;
+  const input = parseMentorBody(body);
+  const mode  = typeof body.mode === "string" ? body.mode : "practice";
+
+  const t0 = Date.now();
+
+  // ── 1. Build the prompt ────────────────────────────────────────────────
+  const tBuildStart = Date.now();
+  const prompt      = buildPrompt(input);
+  const promptMs    = Date.now() - tBuildStart;
+
+  // ── 2. Call the mentor model — capture the RAW response ────────────────
+  const tMentorStart = Date.now();
+  let rawMentorOutput = "";
+  let mentorError: string | null = null;
+  try {
+    rawMentorOutput = await callModel(prompt, input);
+  } catch (err) {
+    mentorError = err instanceof Error ? err.message : String(err);
+  }
+  const mentorMs = Date.now() - tMentorStart;
+
+  // ── 3. Run the validator on the raw output ─────────────────────────────
+  const tValidatorStart = Date.now();
+  let validator: Awaited<ReturnType<typeof runValidator>> | null = null;
+  if (rawMentorOutput) {
+    try {
+      validator = await runValidator(input, rawMentorOutput);
+    } catch (err) {
+      validator = {
+        decision: "rewrite",
+        source: "heuristic",
+        riskScore: 0.5,
+        violations: ["validator_threw"],
+        reason: err instanceof Error ? err.message : String(err),
+      };
+    }
+  }
+  const validatorMs = Date.now() - tValidatorStart;
+
+  // ── 4. Run the policy (may trigger a rewrite retry → second model call) ─
+  const tPolicyStart = Date.now();
+  let policy: Awaited<ReturnType<typeof applyPolicyWithRetry>> | null = null;
+  if (rawMentorOutput && validator) {
+    try {
+      policy = await applyPolicyWithRetry({
+        mentorReply:    rawMentorOutput,
+        validator,
+        studentQuestion: input.studentQuestion,
+        originalInput:  input,
+      });
+    } catch (err) {
+      policy = {
+        action: "allow",
+        finalText: rawMentorOutput,
+        rewriteCount: 0,
+      };
+      console.warn("[ai/debug] policy error:", err);
+    }
+  }
+  const policyMs = Date.now() - tPolicyStart;
+
+  // ── 5. Quality assessment on the final policy text ─────────────────────
+  const finalText = policy?.finalText ?? rawMentorOutput ?? "";
+  const quality = assessMentorReply({
+    reply:               finalText,
+    studentQuestion:     input.studentQuestion ?? undefined,
+    selectedCodeContext: input.selectedCodeContext ?? undefined,
+    stderr:              input.stderr ?? undefined,
+    errorMessage:        input.errorMessage ?? undefined,
+    conversationHistory: input.conversationHistory ?? undefined,
+  });
+
+  res.json({
+    request: {
+      studentQuestion: input.studentQuestion,
+      mode,
+      hintLevel:       input.hintLevel,
+      mentorLocale:    input.mentorLocale,
+      intent:          detectMentorIntent(input.studentQuestion),
+      historyLength:   input.conversationHistory?.length ?? 0,
+      hasAssignment:   Boolean(input.assignmentText),
+      hasCode:         Boolean(input.studentCode),
+    },
+    prompt,
+    rawMentorOutput,
+    mentorError,
+    validator,
+    policy,
+    quality,
+    finalText,
+    latency: {
+      promptBuildMs:  promptMs,
+      mentorMs,
+      validatorMs,
+      policyMs,
+      totalMs:        Date.now() - t0,
+    },
+  });
+});
 
 export { router as aiRouter };

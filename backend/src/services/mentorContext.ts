@@ -31,7 +31,34 @@ export function firstErrorLine(input: MentorContextInput): string {
   return firstNonEmptyLine(input.errorMessage || input.stderr);
 }
 
-export function formatMentorContext(input: MentorContextInput): string {
+/**
+ * Decide how much problem context to dump into the mentor prompt.
+ *
+ * For casual greetings and meta questions, including the full assignment text
+ * + student code + cursor window is counterproductive: the model sees the
+ * problem in front of it and is naturally tempted to start solving instead
+ * of answering "hello." For real code questions, we still need the full
+ * context.
+ *
+ * The intent is passed in so the caller (mentor.ts) controls the policy
+ * rather than this module re-running intent detection.
+ */
+export type ContextScope = "minimal" | "full";
+
+export function formatMentorContext(
+  input: MentorContextInput,
+  scope: ContextScope = "full",
+): string {
+  if (scope === "minimal") {
+    // For casual / meta turns we hide the assignment from the model entirely.
+    // Without the problem in the prompt, the model has nothing to "solve" and
+    // naturally falls back to conversational tone.
+    return [
+      `Language: ${input.language || "unknown"}`,
+      `Mode: ${input.mode || "mentor"}`,
+    ].join("\n");
+  }
+
   const activeLine =
     typeof input.activeLineNumber === "number" && Number.isFinite(input.activeLineNumber)
       ? String(input.activeLineNumber)

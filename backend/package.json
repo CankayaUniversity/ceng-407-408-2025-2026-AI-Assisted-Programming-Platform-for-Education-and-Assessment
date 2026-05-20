@@ -11,7 +11,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "node dist-seed/prisma/seed.js",
     "prisma:seed:dev": "tsx prisma/seed.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:mentor": "tsx scripts/test-mentor.ts"
   },
   "keywords": [],
   "author": "",
@@ -43,7 +44,8 @@
     "@types/nodemailer": "^8.0.0",
     "@types/pg": "^8.20.0",
     "@types/ws": "^8.5.14",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "yaml": "^2.9.0"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

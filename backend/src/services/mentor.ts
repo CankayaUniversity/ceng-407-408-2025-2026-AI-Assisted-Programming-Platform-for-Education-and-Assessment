@@ -333,7 +333,7 @@ export function getMentorModelName(input?: MentorRequestInput): string {
   return process.env.OLLAMA_MODEL ?? "qwen2.5:3b-instruct";
 }
 
-export function buildPrompt(
+function buildPrompt(
   input: MentorRequestInput,
   options?: { compact?: boolean; repairReasons?: string[] },
 ): string {
@@ -466,7 +466,7 @@ export function buildPrompt(
   ].join("\n");
 }
 
-export async function callModel(prompt: string, input: MentorRequestInput): Promise<string> {
+async function callModel(prompt: string, input: MentorRequestInput): Promise<string> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), MENTOR_TIMEOUT_MS);
 

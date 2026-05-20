@@ -529,19 +529,25 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
   let latencyMsValidator: number | null = null;
   let qualityReasons: string[] = [];
 
-  const SERIOUS_QUALITY_REASONS = new Set([
-    "transcript_artifact",
-    "unsolicited_code_block",
-    "non_socratic_declarative",
-    "generic_fallback",
-    "echoes_question",
-  ]);
-
   try {
     const validatorStartedAt = Date.now();
     validator           = await runValidator(input, rawText);
     latencyMsValidator  = Date.now() - validatorStartedAt;
 
+    // Decision policy for the streaming path:
+    //
+    //   block   → real safety violation (solution leak detected by heuristic
+    //             or AI validator). Replace with the policy's safe text.
+    //   rewrite → stylistic flag from the (often overcautious) AI validator.
+    //             LOGGED for audit, IGNORED for UX — the student sees the
+    //             actual mentor reply. Treating rewrite as a hard block was
+    //             nuking perfectly good Socratic replies; the validator's
+    //             3B model is too strict to be trusted as a kill switch.
+    //   allow   → use as-is.
+    //
+    // Quality flags are also logged for analytics but never used to swap the
+    // visible reply. The bubble-flicker from post-hoc replacement is worse
+    // than letting the occasional borderline reply through.
     if (validator.decision === "block") {
       policy = await applyPolicyWithRetry({
         mentorReply:    rawText,
@@ -551,6 +557,7 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
       });
       textToStream = policy.finalText;
     } else {
+      // allow OR rewrite — keep the mentor reply; just record quality flags.
       const quality = assessMentorReply({
         reply:               rawText,
         studentQuestion:     input.studentQuestion ?? undefined,
@@ -560,10 +567,11 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
         conversationHistory: input.conversationHistory ?? undefined,
       });
       qualityReasons = quality.reasons;
-
-      const hasSerious = quality.reasons.some((r) => SERIOUS_QUALITY_REASONS.has(r));
-      if (validator.decision === "rewrite" || hasSerious) {
-        textToStream = qualityDeflection(input);
+      if (validator.decision === "rewrite") {
+        console.log(
+          "[ai/stream] validator returned rewrite; keeping streamed text. violations=",
+          validator.violations,
+        );
       }
     }
   } catch {
@@ -666,122 +674,5 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
 
 router.post("/chat", handleAiRequest);
 router.post("/hint", handleAiRequest);
-
-// ── DEBUG-ONLY: full-pipeline diagnostic endpoint ─────────────────────────────
-//
-// Returns every intermediate stage of the mentor pipeline (prompt, raw model
-// output, validator decision, policy outcome, quality flags) as one big JSON.
-// Intended for the test-mentor script in backend/scripts/ — never for end users.
-//
-// SAFETY: returns 404 unless AI_DEBUG_ENABLED=true is set in the environment.
-// In production this env var should NEVER be set.
-import { buildPrompt, callModel } from "../services/mentor";
-
-router.post("/chat/debug", async (req: Request, res: Response) => {
-  if (process.env.AI_DEBUG_ENABLED !== "true") {
-    res.status(404).json({ error: "Not found" });
-    return;
-  }
-
-  const body  = req.body as Record<string, unknown>;
-  const input = parseMentorBody(body);
-  const mode  = typeof body.mode === "string" ? body.mode : "practice";
-
-  const t0 = Date.now();
-
-  // ── 1. Build the prompt ────────────────────────────────────────────────
-  const tBuildStart = Date.now();
-  const prompt      = buildPrompt(input);
-  const promptMs    = Date.now() - tBuildStart;
-
-  // ── 2. Call the mentor model — capture the RAW response ────────────────
-  const tMentorStart = Date.now();
-  let rawMentorOutput = "";
-  let mentorError: string | null = null;
-  try {
-    rawMentorOutput = await callModel(prompt, input);
-  } catch (err) {
-    mentorError = err instanceof Error ? err.message : String(err);
-  }
-  const mentorMs = Date.now() - tMentorStart;
-
-  // ── 3. Run the validator on the raw output ─────────────────────────────
-  const tValidatorStart = Date.now();
-  let validator: Awaited<ReturnType<typeof runValidator>> | null = null;
-  if (rawMentorOutput) {
-    try {
-      validator = await runValidator(input, rawMentorOutput);
-    } catch (err) {
-      validator = {
-        decision: "rewrite",
-        source: "heuristic",
-        riskScore: 0.5,
-        violations: ["validator_threw"],
-        reason: err instanceof Error ? err.message : String(err),
-      };
-    }
-  }
-  const validatorMs = Date.now() - tValidatorStart;
-
-  // ── 4. Run the policy (may trigger a rewrite retry → second model call) ─
-  const tPolicyStart = Date.now();
-  let policy: Awaited<ReturnType<typeof applyPolicyWithRetry>> | null = null;
-  if (rawMentorOutput && validator) {
-    try {
-      policy = await applyPolicyWithRetry({
-        mentorReply:    rawMentorOutput,
-        validator,
-        studentQuestion: input.studentQuestion,
-        originalInput:  input,
-      });
-    } catch (err) {
-      policy = {
-        action: "allow",
-        finalText: rawMentorOutput,
-        rewriteCount: 0,
-      };
-      console.warn("[ai/debug] policy error:", err);
-    }
-  }
-  const policyMs = Date.now() - tPolicyStart;
-
-  // ── 5. Quality assessment on the final policy text ─────────────────────
-  const finalText = policy?.finalText ?? rawMentorOutput ?? "";
-  const quality = assessMentorReply({
-    reply:               finalText,
-    studentQuestion:     input.studentQuestion ?? undefined,
-    selectedCodeContext: input.selectedCodeContext ?? undefined,
-    stderr:              input.stderr ?? undefined,
-    errorMessage:        input.errorMessage ?? undefined,
-    conversationHistory: input.conversationHistory ?? undefined,
-  });
-
-  res.json({
-    request: {
-      studentQuestion: input.studentQuestion,
-      mode,
-      hintLevel:       input.hintLevel,
-      mentorLocale:    input.mentorLocale,
-      intent:          detectMentorIntent(input.studentQuestion),
-      historyLength:   input.conversationHistory?.length ?? 0,
-      hasAssignment:   Boolean(input.assignmentText),
-      hasCode:         Boolean(input.studentCode),
-    },
-    prompt,
-    rawMentorOutput,
-    mentorError,
-    validator,
-    policy,
-    quality,
-    finalText,
-    latency: {
-      promptBuildMs:  promptMs,
-      mentorMs,
-      validatorMs,
-      policyMs,
-      totalMs:        Date.now() - t0,
-    },
-  });
-});
 
 export { router as aiRouter };

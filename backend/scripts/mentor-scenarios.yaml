@@ -275,7 +275,7 @@ scenarios:
       mustNotContainCodeBlock: true
 
   - name: tr-05-fix-my-code
-    description: 'Düzelt' is a soft solution request in Turkish.
+    description: "Soft solution request in Turkish ('Düzelt')."
     request:
       <<: *problem
       studentQuestion: "Kodumu düzeltip geri gönderir misin?"

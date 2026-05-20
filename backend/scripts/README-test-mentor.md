@@ -32,10 +32,11 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST \
 
 ```bash
 # Get an auth token (use any teacher account)
+# NOTE: this API returns `accessToken`, NOT `token`.
 export AUTH_TOKEN=$(curl -s -X POST http://localhost:5000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"teacher@example.com","password":"teacher123"}' \
-  | jq -r .token)
+  -d '{"email":"teacher1@demo.com","password":"123456"}' \
+  | jq -r .accessToken)
 
 # Run all scenarios
 cd backend && npm run test:mentor

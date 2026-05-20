@@ -3,17 +3,17 @@ import { PolicyAction } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/requireAuth";
 import {
+  getMentorModelName,
   getMentorReply,
   getMentorReplyStream,
-  looksLikeSolution,
-  enforceIdleHint,
   normalizeMentorLocale,
-  detectMessageMode,
+  streamMentorTokens,
   type MentorRequestInput,
 } from "../services/mentor";
 import { applyPolicyWithRetry } from "../services/policy";
 import { validateMentorReply } from "../services/validator";
 import { assessMentorReply } from "../services/mentorQuality";
+import { detectMentorIntent } from "../services/mentorIntent";
 import { aiChatSchema } from "../lib/schemas";
 
 const router = Router();
@@ -93,7 +93,7 @@ function parseMentorBody(body: Record<string, unknown>): MentorRequestInput {
             role: m.role as "user" | "assistant",
             content: (m.content as string).slice(0, 2_000),
           }))
-          .slice(0, 20) // max 20 entries = 10 full turns
+          .slice(-20) // keep the most recent 20 entries = last 10 full turns
       : null,
 
     // ── Editor context ──────────────────────────────────────────────────────
@@ -216,9 +216,6 @@ async function runValidator(input: MentorRequestInput, mentorReply: string) {
     studentQuestion: input.studentQuestion ?? "",
     mentorReply,
     runStatus:       input.runStatus ?? "",
-    assignmentText:  input.assignmentText ?? input.problemDescription ?? null,
-    mode:            input.mode ?? null,
-    questionMode:    detectMessageMode(input.studentQuestion ?? undefined),
   });
 }
 
@@ -229,23 +226,23 @@ async function runValidator(input: MentorRequestInput, mentorReply: string) {
 // than letting the bad reply through. Bilingual.
 function qualityDeflection(input: MentorRequestInput): string {
   const locale = normalizeMentorLocale(input.mentorLocale);
-  const mode   = detectMessageMode(input.studentQuestion ?? undefined);
+  const intent = detectMentorIntent(input.studentQuestion ?? undefined);
   const hasErr = Boolean((input.stderr ?? input.errorMessage ?? "").trim());
 
   if (locale === "tr") {
-    if (mode === "runtime" && hasErr) {
+    if (intent === "runtime" && hasErr) {
       return "Hata mesajının ilk satırını ve hatanın çıktığı satır numarasını paylaş; oradan başlayalım.";
     }
-    if (mode === "meta") {
+    if (intent === "meta") {
       return "Ben bir yapay zeka programlama mentoruyum. Kod, hata ve sonraki adım konularında yardımcı olabilirim.";
     }
     return "Sorunu daha net göster: kontrol etmemi istediğin satırı veya beklediğin sonuç ile aldığın sonuç arasındaki farkı söyle.";
   }
 
-  if (mode === "runtime" && hasErr) {
+  if (intent === "runtime" && hasErr) {
     return "Share the first line of the error and the line number it points at — let's start from there.";
   }
-  if (mode === "meta") {
+  if (intent === "meta") {
     return "I'm an AI programming mentor. I can help with code, errors, and next steps — what's the specific thing you'd like guidance on?";
   }
   return "Show me the part more concretely — point at the exact line you want checked, or tell me what you expected vs. what you actually saw.";
@@ -325,7 +322,7 @@ async function handleAiRequest(req: Request, res: Response) {
 
   const fallbackUsed = !result.success;
   const mentorRaw = result.success ? result.mentorReply : buildMentorFallback(input);
-  const mentorModel = result.success ? process.env.OLLAMA_MODEL ?? "ai-mentor" : "fallback-local";
+  const mentorModel = result.success ? getMentorModelName(input) : "fallback-local";
 
   const validatorStartedAt = Date.now();
   const validator = await runValidator(input, mentorRaw);
@@ -489,51 +486,56 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
     );
   }
 
-  // ── Step 1: collect full model response (do NOT send to client yet) ──────────
+  // ── Step 1: open SSE channel immediately so the client can render tokens
+  // the moment Ollama produces them. We still buffer the full reply on the
+  // server so the validator/policy/quality pipeline can audit the final text
+  // and, if needed, send a {replace} event to overwrite the streamed draft.
+  res.setHeader("Content-Type",      "text/event-stream");
+  res.setHeader("Cache-Control",     "no-cache");
+  res.setHeader("Connection",        "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders();
+
   let rawText    = "";
   let modelError = false;
   const streamStartedAt = Date.now();
 
   try {
-    for await (const token of getMentorReplyStream(input)) {
-      rawText += token;
+    for await (const chunk of streamMentorTokens(input)) {
+      rawText += chunk;
+      if (!res.writableEnded) {
+        res.write(`data: ${JSON.stringify({ token: chunk })}\n\n`);
+      }
 
-      // Bug #10 fix: stop hint after the first complete sentence.
-      // Only apply for level 0 and 1 — level 2+ requires a full sentence PLUS
-      // pseudocode, so cutting at the first sentence-end would drop the code block.
+      // Hint-mode early stop: cut after the first complete sentence on
+      // levels 0-1. We still want this server-side guard because the prompt
+      // sometimes coaxes the model into longer hints than requested.
       if (isHint && (input.hintLevel ?? 0) < 2) {
         const t = rawText.trimEnd();
-        // Require letter/digit before the punctuation and whitespace/end after
-        // (guards against mid-expression dots like list.append)
         if (/[a-zA-Z0-9][.!?](\s|$)/.test(t.slice(-4))) break;
       }
     }
   } catch {
     modelError = true;
     rawText = buildMentorFallback(input);
+    // Tell the client to discard whatever fragmentary text it has and show
+    // the fallback instead.
+    if (!res.writableEnded) {
+      res.write(`data: ${JSON.stringify({ replace: rawText })}\n\n`);
+    }
   }
 
   if (!rawText.trim()) {
     rawText = buildMentorFallback(input);
-  }
-
-  // ── Step 2: mentor.ts post-processing (mirrors getMentorReply non-stream path) ─
-  // Apply the same checks the non-stream path runs so both paths behave identically.
-  if (!modelError) {
-    // 2a. Inline solution-leak deflection (8-line single block / 2+ blocks / banned phrases)
-    if (looksLikeSolution(rawText)) {
-      // Neutral wording — must not contain banned phrases or our own validator
-      // will block this refusal text on the next stage (see test Step 4).
-      const locale = normalizeMentorLocale(input.mentorLocale);
-      rawText = locale === "tr"
-        ? "Bunu senin yerine yazamam, ama belirli bir sorunu işaret edebilirim. Şu an seni en çok ne zorluyor — mantık hatası mı, eksik bir adım mı, yoksa başka bir şey mi?"
-        : "I won't write that out for you, but I can point to the specific issue. What part is giving you the most trouble right now — is it a logic error, a missing step, or something else?";
+    if (!res.writableEnded) {
+      res.write(`data: ${JSON.stringify({ replace: rawText })}\n\n`);
     }
-    // 2b. Append "Run the code first" note when model asserts runtime results at idle
-    rawText = enforceIdleHint(rawText, input.runStatus);
   }
 
-  // ── Step 3: validate + apply policy ──────────────────────────────────────────
+  // ── Step 2: validate + apply policy on the buffered reply.
+  // If the validator rewrites or blocks, the client must overwrite what it
+  // already rendered. We send a {replace: "..."} event the frontend uses to
+  // swap the bubble's content.
   let textToStream = rawText;
   let validator: Awaited<ReturnType<typeof runValidator>> | null = null;
   let policy:    Awaited<ReturnType<typeof applyPolicyWithRetry>> | null = null;
@@ -552,7 +554,6 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
     });
     textToStream = policy.finalText;
 
-    // Phase 1 — quality assessment. Only meaningful when validator allowed.
     if (policy.action === "allow") {
       const quality = assessMentorReply({
         reply:               textToStream,
@@ -568,25 +569,13 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
       }
     }
   } catch {
-    // If validation pipeline fails, use safe fallback
     textToStream = buildMentorFallback(input);
   }
 
-  // ── Step 4: now open the SSE stream and send the validated text ───────────────
-  res.setHeader("Content-Type",      "text/event-stream");
-  res.setHeader("Cache-Control",     "no-cache");
-  res.setHeader("Connection",        "keep-alive");
-  res.setHeader("X-Accel-Buffering", "no");
-  res.flushHeaders();
-
-  // Word-by-word streaming for a natural UX feel
-  const words = textToStream.split(" ");
-  for (let i = 0; i < words.length; i++) {
-    if (res.writableEnded) break;
-    const chunk = (i === 0 ? "" : " ") + words[i];
-    res.write(`data: ${JSON.stringify({ token: chunk })}\n\n`);
-    // ~15 ms per word ≈ comfortable reading pace without feeling sluggish
-    await new Promise<void>((r) => setTimeout(r, 15));
+  // ── Step 3: if validation altered the text, push a {replace} event so the
+  // client can overwrite what it streamed. If nothing changed, do nothing.
+  if (!res.writableEnded && textToStream !== rawText) {
+    res.write(`data: ${JSON.stringify({ replace: textToStream })}\n\n`);
   }
 
   if (!res.writableEnded) {
@@ -614,7 +603,7 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
             submissionId:    submissionId ?? null,   // Bug #6 fix
             mode,
             promptVersion:   PROMPT_VERSION,
-            modelName:       process.env.OLLAMA_MODEL ?? "ai-mentor",
+            modelName:       getMentorModelName(input),
             studentQuestion: input.studentQuestion ?? null,
             responseText:    textToStream,
             requestPayload:  body as object,
@@ -634,7 +623,7 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
             userId:           req.auth!.userId,
             problemId:        problem.id,
             attemptId:        linkedAttempt?.id ?? null,
-            mentorModel:      process.env.OLLAMA_MODEL ?? "ai-mentor",
+            mentorModel:      getMentorModelName(input),
             validatorModel:   VALIDATOR_MODEL,
             mentorRaw:        rawText,
             validatorJson:    (validator ?? {}) as object,

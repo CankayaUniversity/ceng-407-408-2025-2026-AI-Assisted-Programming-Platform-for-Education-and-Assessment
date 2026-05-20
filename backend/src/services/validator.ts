@@ -1,548 +1,366 @@
-// ── Validator ─────────────────────────────────────────────────────────────────
-//
-// Two-stage validation of mentor replies:
-//
-//   Stage 1 — heuristic (fast, free):
-//     • Banned "solution giveaway" phrases.
-//     • Fenced code block ≥ 10 non-empty lines, or ≥ 3 separate fenced blocks.
-//   Heuristic verdict is the floor: if it blocks, we always block.
-//
-//   Stage 2 — AI validator (Tutor/Student simulation, per Architecture §2.2):
-//     A small fast model (qwen2.5:3b-instruct) decides whether the mentor's
-//     reply could be turned into a working solution without thinking.
-//     Output is a strict JSON verdict — never a rewrite — so the mentor's
-//     response is either passed through unchanged or replaced by the same
-//     SAFE_HINT used by the heuristic path. The AI cannot mangle the response.
-//
-//   Skip rules — stage 2 is skipped (cost optimisation, no spec impact) when:
-//     • Heuristic already blocked     (no point double-checking a block)
-//     • Reply is under 80 chars       (too short to leak meaningfully)
-//     • OLLAMA_VALIDATOR_MODEL is set to "validator-heuristic" (explicit opt-out)
-//     • Reply has no code fence AND no code-like lines AND mode !== "hint"
-//
-//   Failsafe — stage 2 errors / timeouts fall back to the heuristic verdict
-//   so the validator can only ever INCREASE strictness, never decrease it.
+import { detectMentorIntent, toValidatorQuestionMode } from "./mentorIntent";
 
-export type ValidatorDecision = "allow" | "block";
-
-export type ValidatorAiVerdict = {
-  verdict: "safe" | "leak";
-  reason:  string;
-};
+export type ValidatorDecision = "allow" | "rewrite" | "block";
 
 export type ValidatorResult = {
-  riskScore:  number;
-  decision:   ValidatorDecision;
+  riskScore: number;
+  decision: ValidatorDecision;
   violations: string[];
-  reason:     string;
-  source:     "heuristic" | "heuristic+ai";
-  /** AI verdict, when we ran the AI validator. null on skip / failure. */
-  aiVerdict?:    ValidatorAiVerdict | null;
-  /** Wall-clock latency for the AI call only, in ms. Omitted when skipped. */
-  aiLatencyMs?:  number;
-  /** True if the AI call ran but failed/timed out (verdict null but call attempted). */
-  aiFailed?:     boolean;
+  reason: string;
+  source: "ai" | "heuristic";
 };
 
 export type ValidateInput = {
   studentQuestion: string;
-  mentorReply:     string;
-  runStatus?:      string;
-  /** Assignment / problem description. Used by the AI validator to reason
-   *  about leakage relative to the specific problem the student is solving. */
-  assignmentText?: string | null;
-  /** Chat mode — "hint" mode always triggers AI validation (highest leak risk). */
-  mode?:           string | null;
-  /** Coarse classification of the student's question. When provided, the
-   *  heuristic stage applies mode-specific length / context-misuse rules
-   *  (e.g. a "casual" question shouldn't get a 5-sentence code lecture). */
-  questionMode?:   "casual" | "meta" | "runtime" | "solution" | "mentor" | null;
+  mentorReply: string;
+  runStatus?: string;
 };
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+function getOllamaGenerateUrl(): string {
+  const base = (process.env.OLLAMA_BASE_URL ?? "http://localhost:11434").replace(/\/$/, "");
+  return `${base}/api/generate`;
+}
+
+function getValidatorModelName(): string {
+  return process.env.OLLAMA_VALIDATOR_MODEL ?? process.env.OLLAMA_MODEL ?? "gemma4:26b";
+}
+
+function extractJson(text: string): string | null {
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start === -1 || end === -1 || end <= start) return null;
+  return text.slice(start, end + 1);
+}
 
 function normalize(text: string | null | undefined): string {
   return (text ?? "").trim();
 }
 
-// Phrases that unambiguously signal "I am handing you the finished answer."
-// Keep the list short and HIGH-confidence — do not add borderline cases.
-const BANNED_PHRASES = [
-  // English
-  "complete solution",
-  "full solution",
-  "full code",
-  "copy and paste",
-  "submit this",
-  "use this exact code",
-  "here is the corrected version",
-  "here's the corrected version",
-  "your code should look like",
-  "final code",
-  "here is the solution",
-  "here's the solution",
-  "the answer is",
-  // Turkish (adopted from feature/ai)
-  "tam çözüm",
-  "tüm kod",
-  "bütün kod",
-  "kopyalayıp yapıştır",
-  "kopyala yapıştır",
-  "final kod",
-  "düzeltilmiş hali",
-] as const;
-
-// Negation markers — when one of these appears in the ~40 chars BEFORE a
-// banned phrase, the phrase is being refused ("I can't give the full
-// solution"), not asserted ("here is the full solution"). We must not flag
-// refusals as leaks. Covers both English and Turkish.
-const NEGATION_WORDS = new Set([
-  // English
-  "can't", "cannot", "cant",
-  "won't", "wont", "will",        // "will not" → tokens "will" + "not"
-  "don't", "dont", "do",
-  "doesn't", "doesnt", "does",
-  "isn't", "isnt", "is",
-  "not",
-  "never",
-  "no",
-  "refuse", "refused", "refusing", "refuses",
-  "without",
-  "instead",                       // "instead of"
-  "rather",                        // "rather than"
-  // Turkish
-  "yapamam", "veremem", "yazamam",
-  "değil", "degil",
-  "asla",
-  "yerine",
-]);
-
-/**
- * Returns true iff the banned phrase appears in the reply WITHOUT a negation
- * marker in the immediately preceding ~40 chars. This separates real leaks
- * ("here is the full solution: …") from refusals that mention the phrase in
- * order to refuse it ("I can't write the full solution, but…").
- */
-function bannedPhraseIsAsserted(reply: string, phrase: string): boolean {
-  const lower = reply.toLowerCase();
-  let pos = 0;
-  while (true) {
-    const idx = lower.indexOf(phrase, pos);
-    if (idx === -1) return false;
-
-    const before = lower.slice(Math.max(0, idx - 40), idx);
-    const words  = before.match(/[a-zçğıöşü]+(?:'[a-zçğıöşü]+)?/g) ?? [];
-    const hasNegation = words.some((w) => NEGATION_WORDS.has(w));
-
-    if (!hasNegation) return true;       // one assertion is enough to flag
-    pos = idx + phrase.length;            // skip past this occurrence
-  }
-}
-
-// "Replace X with Y" / "Change X to Y" — these are *the literal fix*, not a hint.
-//
-// Three layers of filtering to avoid false positives:
-//   1. NEGATIVE LOOKBEHIND — when an article or quantifier precedes the verb
-//      (e.g. "the change", "a replace", "minimal change"), it's a NOUN, not
-//      a directive. Skip those. Caught Step 10's false positive:
-//        "What's the minimal change needed to fix the initialization …"
-//   2. Both X and Y must be SHORT (≤40 chars).
-//   3. Both X and Y must be within ONE clause (no comma/period/colon/etc.).
-//
-// The previous (greedy `.+`) version produced false positives because it
-// crossed sentence boundaries; the previous tightened version still matched
-// noun-form "change" because it didn't look at what came BEFORE the verb.
-const NOUN_PREFIX_LOOKBEHIND =
-  "(?<!\\b(?:the|a|an|any|some|every|each|no|this|that|these|those|" +
-  "minimal|small|big|large|major|minor|key|main|critical|important|" +
-  "simple|easy|quick|short|long|tiny|first|last|next|previous|current|" +
-  "whole|entire|total|partial|several|few|many|much|more|less|" +
-  "extra|additional|necessary|required|needed|possible|recent)\\s)";
-const SHORT_CLAUSE_TOKEN = "[^,.\\n;:!?]{1,40}";
-
-const EXACT_FIX_PATTERNS: RegExp[] = [
-  new RegExp(
-    `${NOUN_PREFIX_LOOKBEHIND}\\breplace\\s+${SHORT_CLAUSE_TOKEN}?\\s+with\\s+${SHORT_CLAUSE_TOKEN}`,
-    "i",
-  ),
-  new RegExp(
-    `${NOUN_PREFIX_LOOKBEHIND}\\bchange\\s+${SHORT_CLAUSE_TOKEN}?\\s+to\\s+${SHORT_CLAUSE_TOKEN}`,
-    "i",
-  ),
-  new RegExp(
-    `${NOUN_PREFIX_LOOKBEHIND}\\buse\\s+${SHORT_CLAUSE_TOKEN}?\\s+instead\\s+of\\s+${SHORT_CLAUSE_TOKEN}`,
-    "i",
-  ),
-];
-
-// Assignment-walkthrough detector — if the reply hits 4+ of these in one
-// answer, it's effectively writing the algorithm out for the student.
-const WALKTHROUGH_KEYWORDS = ["read input", "split", "convert", "calculate", "print"];
-
 function countSentences(text: string): number {
-  return text.split(/[.!?]+/).map((s) => s.trim()).filter(Boolean).length;
+  return text
+    .split(/[.!?]+/)
+    .map((s) => s.trim())
+    .filter(Boolean).length;
 }
 
-function countNonEmptyLines(text: string): number {
-  return text.split(/\r?\n/).filter((l) => l.trim()).length;
+function detectQuestionMode(message: string): "casual" | "meta" | "solution" | "runtime" | "code_help" {
+  return toValidatorQuestionMode(detectMentorIntent(message));
 }
 
-function countFencedCodeBlocks(text: string): {
-  blockCount:    number;
-  maxBlockLines: number;
-} {
-  const fenceRe = /```(?:\w+)?\r?\n([\s\S]*?)```/g;
-  let blockCount    = 0;
-  let maxBlockLines = 0;
-  let match: RegExpExecArray | null;
-
-  while ((match = fenceRe.exec(text)) !== null) {
-    blockCount++;
-    const nonEmptyLines = match[1]
-      .split(/\r?\n/)
-      .filter((l) => l.trim().length > 0).length;
-    if (nonEmptyLines > maxBlockLines) maxBlockLines = nonEmptyLines;
-  }
-
-  return { blockCount, maxBlockLines };
-}
+const CODE_LINE_PATTERNS = [
+  /^\s*def\s+/,
+  /^\s*class\s+/,
+  /^\s*function\s+/,
+  /^\s*const\s+/,
+  /^\s*let\s+/,
+  /^\s*var\s+/,
+  /^\s*if\s*\(/,
+  /^\s*if\s+/,
+  /^\s*for\s*\(/,
+  /^\s*for\s+/,
+  /^\s*while\s*\(/,
+  /^\s*while\s+/,
+  /^\s*return\b/,
+  /^\s*print\(/,
+  /^\s*input\(/,
+  /^\s*console\.log\(/,
+  /^\s*\w+\s*=\s*.+$/,
+];
 
 function countCodeLikeLines(text: string): number {
   return text
     .split(/\r?\n/)
-    .map((l) => l.trim())
+    .map((line) => line.trim())
     .filter(Boolean)
-    .filter((l) =>
-      /^(def |class |function |const |let |var |if\b|for\b|while\b|return\b|print\(|input\(|console\.log\(|\w+\s*=\s*.+)/.test(l),
-    ).length;
+    .filter((line) => CODE_LINE_PATTERNS.some((pattern) => pattern.test(line))).length;
 }
 
-// ── Stage 1: heuristic ────────────────────────────────────────────────────────
+function containsFullSolutionLanguage(text: string): boolean {
+  const lower = text.toLowerCase();
+  return [
+    "complete solution",
+    "full solution",
+    "full code",
+    "copy and paste",
+    "submit this",
+    "use this exact code",
+    "here is the corrected version",
+    "here's the corrected version",
+    "your code should look like",
+    "final code",
+    "tam çözüm",
+    "tüm kod",
+    "bütün kod",
+    "kopyalayıp yapıştır",
+    "kopyala yapıştır",
+    "final kod",
+    "düzeltilmiş hali",
+  ].some((p) => lower.includes(p));
+}
+
+function containsAssignmentWalkthrough(text: string): boolean {
+  const lower = text.toLowerCase();
+  const hits = [
+    "read input",
+    "split",
+    "convert",
+    "calculate",
+    "print",
+  ].filter((p) => lower.includes(p)).length;
+
+  return hits >= 4;
+}
+
+function containsExactFinalEdit(text: string): boolean {
+  return [
+    /replace\s+.+\s+with\s+.+/i,
+    /change\s+.+\s+to\s+.+/i,
+    /use\s+.+\s+instead\s+of\s+.+/i,
+    /print\s*\([^)]*\+\s*[^)]*\)/i,
+    /return\s+.+\+.+/i,
+  ].some((pattern) => pattern.test(text));
+}
 
 function heuristicValidate(input: ValidateInput): ValidatorResult {
-  const reply      = normalize(input.mentorReply);
-  const lowerReply = reply.toLowerCase();
-  const runStatus  = (input.runStatus ?? "").toLowerCase();
-  const qMode      = input.questionMode ?? "mentor";
+  const studentQuestion = normalize(input.studentQuestion);
+  const mentorReply = normalize(input.mentorReply);
+  const runStatus = normalize(input.runStatus).toLowerCase();
+
+  const questionMode = detectQuestionMode(studentQuestion);
+  const lowerReply = mentorReply.toLowerCase();
   const violations: string[] = [];
 
-  // 1. Explicit "here is the answer" language (en + tr) — but only flag when
-  // the phrase is ASSERTED, not when it appears inside a refusal like
-  // "I can't give the full solution".
-  if (BANNED_PHRASES.some((p) => bannedPhraseIsAsserted(reply, p))) {
+  const codeLikeLines = countCodeLikeLines(mentorReply);
+  const lineCount = mentorReply.split(/\r?\n/).filter((l) => l.trim()).length;
+  const sentenceCount = countSentences(mentorReply);
+
+  if (containsFullSolutionLanguage(mentorReply)) {
     violations.push("explicit_solution_language");
   }
 
-  // 2. Large or numerous fenced code blocks
-  const { blockCount, maxBlockLines } = countFencedCodeBlocks(reply);
-  if (maxBlockLines >= 10 || blockCount >= 3) {
-    violations.push("large_code_block");
+  if (codeLikeLines >= 6) {
+    violations.push("contains_code_solution");
   }
 
-  // 3. "Replace X with Y" / "Change X to Y" — that's the literal fix
-  if (EXACT_FIX_PATTERNS.some((p) => p.test(reply))) {
-    violations.push("exact_fix_directive");
-  }
-
-  // 4. Assignment walkthrough — ≥4 workflow keywords in a long-ish reply
-  const sentenceCount = countSentences(reply);
-  const lineCount     = countNonEmptyLines(reply);
-  const walkthroughHits = WALKTHROUGH_KEYWORDS.filter((k) => lowerReply.includes(k)).length;
-  if (walkthroughHits >= 4 && sentenceCount >= 5) {
+  if (containsAssignmentWalkthrough(mentorReply) && sentenceCount >= 5) {
     violations.push("assignment_walkthrough");
   }
 
-  // 5. Casual / meta replies should not lecture about code idioms
-  if (qMode === "casual" || qMode === "meta") {
+  if (questionMode === "casual" || questionMode === "meta") {
     if (
-      lowerReply.includes("input()")
-      || lowerReply.includes("split()")
-      || lowerReply.includes("standard input")
-      || lowerReply.includes("read two integers")
+      lowerReply.includes("input()") ||
+      lowerReply.includes("split()") ||
+      lowerReply.includes("read two integers") ||
+      lowerReply.includes("print their sum") ||
+      lowerReply.includes("standard input")
     ) {
       violations.push("context_misuse");
     }
   }
 
-  // 6. Runtime question while no run has happened yet — model is guessing
-  if (qMode === "runtime" && runStatus === "idle") {
+  if (questionMode === "runtime" && runStatus === "idle") {
     if (
-      lowerReply.includes("the output is")
-      || lowerReply.includes("it prints")
-      || /\bit pass(ed|es)?\b/.test(lowerReply)
-      || lowerReply.includes("works as expected")
+      lowerReply.includes("the output is") ||
+      lowerReply.includes("it prints") ||
+      lowerReply.includes("it pass") ||
+      lowerReply.includes("it passed") ||
+      lowerReply.includes("works as expected")
     ) {
       violations.push("runtime_guess");
     }
   }
 
-  // 7. Solution-seek requests should not be answered with multi-line code
-  if (qMode === "solution" && countCodeLikeLines(reply) >= 2) {
+  if (questionMode === "solution" && codeLikeLines >= 2) {
     violations.push("solution_seek_leak");
   }
 
-  // 8. Mode-aware length cap. Casual/meta answers should be brief; code-help
-  //    can be a bit longer; solution-seek refusals are short by design.
-  if (qMode === "casual" || qMode === "meta") {
-    if (sentenceCount > 3 || lineCount > 6) violations.push("overly_long_response");
-  } else if (qMode === "solution") {
-    if (sentenceCount > 3 || lineCount > 8) violations.push("overly_long_response");
-  } else if (qMode === "mentor" || qMode === "runtime") {
-    if (sentenceCount > 8 || lineCount > 16) violations.push("overly_long_response");
+  if (questionMode === "solution" && containsExactFinalEdit(mentorReply)) {
+    violations.push("solution_seek_exact_fix");
   }
 
-  // ── Decide ──────────────────────────────────────────────────────────────────
-  // HARD blocks: any leak signal.
-  const blockingViolations = new Set([
-    "explicit_solution_language",
-    "large_code_block",
-    "exact_fix_directive",
-    "assignment_walkthrough",
-    "solution_seek_leak",
-  ]);
-  if (violations.some((v) => blockingViolations.has(v))) {
-    return {
-      riskScore:  0.92,
-      decision:   "block",
-      violations,
-      reason:     "Reply discloses too much of the solution.",
-      source:     "heuristic",
-    };
-  }
-
-  // SOFT signals (context_misuse, runtime_guess, overly_long_response):
-  // we don't have a "rewrite" path, so log them via the result but still
-  // allow the reply — the AI-validator stage can still escalate to block,
-  // and these signals show up in audit logs for prompt-tuning later.
-  if (violations.length > 0) {
-    return {
-      riskScore:  0.4,
-      decision:   "allow",
-      violations,
-      reason:     `Heuristic flagged soft issues: ${violations.join(", ")}.`,
-      source:     "heuristic",
-    };
-  }
-
-  return {
-    riskScore:  0.05,
-    decision:   "allow",
-    violations: [],
-    reason:     "Heuristic checks passed.",
-    source:     "heuristic",
-  };
-}
-
-// ── Stage 2: AI validator ─────────────────────────────────────────────────────
-
-const HEURISTIC_ONLY_SENTINEL = "validator-heuristic";
-const AI_VALIDATOR_TIMEOUT_MS = 8_000;
-
-/**
- * Returns the configured AI validator model, or `null` if the AI validator is
- * explicitly disabled. Default model is qwen2.5:3b-instruct (pulled by
- * the ollama-init container in the main docker-compose).
- */
-function getAiValidatorModel(): string | null {
-  const model = process.env.OLLAMA_VALIDATOR_MODEL ?? "qwen2.5:3b-instruct";
-  if (!model || model === HEURISTIC_ONLY_SENTINEL) return null;
-  return model;
-}
-
-function getOllamaBaseUrl(): string {
-  return (process.env.OLLAMA_BASE_URL ?? "http://localhost:11434").replace(/\/$/, "");
-}
-
-/**
- * Decide whether the AI validator is worth calling for this reply.
- * Skips the AI call when the reply has no realistic leak risk.
- */
-function shouldRunAiValidator(input: ValidateInput): boolean {
-  const reply = normalize(input.mentorReply);
-  if (reply.length < 80) return false;
-
-  // Hint mode is always validated — highest leak surface in the system.
-  if (normalize(input.mode).toLowerCase() === "hint") return true;
-
-  // Any fenced code block triggers validation, regardless of length —
-  // even short blocks can be the entire "trick" of the problem.
-  if (reply.includes("```")) return true;
-
-  // 3+ code-like lines without a fence — the model might be smuggling
-  // a solution outside a fenced block.
-  if (countCodeLikeLines(reply) >= 3) return true;
-
-  return false;
-}
-
-/**
- * Anchored prompt for the small validator model.
- *
- * Design notes:
- *   • Examples placed BEFORE the verdict format so the model's last instruction
- *     is the strict JSON output requirement.
- *   • Both sides (leak vs safe) given explicit positive examples to avoid
- *     over-blocking — the previous attempt failed because there were no
- *     positive examples of acceptable hints, so the validator flagged
- *     anything that mentioned the problem domain.
- *   • Truncation guards: 1 500 chars of assignment, 2 000 chars of reply.
- *     Anything longer doesn't add useful signal and just costs latency.
- */
-function buildValidatorPrompt(input: ValidateInput): string {
-  const assignment = (input.assignmentText ?? "").trim().slice(0, 1500) || "(not provided)";
-  const reply      = input.mentorReply.trim().slice(0, 2000);
-
-  return `You are an academic-integrity checker for an AI programming mentor.
-
-The mentor must GUIDE students without giving them the answer. Your job is to decide whether the mentor's reply LEAKS the solution.
-
-[PROBLEM]
-${assignment}
-
-[MENTOR REPLY]
-${reply}
-
-LEAK = the reply contains ANY of:
-  - Copy-paste-ready code that solves the [PROBLEM]
-  - The specific recurrence, formula, or equation that solves it (e.g. "dp[i] = min(dp[i-coin])+1")
-  - A step-by-step algorithm that, if followed, produces the solution to THIS specific [PROBLEM]
-  - Naming a specific algorithm or data structure AND explaining how to apply it to [PROBLEM]
-
-SAFE = the reply contains ONLY:
-  - Socratic questions ("What happens if the input is empty?", "How would you handle one element?")
-  - Concept explanations that are NOT directly applied to [PROBLEM]
-  - Pseudocode for an UNRELATED illustrative example (e.g. running maximum of a list, when the actual problem is about coin change)
-  - Pointing out a specific bug in the student's existing code without writing the corrected line
-  - A refusal to give the full answer
-  - General language-syntax help (how to read input, how to declare a variable)
-
-When in doubt, prefer "safe" — false positives hurt students who deserved a real hint.
-
-Respond with ONLY one of these JSON objects, no other text:
-{"verdict":"leak","reason":"<5-10 words>"}
-{"verdict":"safe","reason":"<5-10 words>"}`;
-}
-
-/**
- * Call Ollama for an AI verdict. Returns `null` on any failure (network,
- * timeout, malformed response) so the caller can fall back to the heuristic.
- */
-async function aiValidate(
-  input: ValidateInput,
-  model: string,
-): Promise<ValidatorAiVerdict | null> {
-  const url        = `${getOllamaBaseUrl()}/api/generate`;
-  const controller = new AbortController();
-  const timer      = setTimeout(() => controller.abort(), AI_VALIDATOR_TIMEOUT_MS);
-
-  try {
-    const res = await fetch(url, {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({
-        model,
-        prompt:     buildValidatorPrompt(input),
-        stream:     false,
-        keep_alive: -1,
-        format:     "json",       // Ollama JSON mode — guarantees valid JSON
-        options: {
-          temperature: 0,
-          top_p:       1,
-          num_ctx:     4096,
-          num_predict: 64,        // tight cap — verdict is one short JSON
-        },
-      }),
-      signal: controller.signal,
-    });
-
-    if (!res.ok) return null;
-
-    const data    = (await res.json()) as { response?: string };
-    const rawText = (data.response ?? "").trim();
-    if (!rawText) return null;
-
-    let parsed: Record<string, unknown>;
-    try {
-      parsed = JSON.parse(rawText) as Record<string, unknown>;
-    } catch {
-      return null;
+  if (questionMode === "casual" || questionMode === "meta") {
+    if (sentenceCount > 3 || lineCount > 6) {
+      violations.push("overly_long_response");
     }
-
-    const verdict = parsed.verdict;
-    const reason  = parsed.reason;
-    if (verdict !== "leak" && verdict !== "safe") return null;
-
-    return {
-      verdict,
-      reason: typeof reason === "string" ? reason.slice(0, 200) : "",
-    };
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
+  } else if (questionMode === "code_help") {
+    if (sentenceCount > 5 || lineCount > 12) {
+      violations.push("overly_long_response");
+    }
+  } else if (questionMode === "solution") {
+    if (sentenceCount > 3 || lineCount > 8) {
+      violations.push("overly_long_response");
+    }
   }
+
+  if (
+    violations.includes("contains_code_solution") ||
+    violations.includes("explicit_solution_language") ||
+    violations.includes("solution_seek_leak") ||
+    violations.includes("solution_seek_exact_fix")
+  ) {
+    return {
+      riskScore: 0.92,
+      decision: "block",
+      violations,
+      reason: "Reply is too close to a direct solution.",
+      source: "heuristic",
+    };
+  }
+
+  if (
+    violations.includes("context_misuse") ||
+    violations.includes("runtime_guess") ||
+    violations.includes("assignment_walkthrough") ||
+    violations.includes("overly_long_response")
+  ) {
+    return {
+      riskScore: 0.57,
+      decision: "rewrite",
+      violations,
+      reason: "Reply should be shorter, more focused, or better aligned to the user's actual question.",
+      source: "heuristic",
+    };
+  }
+
+  return {
+    riskScore: 0.06,
+    decision: "allow",
+    violations,
+    reason: "Response is acceptable.",
+    source: "heuristic",
+  };
 }
 
-// ── Public API ────────────────────────────────────────────────────────────────
+async function aiValidate(input: ValidateInput): Promise<ValidatorResult> {
+  const studentQuestion = normalize(input.studentQuestion);
+  const mentorReply = normalize(input.mentorReply);
+  const runStatus = normalize(input.runStatus);
 
-/**
- * Two-stage validator. Returns the combined verdict.
- * Never throws — failures degrade gracefully to the heuristic verdict.
- */
-export async function validateMentorReply(input: ValidateInput): Promise<ValidatorResult> {
-  const heuristic = heuristicValidate(input);
+  const prompt = `
+You are a strict validator for a coding mentor.
 
-  // Floor: if heuristic blocks, we block. No AI call needed.
-  if (heuristic.decision === "block") {
-    return heuristic;
+Return ONLY valid JSON.
+Do not add markdown.
+Do not add extra text.
+
+JSON format:
+{
+  "risk_score": 0.0,
+  "decision": "allow",
+  "violations": [],
+  "reason": "short explanation"
+}
+
+The validator must judge whether the mentor reply is appropriate for the student's exact question.
+
+Student question:
+${studentQuestion || "No question provided."}
+
+Run status:
+${runStatus || "Unknown"}
+
+Mentor reply:
+${mentorReply}
+
+Decision rules:
+
+BLOCK:
+- full assignment solution
+- direct final answer that solves the student's task
+- copy-paste ready final code
+- near-complete code even without markdown fences
+- enough exact code or exact steps that the student can finish with almost no thinking
+
+REWRITE:
+- too solution-like
+- too explicit about the exact final fix
+- too much code for a mentor answer
+- too long or wall-of-text
+- answers the wrong thing
+- mentions code when the student asked a casual or meta question
+- guesses output or success when run status is idle
+- restates the whole assignment instead of answering the immediate question
+
+ALLOW:
+- conceptual explanation
+- syntax explanation
+- debugging guidance
+- error explanation
+- brief direct answer to a basic programming question
+- short and focused next-step guidance
+- a tiny non-solution snippet or pseudo-code example, usually 1-3 lines, when it directly answers syntax, concept, or local debugging questions
+
+Important:
+- Be conservative.
+- If unsure between allow and rewrite, choose rewrite.
+- If unsure between rewrite and block for near-complete code, choose block.
+- Do not block a short generic snippet just because it contains code; block only when it is copy-paste ready for the assignment or near-complete.
+- Do not be lenient just because the reply sounds educational.
+
+Return one of:
+allow
+rewrite
+block
+`.trim();
+
+  const model = getValidatorModelName();
+  console.log("[validator] model:", model);
+
+  const res = await fetch(getOllamaGenerateUrl(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model,
+      prompt,
+      stream: false,
+      keep_alive: -1,
+      options: { temperature: 0, top_p: 0.1 },
+    }),
+  });
+
+  if (!res.ok) {
+    const raw = await res.text();
+    throw new Error(`validator http error: ${raw.slice(0, 200)}`);
   }
 
-  // AI validator disabled by config?
-  const model = getAiValidatorModel();
-  if (!model) {
-    return heuristic;
+  const data = (await res.json()) as { response?: string };
+  const jsonText = extractJson(data.response ?? "");
+
+  if (!jsonText) {
+    throw new Error("validator returned invalid json");
   }
 
-  // Skip rules — no point spending latency on replies with no leak surface.
-  if (!shouldRunAiValidator(input)) {
-    return heuristic;
-  }
-
-  const t0          = Date.now();
-  const aiVerdict   = await aiValidate(input, model);
-  const aiLatencyMs = Date.now() - t0;
-
-  // AI call failed / timed out → keep heuristic verdict (failsafe).
-  if (!aiVerdict) {
-    return {
-      ...heuristic,
-      source:      "heuristic+ai",
-      aiVerdict:   null,
-      aiLatencyMs,
-      aiFailed:    true,
-      reason:      "Heuristic checks passed; AI validator unavailable.",
-    };
-  }
-
-  // AI says leak → block (override heuristic's "allow").
-  if (aiVerdict.verdict === "leak") {
-    return {
-      riskScore:   0.95,
-      decision:    "block",
-      violations:  [...heuristic.violations, "ai_validator_leak"],
-      reason:      `AI validator flagged leak: ${aiVerdict.reason || "no reason given"}`,
-      source:      "heuristic+ai",
-      aiVerdict,
-      aiLatencyMs,
-    };
-  }
-
-  // Both stages agree the reply is safe.
-  return {
-    ...heuristic,
-    source:      "heuristic+ai",
-    reason:      "Heuristic + AI validator both passed.",
-    aiVerdict,
-    aiLatencyMs,
+  const parsed = JSON.parse(jsonText) as {
+    risk_score?: number;
+    decision?: string;
+    violations?: unknown[];
+    reason?: string;
   };
+
+  const decision: ValidatorDecision =
+    parsed.decision === "allow" || parsed.decision === "rewrite" || parsed.decision === "block"
+      ? parsed.decision
+      : "rewrite";
+
+  return {
+    riskScore: typeof parsed.risk_score === "number" ? parsed.risk_score : 0.5,
+    decision,
+    violations: Array.isArray(parsed.violations)
+      ? parsed.violations.filter((v): v is string => typeof v === "string")
+      : [],
+    reason:
+      typeof parsed.reason === "string" && parsed.reason.trim()
+        ? parsed.reason
+        : "validator returned no reason",
+    source: "ai",
+  };
+}
+
+export async function validateMentorReply(input: ValidateInput): Promise<ValidatorResult> {
+  try {
+    return await aiValidate(input);
+  } catch (err) {
+    console.warn("[validator] AI validation failed, falling back to heuristic:", err);
+    return heuristicValidate(input);
+  }
 }

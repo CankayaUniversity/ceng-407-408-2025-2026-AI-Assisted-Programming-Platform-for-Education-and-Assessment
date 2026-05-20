@@ -92,6 +92,19 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
+    environment:
+      # Keep loaded models resident in VRAM forever so the first request after
+      # an idle period does not pay cold-load latency.
+      - OLLAMA_KEEP_ALIVE=-1
+      # Allow both the mentor (~9 GB) and validator (~2.4 GB) to coexist in
+      # VRAM at the same time — 14B + 3B easily fit on a single 23 GB L4.
+      - OLLAMA_MAX_LOADED_MODELS=2
+      # Serve up to two concurrent requests per loaded model. Safe with the
+      # 14B mentor; revisit if upgrading to 30B on a tighter VRAM budget.
+      - OLLAMA_NUM_PARALLEL=2
+      # Flash attention shrinks KV-cache memory by ~30-40 %. Free win on Ampere
+      # and Ada (L4 is Ada) — no downside.
+      - OLLAMA_FLASH_ATTENTION=1
     healthcheck:
       test: ["CMD", "ollama", "list"]
       interval: 15s
@@ -123,7 +136,7 @@ services:
       "
     environment:
       - OLLAMA_HOST=http://ollama:11434
-      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3-coder:30b}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5-coder:14b}
       - OLLAMA_VALIDATOR_MODEL=${OLLAMA_VALIDATOR_MODEL:-qwen2.5:3b-instruct}
 
   openwebui:

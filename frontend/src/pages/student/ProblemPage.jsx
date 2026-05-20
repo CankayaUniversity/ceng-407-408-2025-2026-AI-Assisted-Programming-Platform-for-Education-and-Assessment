@@ -825,6 +825,20 @@ export default function ProblemPage() {
                 return next;
               });
             }
+            // The backend streams real tokens from the model first, then runs
+            // the validator/policy/quality pipeline on the complete reply.
+            // If the pipeline overrides the streamed text, it sends a
+            // {replace} event so we overwrite what was already painted.
+            if (typeof data.replace === "string") {
+              setChat((prev) => {
+                const next = [...prev];
+                const last = next[next.length - 1];
+                if (last?.role === "assistant") {
+                  next[next.length - 1] = { ...last, content: data.replace };
+                }
+                return next;
+              });
+            }
             if (data.done) break;
           } catch { /* ignore malformed SSE lines */ }
         }

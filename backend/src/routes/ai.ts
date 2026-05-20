@@ -508,11 +508,15 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
       }
 
       // Hint-mode early stop: cut after the first complete sentence on
-      // levels 0-1. We still want this server-side guard because the prompt
-      // sometimes coaxes the model into longer hints than requested.
+      // levels 0-1 only. Higher levels intentionally allow longer hints
+      // (and at level 3+ may include a short pseudo-code block) — cutting
+      // them at the first sentence would drop the explanatory content.
       if (isHint && (input.hintLevel ?? 0) < 2) {
         const t = rawText.trimEnd();
-        if (/[a-zA-Z0-9][.!?](\s|$)/.test(t.slice(-4))) break;
+        // Skip the early-break if the reply already opened a code fence —
+        // we must let it close, or the rendered output is broken.
+        const openFence = (rawText.match(/```/g) ?? []).length % 2 === 1;
+        if (!openFence && /[a-zA-Z0-9][.!?](\s|$)/.test(t.slice(-4))) break;
       }
     }
   } catch {
@@ -533,9 +537,26 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
   }
 
   // ── Step 2: validate + apply policy on the buffered reply.
-  // If the validator rewrites or blocks, the client must overwrite what it
-  // already rendered. We send a {replace: "..."} event the frontend uses to
-  // swap the bubble's content.
+  //
+  // The streaming path treats the validator's decisions very differently from
+  // the non-stream path. The student has ALREADY seen the streamed reply by
+  // the time we get here. Visibly replacing it is jarring — so we only do it
+  // when safety actually demands it.
+  //
+  //   block   → genuine safety violation (solution leak, exact-fix directive,
+  //             6+ lines of code). REPLACE the streamed text with the safe
+  //             hint so the student doesn't see the solution.
+  //   rewrite → soft stylistic flag (too long, wrong tone, runtime guess).
+  //             LEAVE THE STREAMED TEXT ALONE. Calling the mentor a second
+  //             time risks producing a worse answer that ends up as the
+  //             safeFallback ("I can help with that...") — which is exactly
+  //             the bug students were seeing. The first reply is what they
+  //             read; we keep it.
+  //   allow   → no action.
+  //
+  // Quality assessment runs only for logging/audit now — it does NOT swap
+  // the bubble. A "generic_fallback" or "echoes_question" reply is annoying
+  // but not worth interrupting the student to overwrite.
   let textToStream = rawText;
   let validator: Awaited<ReturnType<typeof runValidator>> | null = null;
   let policy:    Awaited<ReturnType<typeof applyPolicyWithRetry>> | null = null;
@@ -546,38 +567,44 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
     const validatorStartedAt = Date.now();
     validator           = await runValidator(input, rawText);
     latencyMsValidator  = Date.now() - validatorStartedAt;
-    policy = await applyPolicyWithRetry({
-      mentorReply:    rawText,
-      validator,
-      studentQuestion: input.studentQuestion,
-      originalInput:  input,
-    });
-    textToStream = policy.finalText;
 
-    if (policy.action === "allow") {
-      const quality = assessMentorReply({
-        reply:               textToStream,
-        studentQuestion:     input.studentQuestion ?? undefined,
-        selectedCodeContext: input.selectedCodeContext ?? undefined,
-        stderr:              input.stderr ?? undefined,
-        errorMessage:        input.errorMessage ?? undefined,
-        conversationHistory: input.conversationHistory ?? undefined,
+    // Only run the rewrite pipeline if the validator BLOCKED. For rewrite we
+    // skip the retry entirely and keep the streamed text. This avoids the
+    // chain: rewrite → second mentor call → quality fail → safeFallback,
+    // which was overwriting good replies with a generic "I can help with that"
+    // message.
+    if (validator.decision === "block") {
+      policy = await applyPolicyWithRetry({
+        mentorReply:    rawText,
+        validator,
+        studentQuestion: input.studentQuestion,
+        originalInput:  input,
       });
-      if (!quality.ok) {
-        qualityReasons = quality.reasons;
-        textToStream   = qualityDeflection(input);
-      }
+      textToStream = policy.finalText;
     }
+
+    // Quality check is logged but never used to swap the bubble in the
+    // streaming path — only block events do that.
+    const quality = assessMentorReply({
+      reply:               textToStream,
+      studentQuestion:     input.studentQuestion ?? undefined,
+      selectedCodeContext: input.selectedCodeContext ?? undefined,
+      stderr:              input.stderr ?? undefined,
+      errorMessage:        input.errorMessage ?? undefined,
+      conversationHistory: input.conversationHistory ?? undefined,
+    });
+    if (!quality.ok) qualityReasons = quality.reasons;
   } catch {
-    textToStream = buildMentorFallback(input);
+    // Validator pipeline crashed — keep the streamed text rather than
+    // overwriting it with a fallback. The reply was probably fine; the
+    // validator was the problem.
   }
 
-  // ── Step 3: only push a {replace} event when the pipeline made a
-  // SUBSTANTIVE change, not a cosmetic one. The raw stream includes
-  // model artifacts (Mentor reply: prefixes, <think> blocks, trailing
-  // User: lines) that the policy strips silently — those alone are
-  // not worth a visible bubble swap. Compare the meaningful content:
-  // strip artifacts and whitespace from both sides, then check.
+  // ── Step 3: only push a {replace} event on a real block decision.
+  // Cosmetic differences (whitespace, transcript-artifact stripping) are
+  // ignored. The normalize() guard is kept as belt-and-suspenders for the
+  // rare case where the block path produces text that happens to closely
+  // match the raw stream after normalization.
   const normalize = (s: string): string =>
     s
       .replace(/<think>[\s\S]*?<\/think>/gi, "")
@@ -586,7 +613,12 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
       .replace(/\s+/g, " ")
       .trim();
 
-  if (!res.writableEnded && normalize(textToStream) !== normalize(rawText)) {
+  const shouldReplace =
+    !res.writableEnded &&
+    validator?.decision === "block" &&
+    normalize(textToStream) !== normalize(rawText);
+
+  if (shouldReplace) {
     res.write(`data: ${JSON.stringify({ replace: textToStream })}\n\n`);
   }
 

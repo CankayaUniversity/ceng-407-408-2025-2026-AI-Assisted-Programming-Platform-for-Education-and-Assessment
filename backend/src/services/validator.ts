@@ -178,16 +178,20 @@ function heuristicValidate(input: ValidateInput): ValidatorResult {
     violations.push("solution_seek_exact_fix");
   }
 
+  // Length thresholds intentionally generous for code_help — a normal helpful
+  // mentor reply explaining a bug + suggesting an approach often runs 6-8
+  // sentences with line breaks. Earlier (tighter) limits caused frequent false
+  // positives that triggered the rewrite pipeline and produced worse output.
   if (questionMode === "casual" || questionMode === "meta") {
-    if (sentenceCount > 3 || lineCount > 6) {
+    if (sentenceCount > 4 || lineCount > 8) {
       violations.push("overly_long_response");
     }
   } else if (questionMode === "code_help") {
-    if (sentenceCount > 5 || lineCount > 12) {
+    if (sentenceCount > 10 || lineCount > 20) {
       violations.push("overly_long_response");
     }
   } else if (questionMode === "solution") {
-    if (sentenceCount > 3 || lineCount > 8) {
+    if (sentenceCount > 5 || lineCount > 10) {
       violations.push("overly_long_response");
     }
   }

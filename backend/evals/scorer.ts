@@ -121,8 +121,10 @@ function parseArgs(): Args {
     process.exit(2);
   }
 
-  const concurrencyRaw = get("--concurrency") ?? process.env.SCORER_CONCURRENCY ?? "4";
-  const concurrency = Math.max(1, Math.min(20, Number.parseInt(concurrencyRaw, 10) || 4));
+  // Default concurrency 2 is safe for Anthropic's tier-1 rate limit (50 RPM).
+  // Higher tiers can override with --concurrency.
+  const concurrencyRaw = get("--concurrency") ?? process.env.SCORER_CONCURRENCY ?? "2";
+  const concurrency = Math.max(1, Math.min(20, Number.parseInt(concurrencyRaw, 10) || 2));
 
   const dir = path.dirname(inputPath);
   const base = path.basename(inputPath).replace(/^mentor-eval-/, "scored-");
@@ -282,28 +284,50 @@ function parseJudgeJson(raw: string, judge: JudgeName, latencyMs: number): Judge
 
 // ── Judge callers ───────────────────────────────────────────────────────────
 
+async function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Parse a Retry-After header. Anthropic returns seconds (e.g. "60"); OpenAI
+ * sometimes returns an HTTP-date. Fall back to a sensible default.
+ */
+function parseRetryAfterSeconds(header: string | null, fallbackSeconds: number): number {
+  if (!header) return fallbackSeconds;
+  const n = Number.parseFloat(header);
+  if (Number.isFinite(n) && n > 0) return Math.min(n, 120);
+  return fallbackSeconds;
+}
+
 async function callOpenAI(model: string, prompt: string, apiKey: string): Promise<JudgeScore> {
   const start = Date.now();
   try {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: "You are a strict evaluator. Respond only with valid JSON." },
-          { role: "user", content: prompt },
-        ],
-        temperature: 0,
-        response_format: { type: "json_object" },
-      }),
-    });
+    let res: Response | null = null;
+    // Retry on 429 with the server's Retry-After hint, up to 3 attempts.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: "You are a strict evaluator. Respond only with valid JSON." },
+            { role: "user", content: prompt },
+          ],
+          temperature: 0,
+          response_format: { type: "json_object" },
+        }),
+      });
+      if (res.status !== 429) break;
+      const wait = parseRetryAfterSeconds(res.headers.get("retry-after"), 20);
+      await sleep(wait * 1000);
+    }
     const latencyMs = Date.now() - start;
-    const text = await res.text();
-    if (!res.ok) {
+    const text = await res!.text();
+    if (!res!.ok) {
       return {
         judge: "gpt-4o-mini",
         correctness: 3,
@@ -313,7 +337,7 @@ async function callOpenAI(model: string, prompt: string, apiKey: string): Promis
         leaksCode: false,
         notes: "",
         rawResponse: text.slice(0, 500),
-        error: `HTTP ${res.status}: ${text.slice(0, 200)}`,
+        error: `HTTP ${res!.status}: ${text.slice(0, 200)}`,
         latencyMs,
       };
     }
@@ -355,24 +379,33 @@ async function callOpenAI(model: string, prompt: string, apiKey: string): Promis
 async function callAnthropic(model: string, prompt: string, apiKey: string): Promise<JudgeScore> {
   const start = Date.now();
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: 400,
-        temperature: 0,
-        system: "You are a strict evaluator. Respond only with valid JSON.",
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
+    let res: Response | null = null;
+    // Retry on 429 with the server's Retry-After hint. Anthropic tier-1 caps at
+    // 50 RPM, so the scorer can trip the limit even with low concurrency on
+    // long bursts; this lets us recover instead of dropping the fixture.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 400,
+          temperature: 0,
+          system: "You are a strict evaluator. Respond only with valid JSON.",
+          messages: [{ role: "user", content: prompt }],
+        }),
+      });
+      if (res.status !== 429) break;
+      const wait = parseRetryAfterSeconds(res.headers.get("retry-after"), 30);
+      await sleep(wait * 1000);
+    }
     const latencyMs = Date.now() - start;
-    const text = await res.text();
-    if (!res.ok) {
+    const text = await res!.text();
+    if (!res!.ok) {
       return {
         judge: "claude-haiku-4-5",
         correctness: 3,
@@ -382,7 +415,7 @@ async function callAnthropic(model: string, prompt: string, apiKey: string): Pro
         leaksCode: false,
         notes: "",
         rawResponse: text.slice(0, 500),
-        error: `HTTP ${res.status}: ${text.slice(0, 200)}`,
+        error: `HTTP ${res!.status}: ${text.slice(0, 200)}`,
         latencyMs,
       };
     }

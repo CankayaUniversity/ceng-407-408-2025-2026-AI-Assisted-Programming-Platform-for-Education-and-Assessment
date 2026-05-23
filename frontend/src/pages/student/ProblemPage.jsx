@@ -81,8 +81,240 @@ export default function ProblemPage() {
   const location  = useLocation();
 
   // Assignment context passed via navigation state from student AssignmentsPage
+  const assignmentId               = location.state?.assignmentId     ?? null;
   const assignmentAllowedLanguages = location.state?.allowedLanguages ?? [];   // [] = all
   const assignmentLateDeduction    = location.state?.lateDeduction    ?? 0;
+  const examDeadline               = location.state?.examDeadline     ?? null; // ISO string for scheduled exam end
+  // isExamSession is true when either the platform-wide exam mode flag is on,
+  // OR the student navigated here from an exam assignment row.
+  const isExamSession              = examMode || Boolean(location.state?.examMode);
+
+  // ── Student assignments (for the left-panel grouped list) ────────────────
+  // Populates the Homework / Practice / Exams toggle next to the editor.
+  const [studentAssignments,        setStudentAssignments]        = useState([]);
+  const [studentAssignmentsLoading, setStudentAssignmentsLoading] = useState(true);
+  useEffect(() => {
+    if (!token) return;
+    setStudentAssignmentsLoading(true);
+    fetch(`${API_BASE}/api/assignments`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    })
+      .then((r) => r.json())
+      .then((body) => setStudentAssignments(body?.data ?? []))
+      .catch(() => {})
+      .finally(() => setStudentAssignmentsLoading(false));
+  }, [token]);
+
+  // ── Exam-mode tab guards ──────────────────────────────────────────────────
+  // 1. beforeunload — warns the student if they try to close the tab / refresh
+  //    while inside an exam. (Browsers show their own generic prompt.)
+  // 2. contextmenu  — disables right-click within the exam page.
+  useEffect(() => {
+    if (!isExamSession) return;
+    function onBeforeUnload(e) { e.preventDefault(); e.returnValue = ""; return ""; }
+    function onContextMenu(e) { e.preventDefault(); }
+    window.addEventListener("beforeunload", onBeforeUnload);
+    window.addEventListener("contextmenu", onContextMenu);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      window.removeEventListener("contextmenu", onContextMenu);
+    };
+  }, [isExamSession]);
+
+  // ── Exam countdown timer ──────────────────────────────────────────────────
+  const [examTimeLeft, setExamTimeLeft] = useState(null);
+  useEffect(() => {
+    if (!examDeadline) return;
+    function tick() {
+      const ms = new Date(examDeadline).getTime() - Date.now();
+      setExamTimeLeft(ms > 0 ? ms : 0);
+    }
+    tick();
+    const iv = setInterval(tick, 1000);
+    return () => clearInterval(iv);
+  }, [examDeadline]);
+
+  function fmtExamTime(ms) {
+    if (ms <= 0) return "Time's up!";
+    const h = Math.floor(ms / 3600000);
+    const m = Math.floor((ms % 3600000) / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    return [h > 0 && `${h}h`, `${m}m`, `${s}s`].filter(Boolean).join(" ");
+  }
+
+  // ── Exam security: lock + violation tracking ─────────────────────────────
+  // Persisted in localStorage so a page-refresh inside an exam restores the
+  // correct state without losing context.
+  const examLockKey = isExamSession && currentUser?.id && assignmentId
+    ? `exam_lock_u${currentUser.id}_a${assignmentId}` : null;
+  const examViolKey = isExamSession && currentUser?.id && assignmentId
+    ? `exam_viol_u${currentUser.id}_a${assignmentId}` : null;
+
+  const [examLocked, setExamLocked] = useState(() => {
+    if (!isExamSession) return false;
+    try { return localStorage.getItem(`exam_lock_u${currentUser?.id}_a${assignmentId}`) === "1"; }
+    catch { return false; }
+  });
+
+  const [examViolations, setExamViolations] = useState(() => {
+    if (!isExamSession) return 0;
+    try { return parseInt(localStorage.getItem(`exam_viol_u${currentUser?.id}_a${assignmentId}`) ?? "0", 10); }
+    catch { return 0; }
+  });
+
+  const [violationSnackbarOpen, setViolationSnackbarOpen] = useState(false);
+  const [violationSnackbarMsg,  setViolationSnackbarMsg]  = useState("");
+  const [finishExamDialogOpen,  setFinishExamDialogOpen]  = useState(false);
+
+  // Stable refs so event listeners always read the latest values.
+  const examLockedRef    = useRef(examLocked);
+  const examViolCountRef = useRef(examViolations);
+  const violDebounceRef  = useRef(null);
+
+  useEffect(() => { examLockedRef.current = examLocked; },        [examLocked]);
+  useEffect(() => { examViolCountRef.current = examViolations; }, [examViolations]);
+
+  // Clear lock state when the student navigates away from an exam problem.
+  useEffect(() => {
+    if (!isExamSession) {
+      setExamLocked(false);
+      examLockedRef.current = false;
+      setExamViolations(0);
+      examViolCountRef.current = 0;
+    }
+  }, [isExamSession]);
+
+  // Enter fullscreen when exam session starts (Safari gracefully ignores).
+  useEffect(() => {
+    if (!isExamSession || examLockedRef.current) return;
+    if (document.fullscreenElement) return;
+    document.documentElement.requestFullscreen().catch((e) =>
+      console.warn("[exam] Fullscreen request denied:", e.message),
+    );
+  }, [isExamSession]);
+
+  // Called when teacher clicks "Yes" in the Finish Exam confirmation dialog.
+  // Defined as a ref so the violation handler (above) and the auto-submit
+  // effect (below) can reference it before runTests is declared.
+  const lockAndFinishRef = useRef(null);
+  function lockAndFinish() {
+    examLockedRef.current = true;
+    setExamLocked(true);
+    if (examLockKey) { try { localStorage.setItem(examLockKey, "1"); } catch {} }
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    setFinishExamDialogOpen(false);
+  }
+
+  // Core violation handler — called by all event listeners
+  const recordViolation = useRef(null);
+  recordViolation.current = (type) => {
+    if (!isExamSession || examLockedRef.current) return;
+    if (violDebounceRef.current) return;
+    violDebounceRef.current = setTimeout(() => { violDebounceRef.current = null; }, 1000);
+
+    const newCount = examViolCountRef.current + 1;
+    examViolCountRef.current = newCount;
+    setExamViolations(newCount);
+    if (examViolKey) { try { localStorage.setItem(examViolKey, String(newCount)); } catch {} }
+
+    const isAutoSubmit = newCount >= 3;
+    const remaining    = 3 - newCount;
+    setViolationSnackbarMsg(
+      isAutoSubmit
+        ? "3rd violation detected. Your exam has been automatically submitted and locked."
+        : `Warning: Violation ${newCount}/3 — ${remaining} more will auto-submit your exam.`,
+    );
+    setViolationSnackbarOpen(true);
+
+    fetch(`${API_BASE}/api/exam/violation`, {
+      method:  "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type,
+        assignmentId: assignmentId ?? undefined,
+        problemId:    selectedProblem?.id,
+        count:        newCount,
+        autoSubmitted: isAutoSubmit,
+      }),
+    }).catch(() => {});
+
+    if (isAutoSubmit) {
+      examLockedRef.current = true;
+      setExamLocked(true);
+      if (examLockKey) { try { localStorage.setItem(examLockKey, "1"); } catch {} }
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      // Auto-submit current code via the normal test-run path. runTests is
+      // defined later in this component; runTestsRef bridges the order.
+      runTestsRef.current?.().catch(() => {});
+    }
+  };
+
+  // Attach / detach event listeners for the three violation types
+  useEffect(() => {
+    if (!isExamSession) return;
+    function onVisibilityChange() { if (document.hidden) recordViolation.current("tab_switch"); }
+    function onBlur()              { recordViolation.current("window_blur"); }
+    function onFullscreenChange()  {
+      if (!document.fullscreenElement && !examLockedRef.current) {
+        recordViolation.current("fullscreen_exit");
+        setTimeout(() => {
+          if (!examLockedRef.current && !document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(() => {});
+          }
+        }, 600);
+      }
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("blur",                onBlur);
+    document.addEventListener("fullscreenchange",  onFullscreenChange);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("blur",                onBlur);
+      document.removeEventListener("fullscreenchange",  onFullscreenChange);
+      if (violDebounceRef.current) clearTimeout(violDebounceRef.current);
+    };
+  }, [isExamSession]);
+
+  // Auto-submit when countdown reaches zero
+  const runTestsRef = useRef(null);
+  useEffect(() => {
+    if (!isExamSession || examLockedRef.current || examTimeLeft !== 0) return;
+    examLockedRef.current = true;
+    setExamLocked(true);
+    if (examLockKey) { try { localStorage.setItem(examLockKey, "1"); } catch {} }
+    setViolationSnackbarMsg("Time's up! Your exam has been automatically submitted.");
+    setViolationSnackbarOpen(true);
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    runTestsRef.current?.().catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [examTimeLeft]);
+
+  // Terminal Run callback — stores stdout/stderr for the mentor's run-context block.
+  function handleTerminalRunResult({ exitCode, stdout, stderr, killed }) {
+    if (killed) return;
+    setLastRunContext({
+      runStatus: exitCode === 0 ? "run_success" : "runtime_error",
+      stdout: (stdout ?? "").slice(0, 1_000),
+      stderr: stderr ?? "",
+      errorMessage: "",
+    });
+  }
+
+  // Navigate to a problem with its assignment context (exam mode, allowed
+  // languages, etc.) when the student clicks a row in the left-panel list.
+  function selectAssignment(a) {
+    const problem = a.problem ?? {};
+    if (!problem.id) return;
+    navigate(`/problem/${problem.id}`, {
+      state: {
+        assignmentId:     a.id,
+        allowedLanguages: a.allowedLanguages ?? [],
+        lateDeduction:    0,
+        examMode:         a.mode === "exam",
+        examDeadline:     a.dueDate ?? null,
+      },
+    });
+  }
 
   // Filter available languages to those the assignment allows (empty = all allowed)
   const availableLanguages = useMemo(
@@ -99,6 +331,16 @@ export default function ProblemPage() {
 
   // ── Other editor state ───────────────────────────────────────────────────
   const [selectedLanguage, setSelectedLanguage] = useState("python");
+
+  // Auto-lock language when the assignment allows exactly one language.
+  // (When languageOptions has multiple entries the student can still pick
+  // freely; only the single-language case forces a hard lock.)
+  useEffect(() => {
+    if (availableLanguages.length === 1) {
+      setSelectedLanguage(availableLanguages[0].value);
+    }
+  }, [availableLanguages]);
+
   const [running,          setRunning]          = useState(false);
   const [chatInput,        setChatInput]        = useState("");
   const [mentorLocale,     setMentorLocale]     = useState("en");
@@ -444,6 +686,11 @@ export default function ProblemPage() {
     }, 4_000);
   }
 
+  // Bridge: exam-mode auto-submit (timer/violation) needs to call runTests
+  // but runTests is declared after the exam-mode effects. The ref lets the
+  // effects find the latest runTests implementation without re-registering.
+  useEffect(() => { runTestsRef.current = runTests; });
+
   function runRaw() {
     const writer = termWriterRef.current;
     if (!writer) return;
@@ -569,6 +816,24 @@ export default function ProblemPage() {
     }
   }
 
+  // ── New Chat — clears local messages AND backend AI history ─────────────
+  async function handleNewChat() {
+    if (!selectedProblem) return;
+    // Reset UI immediately
+    setChat([{ role: "assistant", content: "Hi! Ask for hints about your code." }]);
+    setHintCount(0);
+    setChatInput("");
+    // Delete backend history so the model has no memory of previous messages
+    try {
+      await fetch(`${API_BASE}/api/student/history/ai?problemId=${selectedProblem.id}`, {
+        method:  "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch (err) {
+      console.warn("[newChat] Failed to clear AI history on server:", err.message);
+    }
+  }
+
   // ── Hint button handler ───────────────────────────────────────────────────
   async function sendHint() {
     if (!selectedProblem || chatLoading) return;
@@ -590,6 +855,9 @@ export default function ProblemPage() {
       navItems={STUDENT_NAV}
       handleLogout={handleLogout}
       problems={problems}
+      assignments={studentAssignments}
+      assignmentsLoading={studentAssignmentsLoading}
+      onAssignmentSelect={selectAssignment}
       selectedId={selectedId}
       selectProblem={selectProblem}
       selectedLanguage={selectedLanguage}
@@ -609,8 +877,9 @@ export default function ProblemPage() {
       code={code}
       setCode={setCode}
       onCursorLineChange={setActiveLineNumber}
-      // Phase 6 — terminal ref
+      // Phase 6 — terminal ref + run-result callback
       termWriterRef={termWriterRef}
+      onTerminalRunResult={handleTerminalRunResult}
       chat={chat}
       chatInput={chatInput}
       setChatInput={setChatInput}
@@ -618,11 +887,24 @@ export default function ProblemPage() {
       setMentorLocale={setMentorLocale}
       sendChat={sendChat}
       sendHint={sendHint}
+      onNewChat={handleNewChat}
       hintCount={hintCount}
       chatLoading={chatLoading}
       submissions={submissions}
       submissionsLoading={submissionsLoading}
-      examMode={examMode}
+      examMode={isExamSession}
+      examTimeLeft={examTimeLeft}
+      fmtExamTime={fmtExamTime}
+      // Exam security
+      examLocked={examLocked}
+      examViolations={examViolations}
+      violationSnackbarOpen={violationSnackbarOpen}
+      violationSnackbarMsg={violationSnackbarMsg}
+      onViolationSnackbarClose={() => setViolationSnackbarOpen(false)}
+      finishExamDialogOpen={finishExamDialogOpen}
+      onFinishExamRequest={() => setFinishExamDialogOpen(true)}
+      onFinishExamConfirm={lockAndFinish}
+      onFinishExamCancel={() => setFinishExamDialogOpen(false)}
       // Flashcard props (manual trigger flow)
       hasSolvedProblem={hasSolvedProblem}
       flashcardExists={flashcardExists}

@@ -9,13 +9,13 @@ export function liveHandler(_req: Request, res: Response): void {
 }
 
 /**
- * Readiness-style probe: includes DB, Judge0, and Ollama reachability (best-effort).
+ * Readiness-style probe: includes DB and Ollama reachability (best-effort).
  */
 export function readyHandler(_req: Request, res: Response): void {
   void checkDependenciesHealth()
     .then((dependencies) => {
       const degraded =
-        !dependencies.database.ok || !dependencies.judge0.ok || !dependencies.ollama.ok;
+        !dependencies.database.ok || !dependencies.ollama.ok;
 
       res.status(200).json({
         status: degraded ? "degraded" : "ok",

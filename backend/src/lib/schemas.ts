@@ -55,80 +55,49 @@ export const executeSchema = z.object({
 
 // ── AI Mentor ─────────────────────────────────────────────────────────────────
 
-const VALID_RUN_STATUSES = [
-  "idle",
-  "accepted",
-  "wrong_answer",
-  "runtime_error",
-  "run_success",          // interactive terminal: exit code 0, no judge verdict
-  "compile_error",
-  "time_limit_exceeded",
-  "memory_limit_exceeded",
-  "presentation_error",
-] as const;
-
-const VALID_CHAT_MODES = ["practice", "hint", "tip", "mentor"] as const;
-
 export const aiChatSchema = z.object({
   problemId:          z.number().int().optional(),
   submissionId:       z.number().int().optional(),
-  problemDescription: z.string().max(10_000).optional().nullable(),
-  assignmentText:     z.string().max(10_000).optional().nullable(),
-  // 50 000 chars ≈ ~1 250 lines — generous but bounded
-  studentCode:        z.string().max(50_000).optional().nullable(),
-  errorMessage:       z.string().max(2_000).optional().nullable(),
-  studentQuestion:    z.string().max(2_000).optional().nullable(),
-  // Only accept known status strings to prevent prompt injection via this field
-  runStatus:          z.enum(VALID_RUN_STATUSES).optional().nullable(),
-  stdout:             z.string().max(2_000).optional().nullable(),
-  stderr:             z.string().max(2_000).optional().nullable(),
-  language:           z.string().max(50).optional().nullable(),
-  // Only accept known chat modes
-  mode:               z.enum(VALID_CHAT_MODES).optional().nullable(),
-  hintLevel:          z.number().int().min(0).max(10).optional().nullable(),
-  // Conversation history — last N turns injected into the mentor prompt so the
-  // model can build on previous exchanges instead of answering from scratch each time.
-  // Capped at 20 entries (10 turns) with 2 000-char per message to bound prompt size.
-  conversationHistory: z.array(
-    z.object({
-      role:    z.enum(["user", "assistant"]),
-      content: z.string().max(2_000),
-    }),
-  ).max(20).optional().nullable(),
-
-  // ── Editor context (Phase 2 — adopted from feature/ai) ─────────────────────
-  // Lets the mentor reference the exact file, line, and code window the
-  // student is looking at right now. All three are optional; if absent, the
-  // mentor falls back to the bigger studentCode field.
-  activeFileName:      z.string().max(200).optional().nullable(),
-  activeLineNumber:    z.number().int().positive().optional().nullable(),
-  // Up to ~50 lines of code around the cursor. Frontend should prefix the
-  // focused line with "> " so the quality-check module (mentorQuality.ts) can
-  // detect when a reply ignored that line.
-  selectedCodeContext: z.string().max(4_000).optional().nullable(),
-
-  // ── Locale (Phase 4 — bilingual support) ───────────────────────────────────
-  // "en" (default) or "tr" — controls reply language and fallback wording.
-  mentorLocale:        z.enum(["en", "tr"]).optional().nullable(),
+  problemDescription: z.string().optional().nullable(),
+  assignmentText:     z.string().optional().nullable(),
+  studentCode:        z.string().optional().nullable(),
+  errorMessage:       z.string().optional().nullable(),
+  studentQuestion:    z.string().optional().nullable(),
+  runStatus:          z.string().optional().nullable(),
+  stdout:             z.string().optional().nullable(),
+  stderr:             z.string().optional().nullable(),
+  language:           z.string().optional().nullable(),
+  mentorLocale:       z.enum(["en", "tr"]).optional().nullable(),
+  modelOverride:      z.string().optional().nullable(),
+  activeFileName:     z.string().optional().nullable(),
+  activeLineNumber:   z.number().int().positive().optional().nullable(),
+  cursorLine:         z.number().int().positive().optional().nullable(),
+  lineNumber:         z.number().int().positive().optional().nullable(),
+  selectedCodeContext:z.string().optional().nullable(),
+  codeContext:        z.string().optional().nullable(),
+  conversationHistory:z.array(z.object({
+    role:    z.enum(["user", "assistant"]),
+    content: z.string(),
+  })).optional().nullable(),
+  mode:               z.string().optional().nullable(),
+  hintLevel:          z.number().int().optional().nullable(),
 });
 
 // ── Assignments ───────────────────────────────────────────────────────────────
 
 export const assignmentSchema = z.object({
-  problemId:   z.number().int({ message: "problemId must be an integer" }),
-  title:       z.string().optional().nullable(),
-  mode:        z.enum(["practice", "homework", "exam"]).default("homework"),
-  deadline:    z.string().datetime({ offset: true }).optional().nullable(),
-  aiEnabled:   z.boolean().default(true),
-  description: z.string().max(5_000).optional().nullable(),
+  problemId:  z.number().int({ message: "problemId must be an integer" }),
+  title:      z.string().optional().nullable(),
+  mode:       z.enum(["practice", "homework", "exam"]).default("homework"),
+  deadline:   z.string().datetime({ offset: true }).optional().nullable(),
+  aiEnabled:  z.boolean().default(true),
 });
 
 export const assignmentUpdateSchema = z.object({
-  title:       z.string().optional().nullable(),
-  mode:        z.enum(["practice", "homework", "exam"]).optional(),
-  deadline:    z.string().datetime({ offset: true }).optional().nullable(),
-  aiEnabled:   z.boolean().optional(),
-  description: z.string().max(5_000).optional().nullable(),
+  title:     z.string().optional().nullable(),
+  mode:      z.enum(["practice", "homework", "exam"]).optional(),
+  deadline:  z.string().datetime({ offset: true }).optional().nullable(),
+  aiEnabled: z.boolean().optional(),
 });
 
 export const enrollSchema = z.object({

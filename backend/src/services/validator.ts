@@ -441,8 +441,14 @@ function shouldTrustHeuristicAllow(input: ValidateInput, result: ValidatorResult
     return /\b(can'?t|cannot|won'?t)\b/i.test(reply) || /veremem/i.test(reply);
   }
 
-  if (countCodeLikeLines(reply) > 1) return false;
-  return countSentences(reply) <= 4;
+  // For runtime/mentor intents (the bulk of normal traffic), trust the heuristic's
+  // allow verdict on short, focused replies. The AI judge was over-firing "rewrite"
+  // on perfectly good one-line bug diagnoses; we only escalate to the AI when the
+  // reply is genuinely long or code-heavy enough that a copy-paste leak is plausible.
+  const codeLines = countCodeLikeLines(reply);
+  if (codeLines > 3) return false;
+  if (reply.length > 800) return false;
+  return countSentences(reply) <= 6;
 }
 
 async function aiValidate(input: ValidateInput): Promise<ValidatorResult> {
@@ -480,39 +486,37 @@ Decision rules:
 
 BLOCK:
 - full assignment solution
-- direct final answer that solves the student's task
-- copy-paste ready final code
-- near-complete code even without markdown fences
-- enough exact code or exact steps that the student can finish with almost no thinking
+- a copy-paste-ready function or class with a complete body for the student's exact task
+- near-complete code (5+ substantive lines that together solve the problem), even without markdown fences
+- enough exact code that the student can submit it as-is or with only cosmetic edits
+- complete pseudocode that maps 1:1 to the assignment steps
 
 REWRITE:
-- too solution-like
-- too explicit about the exact final fix
-- too much code for a mentor answer
-- too long or wall-of-text
-- answers the wrong thing
-- mentions code when the student asked a casual or meta question
 - mentions hidden rules, policies, validators, or refers to the user as "the student"
 - gives solution advice when the student only asked what is visible in the editor
 - guesses output or success when run status is idle
 - restates the whole assignment instead of answering the immediate question
+- is a wall of text longer than ~8 sentences for what should be a focused answer
+- role-plays, tells jokes, gives life or non-programming advice, or reveals the underlying language model
+- contains a code block of 4 or more substantive lines for a debugging/runtime question
 
-ALLOW:
+ALLOW (these are FINE and must NOT be rewritten):
 - conceptual explanation
 - syntax explanation
-- debugging guidance
-- error explanation
+- debugging guidance that names the cause clearly, even when it includes a short concrete fix
+- error explanation that pinpoints the bug location
 - brief direct answer to a basic programming question
 - short and focused next-step guidance
-- a tiny non-solution snippet or pseudo-code example, usually 1-3 lines, when it directly answers syntax, concept, or local debugging questions
-- for "what do you see in my editor/code" questions: a brief report of only the provided editor context, including saying that no loop or extra line is visible
+- a tiny non-solution snippet of 1-3 lines that illustrates syntax, a concept, or a local fix
+- a one-line code change suggestion (e.g. "change range(n) to range(1, n+1)") as long as it does not constitute the whole solution
+- for "what do you see in my editor/code" questions: a brief report of only the provided editor context
 
 Important:
-- Be conservative.
-- If unsure between allow and rewrite, choose rewrite.
+- A short, accurate one-line fix that names the actual bug is ALLOW. Do not rewrite a reply just because it explains the specific cause clearly or because it shows the corrected line.
+- If unsure between allow and rewrite, prefer ALLOW when the reply is under 6 sentences AND under 4 lines of code AND does not contain a full function body.
 - If unsure between rewrite and block for near-complete code, choose block.
 - Do not block a short generic snippet just because it contains code; block only when it is copy-paste ready for the assignment or near-complete.
-- Do not be lenient just because the reply sounds educational.
+- Do not be lenient just because the reply sounds educational, but do not be paranoid either: a correct debugging hint with one short fix is the correct mentor behavior, not a violation.
 
 Return one of:
 allow

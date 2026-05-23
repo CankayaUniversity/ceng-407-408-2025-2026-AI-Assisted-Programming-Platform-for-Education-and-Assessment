@@ -36,6 +36,7 @@ type Args = {
   password: string | null;
   only: Set<string> | null;
   fixturesPath: string;
+  minGapMs: number;
 };
 
 function parseArgs(): Args {
@@ -45,12 +46,19 @@ function parseArgs(): Args {
     return idx !== -1 && idx + 1 < argv.length ? argv[idx + 1] : null;
   };
   const only = get("--only");
+  // The backend rate limits /api/ai/chat to 10 requests per 60s per user.
+  // Default pacing: ~7s between request *starts* keeps us safely under that.
+  // Mentor latency is usually 4-15s, so this rarely adds wall-clock time on
+  // top of what the model already takes.
+  const gapRaw = get("--gap-ms") ?? process.env.MENTOR_EVAL_GAP_MS ?? "7000";
+  const minGapMs = Math.max(0, Number.parseInt(gapRaw, 10) || 0);
   return {
     base: get("--base") ?? process.env.MENTOR_EVAL_BASE ?? "http://localhost:5000",
     email: get("--email") ?? process.env.MENTOR_EVAL_EMAIL ?? null,
     password: get("--password") ?? process.env.MENTOR_EVAL_PASSWORD ?? null,
     only: only ? new Set(only.split(",").map((s) => s.trim()).filter(Boolean)) : null,
     fixturesPath: get("--fixtures") ?? path.join(__dirname, "fixtures.json"),
+    minGapMs,
   };
 }
 
@@ -266,20 +274,43 @@ async function main(): Promise<void> {
     fixtures = fixtures.filter((f) => args.only!.has(f.category));
   }
 
-  console.log(`[mentor-smoke] base=${args.base} fixtures=${fixtures.length}`);
+  console.log(`[mentor-smoke] base=${args.base} fixtures=${fixtures.length} gap=${args.minGapMs}ms`);
   console.log(`[mentor-smoke] logging in as ${args.email}`);
 
   const token = await login(args.base, args.email!, args.password!);
   console.log(`[mentor-smoke] login OK, token length=${token.length}`);
 
   const results: FixtureResult[] = [];
+  let lastRequestStart = 0;
+
+  const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
   for (let i = 0; i < fixtures.length; i++) {
     const f = fixtures[i];
+
+    // Respect the backend's per-user AI rate limit (10 req / 60s). Wait until
+    // at least args.minGapMs have elapsed since the previous request started.
+    if (lastRequestStart > 0 && args.minGapMs > 0) {
+      const elapsed = Date.now() - lastRequestStart;
+      const wait = args.minGapMs - elapsed;
+      if (wait > 0) {
+        await sleep(wait);
+      }
+    }
+
     process.stdout.write(`[${i + 1}/${fixtures.length}] ${f.id} (${f.category}) ... `);
     let result: FixtureResult;
     try {
-      const { httpStatus, body, raw, latencyMs } = await callMentor(args.base, token, f);
+      lastRequestStart = Date.now();
+      let { httpStatus, body, raw, latencyMs } = await callMentor(args.base, token, f);
+
+      // If the rate limiter still trips us, back off for the full window and retry once.
+      if (httpStatus === 429) {
+        process.stdout.write("rate-limited, backing off 65s ... ");
+        await sleep(65_000);
+        lastRequestStart = Date.now();
+        ({ httpStatus, body, raw, latencyMs } = await callMentor(args.base, token, f));
+      }
       const mentorReply = typeof body?.mentorReply === "string" ? body.mentorReply : null;
       result = {
         id: f.id,

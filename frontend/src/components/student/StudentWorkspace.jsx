@@ -36,7 +36,6 @@ import {
 import CheckCircleOutlineIcon  from "@mui/icons-material/CheckCircleOutline";
 import LightbulbIcon           from "@mui/icons-material/Lightbulb";
 import AddCommentIcon          from "@mui/icons-material/AddComment";
-import BugReportIcon           from "@mui/icons-material/BugReport";
 import PictureAsPdfIcon        from "@mui/icons-material/PictureAsPdf";
 import InfoOutlinedIcon        from "@mui/icons-material/InfoOutlined";
 import LightbulbOutlinedIcon   from "@mui/icons-material/LightbulbOutlined";
@@ -478,7 +477,6 @@ export default function StudentWorkspace({
   setChatInput,
   sendChat,
   sendHint,
-  sendDebugPrints,
   hintCount = 0,
   chatLoading,
   submissions,
@@ -1255,31 +1253,12 @@ export default function StudentWorkspace({
 
           {/* Extra Run / Submit toolbar — directly above the editor.
               Mirrors the pair in the top-of-page action stack so students
-              don't have to scroll up when the description is expanded.
-              Includes "Debug prints" — asks the mentor to insert temporary
-              print/log statements around the cursor line. Hidden in exam
-              mode because AI assistance is restricted during exams. */}
+              don't have to scroll up when the description is expanded. */}
           <Stack
             direction="row"
             spacing={1}
             sx={{ mb: 1.5, justifyContent: "flex-end" }}
           >
-            {!examMode && sendDebugPrints && (
-              <Tooltip title="Ask the mentor to add temporary debug prints around your cursor line">
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={() => {
-                    const ctx = getCursorContext();
-                    sendDebugPrints(ctx ?? {});
-                  }}
-                  disabled={chatLoading || examLocked}
-                  startIcon={<BugReportIcon />}
-                >
-                  Debug prints
-                </Button>
-              </Tooltip>
-            )}
             <Button
               variant="contained"
               size="small"

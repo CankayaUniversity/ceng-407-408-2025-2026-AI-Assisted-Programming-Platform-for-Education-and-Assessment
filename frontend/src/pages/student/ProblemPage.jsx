@@ -926,39 +926,6 @@ export default function ProblemPage() {
     await sendChat(msg, "hint", currentLevel);
   }
 
-  // ── "Add debug prints" button handler (Phase 6c — debug improvements) ─────
-  // Asks the mentor to insert temporary trace prints around the cursor line.
-  // The editor context (line number + window of surrounding code) is provided
-  // by StudentWorkspace via getCursorContext() and passed to sendChat which
-  // forwards it to the mentor as activeLineNumber + selectedCodeContext.
-  async function sendDebugPrints(editorContext) {
-    if (!selectedProblem || chatLoading) return;
-    if (!editorContext?.activeLineNumber) {
-      // Editor not ready or no cursor — surface a non-fatal hint in the chat.
-      setChat((prev) => [
-        ...prev,
-        { role: "assistant",
-          content: "Place your cursor on a line in the editor first, then click Debug prints." },
-      ]);
-      return;
-    }
-    const printerByLang = {
-      python:     "print(...)",
-      javascript: "console.log(...)",
-      c:          "printf(...)",
-      cpp:        "std::cout << ...",
-      java:       "System.out.println(...)",
-      csharp:     "Console.WriteLine(...)",
-    };
-    const printer = printerByLang[selectedLanguage] ?? "print(...)";
-    const msg =
-      `Add a few temporary ${printer} debug statements around line ${editorContext.activeLineNumber} ` +
-      `to help me see the values of the relevant variables when I run the code. ` +
-      `Do not change the program logic — only add prints. ` +
-      `Show me the small snippet of modified code I can paste in.`;
-    await sendChat(msg, "practice", undefined, editorContext);
-  }
-
   return (
     <StudentWorkspace
       currentUser={currentUser}
@@ -995,7 +962,6 @@ export default function ProblemPage() {
       setChatInput={setChatInput}
       sendChat={sendChat}
       sendHint={sendHint}
-      sendDebugPrints={sendDebugPrints}
       hintCount={hintCount}
       chatLoading={chatLoading}
       onNewChat={handleNewChat}

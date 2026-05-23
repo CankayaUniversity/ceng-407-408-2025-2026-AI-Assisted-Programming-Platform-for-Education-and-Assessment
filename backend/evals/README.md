@@ -24,8 +24,8 @@ review and improvement decisions.
 
    ```bash
    docker compose exec \
-     -e MENTOR_EVAL_EMAIL=student@example.com \
-     -e MENTOR_EVAL_PASSWORD='YourPassword!' \
+     -e MENTOR_EVAL_EMAIL=student1@demo.com \
+     -e MENTOR_EVAL_PASSWORD='123456' \
      backend npx tsx evals/mentor-smoke.ts
    ```
 
@@ -56,7 +56,7 @@ Example: run just the locale tests against a remote backend
 docker compose exec backend npx tsx evals/mentor-smoke.ts \
   --base http://localhost:5000 \
   --only locale-turkish,locale-english \
-  --email student@example.com --password 'YourPassword!'
+  --email student1@demo.com --password '123456'
 ```
 
 ## What each result record contains

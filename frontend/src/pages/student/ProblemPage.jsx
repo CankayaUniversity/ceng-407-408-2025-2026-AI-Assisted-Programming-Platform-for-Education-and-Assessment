@@ -143,8 +143,11 @@ export default function ProblemPage() {
   }
 
   // ── Exam security: lock + violation tracking ─────────────────────────────
-  // Persisted in localStorage so a page-refresh inside an exam restores the
-  // correct state without losing context.
+  // Zero-tolerance policy: any single tab-switch, window-blur, or fullscreen-exit
+  // triggers immediate auto-submit and a permanent lockout. The server is the
+  // source of truth (see the GET /api/exam/status check below); localStorage is
+  // only a same-session cache for instant UI feedback.
+  const EXAM_MAX_VIOLATIONS = 1;
   const examLockKey = isExamSession && currentUser?.id && assignmentId
     ? `exam_lock_u${currentUser.id}_a${assignmentId}` : null;
   const examViolKey = isExamSession && currentUser?.id && assignmentId
@@ -184,6 +187,38 @@ export default function ProblemPage() {
     }
   }, [isExamSession]);
 
+  // Server-side lockout check — the database is the source of truth, so
+  // logout/login, clearing localStorage, switching browsers, or incognito
+  // mode CANNOT bypass a lockout. Runs every time the exam session or
+  // assignment changes.
+  useEffect(() => {
+    if (!isExamSession || !assignmentId || !token) return;
+    let cancelled = false;
+    fetch(`${API_BASE}/api/exam/status/${assignmentId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data?.success) return;
+        if (data.locked) {
+          examLockedRef.current = true;
+          setExamLocked(true);
+          if (examLockKey) {
+            try { localStorage.setItem(examLockKey, "1"); } catch {}
+          }
+        }
+        if (typeof data.violationCount === "number") {
+          examViolCountRef.current = data.violationCount;
+          setExamViolations(data.violationCount);
+          if (examViolKey) {
+            try { localStorage.setItem(examViolKey, String(data.violationCount)); } catch {}
+          }
+        }
+      })
+      .catch(() => { /* network failure — keep localStorage cache */ });
+    return () => { cancelled = true; };
+  }, [isExamSession, assignmentId, token, examLockKey, examViolKey]);
+
   // Enter fullscreen when exam session starts (Safari gracefully ignores).
   useEffect(() => {
     if (!isExamSession || examLockedRef.current) return;
@@ -217,12 +252,12 @@ export default function ProblemPage() {
     setExamViolations(newCount);
     if (examViolKey) { try { localStorage.setItem(examViolKey, String(newCount)); } catch {} }
 
-    const isAutoSubmit = newCount >= 3;
-    const remaining    = 3 - newCount;
+    const isAutoSubmit = newCount >= EXAM_MAX_VIOLATIONS;
+    const remaining    = EXAM_MAX_VIOLATIONS - newCount;
     setViolationSnackbarMsg(
       isAutoSubmit
-        ? "3rd violation detected. Your exam has been automatically submitted and locked."
-        : `Warning: Violation ${newCount}/3 — ${remaining} more will auto-submit your exam.`,
+        ? "Security violation detected. Your exam has been automatically submitted and locked. You cannot resume this exam."
+        : `Warning: ${remaining} more violation(s) will auto-submit your exam.`,
     );
     setViolationSnackbarOpen(true);
 
@@ -846,6 +881,89 @@ export default function ProblemPage() {
     const msg = hintMessages[Math.min(hintCount, hintMessages.length - 1)];
     setHintCount((c) => c + 1);
     await sendChat(msg, "hint");
+  }
+
+  // ── Lockout screen ─────────────────────────────────────────────────────────
+  // When the user has been server-side locked out of this exam (violation row
+  // with autoSubmitted=true), the entire problem page is replaced with a
+  // dead-end screen. The editor, terminal, AI panel, and run/submit are NOT
+  // rendered — there is nothing to interact with except a button back to the
+  // dashboard. This cannot be bypassed by logout/login because the server
+  // confirms `locked: true` on every load.
+  if (isExamSession && examLocked) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)",
+          color: "#e0e0e0",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "24px",
+          fontFamily:
+            "system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 560,
+            width: "100%",
+            background: "#0f1226",
+            border: "1px solid #f04747",
+            borderRadius: 12,
+            padding: "32px 28px",
+            boxShadow: "0 8px 32px rgba(240,71,71,0.25)",
+            textAlign: "center",
+          }}
+        >
+          <div style={{ fontSize: 48, marginBottom: 12 }}>🔒</div>
+          <h2 style={{ marginTop: 0, marginBottom: 12, color: "#f04747" }}>
+            Exam Locked
+          </h2>
+          <p style={{ lineHeight: 1.5, marginBottom: 12 }}>
+            Your exam was automatically submitted because a security violation
+            (tab switch, window blur, or fullscreen exit) was detected.
+          </p>
+          <p style={{ lineHeight: 1.5, marginBottom: 24, color: "#bbb" }}>
+            You cannot resume or re-enter this exam. The submitted result has
+            been recorded for grading.
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate("/")}
+            style={{
+              background: "#5865f2",
+              color: "white",
+              border: "none",
+              padding: "10px 24px",
+              fontSize: 15,
+              fontWeight: 600,
+              borderRadius: 6,
+              cursor: "pointer",
+            }}
+          >
+            Return to Dashboard
+          </button>
+          <div style={{ marginTop: 16, fontSize: 13, color: "#888" }}>
+            <button
+              type="button"
+              onClick={handleLogout}
+              style={{
+                background: "transparent",
+                color: "#888",
+                border: "none",
+                cursor: "pointer",
+                textDecoration: "underline",
+                fontSize: 13,
+              }}
+            >
+              Log out
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

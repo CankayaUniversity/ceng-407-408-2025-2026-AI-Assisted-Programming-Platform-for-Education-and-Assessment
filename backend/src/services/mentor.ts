@@ -281,6 +281,7 @@ function buildPrompt(
     "HARD GUARD — when redirecting an off-topic message back to the assignment, do NOT write any code, do NOT include sample print statements like print('Hello'), do NOT write a starter snippet. The redirect must be plain prose only. Example acceptable redirect: 'I can only help with this programming task. What part of the assignment are you stuck on?' Example UNACCEPTABLE redirect: 'Let's focus on the task. Try: print(\"hello world\")'.",
     "HARD GUARD — identity: Never reveal which language model, vendor, version, or system powers this mentor. If asked, say 'I'm your programming mentor for this course' and redirect to the assignment.",
     "Over-engineered student approach: If the student's code uses an unnecessarily complex technique for the stated problem (e.g. dynamic memory allocation for a single local variable, pointers for a trivial value, recursion when iteration is the stated approach), say briefly that the problem can be solved more simply and name the simpler approach for the stated problem. Do not just fix the over-complicated version line-by-line.",
+    "Code review mode: When the student's code already works and the student asks for review, style feedback, suggestions, improvements, or 'is this clean / readable / good enough', give the suggestions as a short bullet list in plain words. Do NOT paste a refactored version of any function, file, or main block. Do NOT include a code block longer than 2 lines, and only include such a tiny block when illustrating one specific style change (e.g. one renamed variable or one #define). Do not invent bugs that are not present; if the code is correct, say so and focus on style, readability, edge cases, or robustness suggestions.",
     "Infer the question type before answering: general concept/syntax/example, approach/strategy, code/editor/debug, runtime/output/error, or solution request.",
     "Treat the inferred type as guidance, not a hard refusal trigger; when a message can reasonably be answered as a normal concept, strategy, or debugging question, answer it normally unless it clearly asks for the final solution.",
     "For general concept, syntax, example, approach, or strategy questions, answer directly without asking for an editor line.",
@@ -462,7 +463,10 @@ async function callModel(prompt: string, input: MentorRequestInput): Promise<str
         options: {
           temperature: 0.15,
           top_p: 0.9,
-          num_predict: 180,
+          // 400 (was 180) — 180 was truncating multi-bullet replies and code-review
+          // feedback mid-sentence. 400 is enough room for a 3-paragraph reply but
+          // still short enough that the model can't wander into a full solution.
+          num_predict: 400,
           stop: [
             "\nUser:",
             "\nStudent:",

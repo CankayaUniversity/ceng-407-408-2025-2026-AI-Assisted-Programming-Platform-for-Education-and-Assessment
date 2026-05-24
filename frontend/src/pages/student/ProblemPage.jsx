@@ -48,6 +48,15 @@ const INITIAL_RUN_CONTEXT = {
   errorMessage: "",
 };
 
+function classifyRawTerminalStatus(exitCode, output, error) {
+  const text = `${output || ""}\n${error || ""}`.toLowerCase();
+  if (exitCode === 0) return "accepted";
+  if (text.includes("syntaxerror") || text.includes("compile") || text.includes("compilation")) {
+    return "compile_error";
+  }
+  return "runtime_error";
+}
+
 // ── Code cache: survives navigation (module-level) AND page refresh (localStorage) ──
 // Reads always check the in-memory Map first (fast), then fall back to localStorage.
 // Writes update both so either path works.
@@ -74,7 +83,7 @@ function _cacheSet(problemId, value) {
 }
 
 export default function ProblemPage() {
-  const { token, currentUser, problems, examMode, handleLogout } = useAuth();
+  const { token, currentUser, problems, examMode, handleLogout, refreshAccessToken } = useAuth();
   const { id } = useParams();
   const problemId = Number(id);
   const navigate  = useNavigate();
@@ -448,7 +457,26 @@ export default function ProblemPage() {
     const writer = termWriterRef.current;
     if (!writer) return;
     setRunning(true);
+    setLastRunContext({
+      runStatus: "running",
+      stdout: "",
+      stderr: "",
+      errorMessage: "",
+    });
     writer.run(selectedLanguage, allCode, token, () => setRunning(false));
+  }
+
+  function handleTerminalRunContext({ exitCode, output, error }) {
+    const cleanOutput = output ?? "";
+    const cleanError = error ?? "";
+    const runStatus = classifyRawTerminalStatus(exitCode, cleanOutput, cleanError);
+
+    setLastRunContext({
+      runStatus,
+      stdout: exitCode === 0 ? cleanOutput : "",
+      stderr: exitCode !== 0 ? cleanOutput : "",
+      errorMessage: cleanError,
+    });
   }
 
   // ── AI chat (SSE streaming) ───────────────────────────────────────────────
@@ -472,12 +500,10 @@ export default function ProblemPage() {
     setChatLoading(true);
 
     try {
-      const res = await fetch(`${API_BASE}/api/ai/chat/stream`, {
-        method:  "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const requestBody = JSON.stringify({
           problemId:       selectedProblem.id,
           assignmentText:  selectedProblem.description,
+          problemDifficulty: selectedProblem.difficulty,
           studentCode:     allCode,
           studentQuestion: message,
           runStatus:       lastRunContext.runStatus,
@@ -492,8 +518,19 @@ export default function ProblemPage() {
           conversationHistory,
           mode,
           hintLevel:       overrideMode === "hint" ? hintCount : undefined,
-        }),
       });
+
+      const makeStreamRequest = (authToken) => fetch(`${API_BASE}/api/ai/chat/stream`, {
+        method:  "POST",
+        headers: { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" },
+        body: requestBody,
+      });
+
+      let res = await makeStreamRequest(token);
+      if (res.status === 401 && refreshAccessToken) {
+        const freshToken = await refreshAccessToken();
+        res = await makeStreamRequest(freshToken);
+      }
 
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
 
@@ -611,6 +648,7 @@ export default function ProblemPage() {
       onCursorLineChange={setActiveLineNumber}
       // Phase 6 — terminal ref
       termWriterRef={termWriterRef}
+      onTerminalRunContext={handleTerminalRunContext}
       chat={chat}
       chatInput={chatInput}
       setChatInput={setChatInput}

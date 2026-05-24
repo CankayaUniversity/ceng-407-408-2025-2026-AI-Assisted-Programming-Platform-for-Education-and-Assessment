@@ -12,13 +12,14 @@ import "@xterm/xterm/css/xterm.css";
  * - Enter sends the buffered line to process stdin.
  * - Ctrl+C sends a kill message.
  */
-export default function InteractiveTerminal({ wsUrl, onReady }) {
+export default function InteractiveTerminal({ wsUrl, onReady, onRunContextUpdate }) {
   const containerRef  = useRef(null);
   const termRef       = useRef(null);
   const wsRef         = useRef(null);
   const inputBuf      = useRef("");          // current line being typed
   const isRunning     = useRef(false);
   const onDoneRef     = useRef(null);
+  const outputRef     = useRef("");
   const unmounted     = useRef(false);
 
   useEffect(() => {
@@ -52,16 +53,28 @@ export default function InteractiveTerminal({ wsUrl, onReady }) {
           const msg = JSON.parse(event.data);
           if (msg.type === "output") {
             // Replace bare \n with \r\n so xterm renders correctly
+            outputRef.current += msg.data;
             term.write(msg.data.replace(/\r?\n/g, "\r\n"));
           } else if (msg.type === "done") {
             isRunning.current = false;
             const color = msg.exitCode === 0 ? "\x1b[32m" : "\x1b[31m";
             term.write(`\r\n${color}[exited ${msg.exitCode}]\x1b[0m\r\n`);
+            onRunContextUpdate?.({
+              exitCode: msg.exitCode,
+              output: outputRef.current,
+              error: "",
+            });
             onDoneRef.current?.();
             onDoneRef.current = null;
           } else if (msg.type === "error") {
             isRunning.current = false;
+            outputRef.current += `\n[Error: ${msg.message}]\n`;
             term.write(`\r\n\x1b[31m[Error: ${msg.message}]\x1b[0m\r\n`);
+            onRunContextUpdate?.({
+              exitCode: 1,
+              output: outputRef.current,
+              error: msg.message,
+            });
             onDoneRef.current?.();
             onDoneRef.current = null;
           }
@@ -129,6 +142,7 @@ export default function InteractiveTerminal({ wsUrl, onReady }) {
           return;
         }
         inputBuf.current  = "";
+        outputRef.current = "";
         isRunning.current = true;
         onDoneRef.current = onDone ?? null;
         term.reset();

@@ -39,6 +39,15 @@ type Agreement = {
   overall: boolean;
 } | null;
 
+type TurnScore = {
+  turnIndex: number;
+  isFinal: boolean;
+  userMessage: string;
+  mentorReply: string | null;
+  judges: JudgeScore[];
+  agree: Agreement;
+};
+
 type ScoredFixture = {
   id: string;
   category: string;
@@ -49,6 +58,8 @@ type ScoredFixture = {
     stderr: string | null;
     stdout: string | null;
     problemDescription: string | null;
+    conversation?: Array<{ role: "user" | "assistant"; content: string }> | null;
+    turnCount?: number;
   };
   ok: boolean;
   latencyMs: number;
@@ -57,6 +68,8 @@ type ScoredFixture = {
   rewriteCount: number | null;
   judges: JudgeScore[];
   agree: Agreement;
+  // Multi-turn only — per-turn scores.
+  turnScores?: TurnScore[];
 };
 
 type ScoredFile = {
@@ -317,9 +330,41 @@ function renderPerFixtureNotes(scored: ScoredFixture[]): string {
       const question = (f.input.studentQuestion ?? "").replace(/\s+/g, " ").slice(0, 140);
       const reply = (f.mentorReply ?? "").replace(/\s+/g, " ").slice(0, 220);
       const agreeMark = f.agree?.overall ? "✓ all agree" : "⚠ disagreement";
+      const isMultiTurn = Array.isArray(f.turnScores) && f.turnScores.length > 1;
 
-      lines.push(`#### \`${f.id}\` (${f.language}) — ${agreeMark}`);
+      lines.push(`#### \`${f.id}\` (${f.language})${isMultiTurn ? ` — ${f.turnScores!.length} turns` : ""} — ${agreeMark}`);
       lines.push("");
+
+      // Multi-turn: print one block per turn with per-turn judges.
+      if (isMultiTurn) {
+        for (const ts of f.turnScores!) {
+          const uMsg = (ts.userMessage ?? "").replace(/\s+/g, " ").slice(0, 200);
+          const mReply = (ts.mentorReply ?? "").replace(/\s+/g, " ").slice(0, 400);
+          const turnLabel = ts.isFinal ? `**Turn ${ts.turnIndex + 1} (FINAL)**` : `**Turn ${ts.turnIndex + 1}**`;
+          const turnAgree = ts.agree ? (ts.agree.overall ? "✓ agree" : "⚠ disagree") : "—";
+          lines.push(`${turnLabel} — ${turnAgree}`);
+          lines.push("");
+          lines.push(`- Student: ${escapeMd(uMsg)}${(ts.userMessage ?? "").length > 200 ? "…" : ""}`);
+          lines.push(`- Mentor: ${escapeMd(mReply)}${(ts.mentorReply ?? "").length > 400 ? "…" : ""}`);
+          lines.push("");
+          lines.push("| Judge | Correctness | Pedagogy | Policy | Locale | Leak | Notes |");
+          lines.push("|---|:---:|:---:|:---:|:---:|:---:|---|");
+          for (const j of ts.judges) {
+            if (j.error) {
+              lines.push(`| \`${j.judge}\` | — | — | — | — | — | ⚠ error: ${escapeMd(j.error).slice(0, 80)} |`);
+              continue;
+            }
+            const note = escapeMd((j.notes ?? "").replace(/\s+/g, " ")).slice(0, 200);
+            lines.push(
+              `| \`${j.judge}\` | ${j.correctness} | ${j.pedagogy} | ${j.policyPass ? "✓" : "✗"} | ${j.localePass ? "✓" : "✗"} | ${j.leaksCode ? "leak" : "ok"} | ${note} |`,
+            );
+          }
+          lines.push("");
+        }
+        continue;
+      }
+
+      // Single-turn fixture — original rendering path.
       if (question) {
         lines.push(`*Student:* ${escapeMd(question)}${f.input.studentQuestion!.length > 140 ? "…" : ""}`);
       }

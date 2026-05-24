@@ -116,8 +116,8 @@ type FixtureResult = {
     stderr: string | null;
     stdout: string | null;
     problemDescription: string | null;
-    // Set only for multi-turn fixtures. Records every (role, content) pair
-    // the runner sent, so the judge can review the full conversation.
+    // Set only for multi-turn fixtures. Records the FULL conversation
+    // (interleaved user + assistant) so the judge can audit context.
     conversation: Array<{ role: "user" | "assistant"; content: string }> | null;
     turnCount: number;
   };
@@ -137,6 +137,10 @@ type FixtureResult = {
   rewriteCount: number | null;
   fallbackUsed: boolean | null;
   requestFlags: unknown;
+  // Per-turn breakdown — one entry per turn. For single-turn fixtures the
+  // array has exactly one element. The scorer uses this to perform per-turn
+  // judging on multi-turn fixtures.
+  turnResults: TurnResult[];
 };
 
 // ── Tiny language guesser (no deps) ──────────────────────────────────────────
@@ -217,6 +221,28 @@ async function sendOneMessage(
  * end-to-end test; intermediate replies are stored in the conversation
  * history so the judge can see them if it wants.
  */
+/**
+ * Per-turn captured data. One of these is emitted per turn so the scorer can
+ * judge intermediate replies, not just the final one.
+ */
+type TurnResult = {
+  userMessage: string;
+  mentorReply: string | null;
+  httpStatus: number;
+  latencyMs: number;
+  policyAction: string | null;
+  rewriteCount: number | null;
+  validator: unknown;
+  finalValidator: unknown;
+  // Extra inputs that were active during this turn (snapshot at submit time):
+  studentCode: string | null;
+  stderr: string | null;
+  stdout: string | null;
+  activeLineNumber: number | null;
+  selectedCodeContext: string | null;
+  mode: string | null;
+};
+
 async function callMentor(
   base: string,
   token: string,
@@ -228,6 +254,8 @@ async function callMentor(
   latencyMs: number;
   turnCount: number;
   totalLatencyMs: number;
+  // Per-turn breakdown. For single-turn fixtures this is an array of length 1.
+  turnResults: TurnResult[];
 }> {
   // Normalise: either use the explicit turns array, or wrap the single-turn
   // fields in a one-turn array.
@@ -246,32 +274,58 @@ async function callMentor(
   const history: HistoryMessage[] = [];
   let lastResult: Awaited<ReturnType<typeof sendOneMessage>> | null = null;
   let totalLatencyMs = 0;
+  const turnResults: TurnResult[] = [];
 
   for (let i = 0; i < turns.length; i++) {
     const t = turns[i];
+    const effectiveStudentCode  = t.studentCode ?? fixture.studentCode ?? "";
+    const effectiveStderr       = t.stderr ?? fixture.stderr ?? "";
+    const effectiveStdout       = t.stdout ?? fixture.stdout ?? "";
+    const effectiveLine         = t.activeLineNumber ?? fixture.activeLineNumber ?? null;
+    const effectiveSelected     = t.selectedCodeContext ?? fixture.selectedCodeContext ?? null;
+    const effectiveMode         = t.mode ?? fixture.mode ?? "mentor";
+
     const payload: Record<string, unknown> = {
       studentQuestion: t.studentQuestion,
-      studentCode: t.studentCode ?? fixture.studentCode ?? "",
-      stderr: t.stderr ?? fixture.stderr ?? "",
-      stdout: t.stdout ?? fixture.stdout ?? "",
+      studentCode: effectiveStudentCode,
+      stderr: effectiveStderr,
+      stdout: effectiveStdout,
       problemDescription: fixture.problemDescription ?? "",
       language: fixture.language,
       activeFileName: fixture.activeFileName ?? `solution.${fixture.language}`,
-      activeLineNumber: t.activeLineNumber ?? fixture.activeLineNumber ?? null,
-      selectedCodeContext: t.selectedCodeContext ?? fixture.selectedCodeContext ?? null,
+      activeLineNumber: effectiveLine,
+      selectedCodeContext: effectiveSelected,
       conversationHistory: [...history],
-      mode: t.mode ?? fixture.mode ?? "mentor",
+      mode: effectiveMode,
     };
 
     lastResult = await sendOneMessage(base, token, payload);
     totalLatencyMs += lastResult.latencyMs;
 
+    const reply = typeof lastResult.data?.mentorReply === "string"
+      ? (lastResult.data.mentorReply as string)
+      : null;
+
+    turnResults.push({
+      userMessage: t.studentQuestion,
+      mentorReply: reply,
+      httpStatus: lastResult.httpStatus,
+      latencyMs: lastResult.latencyMs,
+      policyAction: typeof lastResult.data?.policyAction === "string" ? lastResult.data.policyAction : null,
+      rewriteCount: typeof lastResult.data?.rewriteCount === "number" ? lastResult.data.rewriteCount : null,
+      validator: lastResult.data?.validator ?? null,
+      finalValidator: lastResult.data?.finalValidator ?? null,
+      studentCode: effectiveStudentCode || null,
+      stderr: effectiveStderr || null,
+      stdout: effectiveStdout || null,
+      activeLineNumber: effectiveLine,
+      selectedCodeContext: effectiveSelected,
+      mode: effectiveMode,
+    });
+
     // Append this turn to history regardless of HTTP status (for the next
     // turn's context) — if the call errored, we abort the conversation.
     history.push({ role: "user", content: t.studentQuestion });
-    const reply = typeof lastResult.data?.mentorReply === "string"
-      ? (lastResult.data.mentorReply as string)
-      : "";
     if (reply) history.push({ role: "assistant", content: reply });
 
     if (lastResult.httpStatus < 200 || lastResult.httpStatus >= 300) {
@@ -287,6 +341,7 @@ async function callMentor(
     latencyMs: lastResult!.latencyMs,
     turnCount: turns.length,
     totalLatencyMs,
+    turnResults,
   };
 }
 
@@ -427,29 +482,29 @@ async function main(): Promise<void> {
     let result: FixtureResult;
     try {
       lastRequestStart = Date.now();
-      let { httpStatus, body, raw, latencyMs, totalLatencyMs } = await callMentor(args.base, token, f);
+      let { httpStatus, body, raw, latencyMs, totalLatencyMs, turnResults } = await callMentor(args.base, token, f);
 
       // If the rate limiter still trips us, back off for the full window and retry once.
       if (httpStatus === 429) {
         process.stdout.write("rate-limited, backing off 65s ... ");
         await sleep(65_000);
         lastRequestStart = Date.now();
-        ({ httpStatus, body, raw, latencyMs, totalLatencyMs } = await callMentor(args.base, token, f));
+        ({ httpStatus, body, raw, latencyMs, totalLatencyMs, turnResults } = await callMentor(args.base, token, f));
       }
       const mentorReply = typeof body?.mentorReply === "string" ? body.mentorReply : null;
 
-      // Build the conversation transcript for multi-turn fixtures so the
-      // scored output and judge can see what was actually exchanged.
+      // Build the FULL interleaved conversation (user + assistant alternating)
+      // for the scored output. The judge will see this so it can audit memory
+      // and consistency across turns.
       let conversation: FixtureResult["input"]["conversation"] = null;
       if (fixtureTurns) {
         conversation = [];
-        for (const t of fixtureTurns) {
-          conversation.push({ role: "user", content: t.studentQuestion });
+        for (const tr of turnResults) {
+          conversation.push({ role: "user", content: tr.userMessage });
+          if (tr.mentorReply !== null) {
+            conversation.push({ role: "assistant", content: tr.mentorReply });
+          }
         }
-        // We don't store intermediate mentor replies on the fixture result
-        // here — only the FINAL one (stored separately as `mentorReply`).
-        // The judge sees the user-only history plus the final reply, which
-        // is the right thing for grading "did the mentor land the close".
       }
 
       result = {
@@ -484,6 +539,7 @@ async function main(): Promise<void> {
         rewriteCount: typeof body?.rewriteCount === "number" ? body.rewriteCount : null,
         fallbackUsed: typeof body?.fallbackUsed === "boolean" ? body.fallbackUsed : null,
         requestFlags: body?.requestFlags ?? null,
+        turnResults,
       };
       const latencyLabel = turnCount > 1
         ? `${totalLatencyMs} ms total, last ${latencyMs} ms`
@@ -522,6 +578,7 @@ async function main(): Promise<void> {
         rewriteCount: null,
         fallbackUsed: null,
         requestFlags: null,
+        turnResults: [],
       };
       process.stdout.write(`ERROR — ${err}\n`);
     }

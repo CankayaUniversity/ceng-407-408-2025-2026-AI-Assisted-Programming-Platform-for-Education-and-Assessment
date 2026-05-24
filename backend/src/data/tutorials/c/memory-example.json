@@ -1,0 +1,173 @@
+{
+  "tag": "memory-example",
+  "language": "c",
+  "title": "C Memory Example",
+  "category": "C Memory",
+  "categoryOrder": 6,
+  "subCategory": null,
+  "subCategoryOrder": 0,
+  "order": 7,
+  "sections": [
+    {
+      "heading": "Real-Life Memory Management Example",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "To demonstrate a practical example of **dynamic memory**, we created a program that can make a list of any length."
+        },
+        {
+          "type": "text",
+          "content": "Regular arrays in C have a fixed length and cannot be changed, but with dynamic memory we can create a list as long as we like:"
+        },
+        {
+          "type": "code",
+          "content": "  struct list {\n  int *data; // Points to the memory where the list items are \n  stored\n  int numItems; // Indicates how many items are currently in the list\n\n  int size; // Indicates how many items fit in the allocated memory\n};\n\nvoid addToList(struct list *myList, int item);\n\nint main() {\n\n  struct list myList;\n  int amount;\n  int i, j;\n\n  // Create a list and start with \n  enough space for 10 items\n  myList.numItems = 0;\n  myList.size = 10;\n\n  myList.data = malloc(myList.size * sizeof(int));\n\n  // Find out if \n  memory allocation was successful\n  if (myList.data == NULL) {\n    \n  printf(\"Memory allocation failed\");\n    return 1; // Exit \n  the program with an error code\n  }\n\n  // Add any number of \n  items to the list specified by the amount variable\n  amount = 44;\n\n  for (i = 0; i < amount; i++) {\n    addToList(&myList, i + 1);\n  }\n\n  // \n  Display the contents of the list\n  for (j = 0; j < myList.numItems; j++) {\n\n  printf(\"%d \", myList.data[j]);\n  }\n\n  // Free the memory when it is no \n  longer needed\n  free(myList.data);\n  myList.data = NULL;\n\n  return 0;\n\n  }\n\n// This function adds an item to a list\nvoid addToList(struct list \n  *myList, int item) {\n\n  // If the list is full then resize the \n  memory to fit 10 more items\n  if (myList->numItems == myList->size) {\n    \n  int newSize = myList->size + 10;\n\n    // Use a temporary \n  pointer so we don't lose the original on failure\n    int \n  *tmp = realloc(myList->data, newSize * sizeof(int));\n    if \n  (tmp == NULL) {\n      printf(\"Memory resize \n  failed\\n\");\n      return; // Leave the list \n  unchanged\n    }\n\n    // Only update \n  fields after a successful reallocation\n    myList->data = \n  tmp;\n    myList->size = newSize;\n  }\n\n  // Add the item to the end of the list\n  \n  myList->data[myList->numItems] = item;\n  myList->numItems++;\n}"
+        },
+        {
+          "type": "text",
+          "content": "**Pointers to structures:** This example has a pointer to the structure `myList`. Because we are using a **pointer** to the structure instead of the structure itself, we use the arrow syntax (`->`) to access the structure's members."
+        },
+        {
+          "type": "text",
+          "content": "**Example explained**"
+        },
+        {
+          "type": "text",
+          "content": "This example has three parts:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "A structure `myList` that contains a list's data",
+            "The `main()` function with the program in it.",
+            "A function `addToList()` which adds an item to the list"
+          ]
+        },
+        {
+          "type": "text",
+          "content": "**The `myList` structure**"
+        },
+        {
+          "type": "text",
+          "content": "The `myList` structure contains all of the information about the list, including its contents. It has three members:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "`data` - A pointer to the dynamic memory which contains the contents of the list",
+            "`numItems` - Indicates the number of items that list has",
+            "`size` - Indicates how many items can fit in the allocated memory"
+          ]
+        },
+        {
+          "type": "text",
+          "content": "We use a structure so that we can easily pass all of this information into a function."
+        },
+        {
+          "type": "text",
+          "content": "**The `main()` function**"
+        },
+        {
+          "type": "text",
+          "content": "The `main()` function starts by initializing the list with space for 10 items:"
+        },
+        {
+          "type": "code",
+          "content": "  // Create a list and start with enough space for 10 items\nmyList.numItems = \n  0;\nmyList.size = 10;\nmyList.data = malloc(myList.size * sizeof(int));"
+        },
+        {
+          "type": "text",
+          "content": "`myList.numItems` is set to 0 because the list starts off empty."
+        },
+        {
+          "type": "text",
+          "content": "`myList.size` keeps track of how much memory is reserved. We set it to 10 because we will reserve enough memory for 10 items."
+        },
+        {
+          "type": "text",
+          "content": "We then allocate the memory and store a pointer to it in `myList.data`."
+        },
+        {
+          "type": "text",
+          "content": "Then we include error checking to find out if memory allocation was successful:"
+        },
+        {
+          "type": "code",
+          "content": "  // Find out if memory allocation was successful\nif (myList.data == NULL) {\n  printf(\"Memory allocation failed\");\n  \n  return 1; // Exit the program with an error code\n}"
+        },
+        {
+          "type": "text",
+          "content": "If everything is fine, a loop adds 44 items to the list using the `addToList()` function:"
+        },
+        {
+          "type": "code",
+          "content": "  // Add any number of items to the list specified by the amount variable\n\n  amount = 44;\nfor (i = 0; i < amount; i++) {\n  \n  addToList(&myList, i + 1);\n}"
+        },
+        {
+          "type": "text",
+          "content": "In the code above, `&myList` is a pointer to the list and `i + 1` is a number that we want to add to the list. We chose `i + 1` so that the list would start at 1 instead of 0. You can choose any number to add to the list."
+        },
+        {
+          "type": "text",
+          "content": "After all of the items have been added to the list, the next loop prints the contents of the list."
+        },
+        {
+          "type": "code",
+          "content": "  // Display the contents of the list\nfor (j = 0; j < myList.numItems; \n  j++) {\n  printf(\"%d \", myList.data[j]);\n}"
+        },
+        {
+          "type": "text",
+          "content": "When we finish printing the list we free the memory to prevent memory leaks."
+        },
+        {
+          "type": "code",
+          "content": "  // Free the memory when it is no longer needed\nfree(myList.data);\n\n  myList.data = NULL;"
+        },
+        {
+          "type": "text",
+          "content": "**The `addToList()` function**"
+        },
+        {
+          "type": "text",
+          "content": "Our `addToList()` function adds an item to the list. It takes two parameters:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "A pointer to the list.",
+            "The value to be added to the list."
+          ]
+        },
+        {
+          "type": "text",
+          "content": "The function first checks if the list is full by comparing the number of items in the list to the size (capacity). If the list is full, it tries to grow the memory to fit 10 more items. We use a *temporary pointer* with `realloc` so we don't lose the original block if the resize fails. We only update `data` and `size` after a successful resize:"
+        },
+        {
+          "type": "text",
+          "content": "Finally, the function adds the item to the end of the list. The index at `myList->numItems` is always at the end of the list because it increases by 1 each time a new item is added.:"
+        },
+        {
+          "type": "text",
+          "content": "**Why do we reserve 10 items at a time?**"
+        },
+        {
+          "type": "text",
+          "content": "Optimizing is a balancing act between memory and performance. Even though we may be allocating some memory that we are not using, reallocating memory too frequently can be inefficient. There is a balance between allocating too much memory and allocating memory too frequently."
+        },
+        {
+          "type": "text",
+          "content": "We chose the number 10 for this example, but it depends on how much data you expect and how often it changes. For example, if we know beforehand that we are going to have exactly 44 items then we can allocate memory for exactly 44 items and only allocate it once."
+        }
+      ]
+    },
+    {
+      "heading": "Complete stdlib Reference",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "For a complete reference of memory management functions and other functions found in the standard library, go to our C <stdlib.h> Library Reference."
+        }
+      ]
+    }
+  ]
+}

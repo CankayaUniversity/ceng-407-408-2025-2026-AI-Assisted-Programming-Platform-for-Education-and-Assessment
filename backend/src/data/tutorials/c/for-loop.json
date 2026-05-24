@@ -4,22 +4,94 @@
   "title": "C For Loop",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 15,
+  "subCategory": "For Loop",
+  "subCategoryOrder": 10,
+  "order": 1,
   "sections": [
     {
       "heading": "For Loop",
-      "body": "For Loop\n\nWhen you know exactly how many times you want to loop through a block of\ncode, use the for loop instead of a while loop:\n\nSyntax\n\nExpression 1 is executed (one time) before the execution of the code block.\nExpression 2 defines the condition for executing the code block.\nExpression 3 is executed (every time) after the code block has been executed.\n\nPrint Numbers\n\nThe example below will print the numbers 0 to 4:\n\nExample\n\nExample explained\nStatement 1 sets a variable before the loop starts: int i = 0\n  Statement 2 defines the condition for the loop to run: i < 5. If the condition is true, the loop will start over again, if it is false, the loop will end.\n  Statement 3 increases a value each time the code block in the loop has been executed: i++\n\nPrint Even Numbers\n\nThis example prints even values between 0 and 10:\n\nExample\n\nSum of Numbers\n\nThis example calculates the sum of numbers from 1 to 5:\n\nExample\n\nCountdown\n\nThis example prints a countdown from 5 to 1:\n\nExample",
-      "code": "for (expression 1; expression 2; expression 3) {\n\n      // code block to be executed\n\n }\n\n// ─────────────────────────────────────\n\nint i;\n\nfor (i = 0; i < 5; i++) {\n  printf(\"%d\\n\",\n  i);\n}\n\n// ─────────────────────────────────────\n\nint i;\n\n    for (i = 0; i <= 10; i = i + 2) {\n\n      printf(\"%d\\n\", i);\n\n    }\n\n// ─────────────────────────────────────\n\nint sum = 0;\n\n    int i;\n\n    for (i = 1; i <= 5; i++) {\n\n      sum = sum + i;\n\n    }\n\n    printf(\"Sum is %d\", sum);\n\n// ─────────────────────────────────────\n\nint i;\n\n    for (i = 5; i > 0; i--) {\n\n      printf(\"%d\\n\", i);\n\n    }"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "When you know exactly how many times you want to loop through a block of code, use the `for` loop instead of a `while` loop:"
+        },
+        {
+          "type": "syntax",
+          "content": "for (expression 1; expression 2; expression 3) {\n  // code block to be executed\n}"
+        },
+        {
+          "type": "list",
+          "items": [
+            "**Expression 1** is executed (one time) *before* the execution of the code block.",
+            "**Expression 2** defines the condition for executing the code block.",
+            "**Expression 3** is executed (every time) *after* the code block has been executed."
+          ]
+        }
+      ]
     },
     {
-      "heading": "Nested Loops",
-      "body": "Nested Loops\n\nIt is also possible to place a loop inside another loop. This is called a\nnested loop.\nThe \"inner loop\" will be executed one time for each iteration of the \"outer loop\":\n\nExample\n\nMultiplication Table Example\n\nThis example uses nested loops to print a simple multiplication table (1 to 3):\n\nExample\n\nNested loops are useful when working with tables, matrices, or multi-dimensional data structures.",
-      "code": "int i, j;\n\n// Outer loop\nfor (i = 1; i <= 2; ++i) {\n  printf(\"Outer:\n  %d\\n\", i);  // Executes 2 times\n\n  // Inner loop\n  for (j = 1; j <= 3; ++j) {\n\n  printf(\" Inner: %d\\n\", j);  // Executes 6 times (2 * 3)\n  }\n}\n\n// ─────────────────────────────────────\n\nint i, j;\n\n    for (i = 1; i <= 3; i++) {\n\n      for (j = 1; j <= 3; j++) {\n\n        printf(\"%d \", i * j);\n\n      }\n\n      printf(\"\\n\");\n\n    }"
+      "heading": "Print Numbers",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "The example below will print the numbers `0` to `4`:"
+        },
+        {
+          "type": "code",
+          "content": "int i;\n\nfor (i = 0; i < 5; i++) {\n  printf(\"%d\\n\", i);\n}"
+        },
+        {
+          "type": "text",
+          "content": "**Example explained:**"
+        },
+        {
+          "type": "list",
+          "items": [
+            "**Statement 1** sets a variable before the loop starts: `int i = 0`",
+            "**Statement 2** defines the condition for the loop to run: `i < 5`. If the condition is true, the loop will start over again; if it is false, the loop will end.",
+            "**Statement 3** increases a value each time the code block in the loop has been executed: `i++`"
+          ]
+        }
+      ]
     },
     {
-      "heading": "For Loop Examples",
-      "body": "Real-Life Examples\n\nTo demonstrate a practical example of the for loop, let's\ncreate a program that counts to 100 by tens:\n\nExample\n\nIn this example, we create a program that only print even numbers between 0 and 10 (inclusive):\n\nExample\n\nHere we only print odd numbers:\n\nExample\n\nIn this example we print the powers of 2 up to 512:\n\nExample\n\nAnd in this example, we create a program that prints the multiplication table for a specified number:\n\nExample",
-      "code": "for (i = 0; i <= 100; i += 10) {\n  printf(\"%d\\n\", i);\n}\n\n// ─────────────────────────────────────\n\nfor (i = 0; i <= 10; i = i + 2) {\n  printf(\"%d\\n\", i);\n}\n\n// ─────────────────────────────────────\n\nfor (i = 1; i < 10; i = i + 2) {\n  printf(\"%d\\n\", i);\n}\n\n// ─────────────────────────────────────\n\nfor (i = 2; i <= 512; i *= 2) {\n  printf(\"%d\\n\", i);\n}\n\n// ─────────────────────────────────────\n\nint number = 2;\nint i;\n\n// Print the multiplication table for the\n  number 2\nfor (i = 1; i <= 10; i++) {\n  printf(\"%d x %d = %d\\n\",\n  number, i, number * i);\n}\n\nreturn 0;"
+      "heading": "Print Even Numbers",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "This example prints even values between `0` and `10`:"
+        },
+        {
+          "type": "code",
+          "content": "int i;\n\nfor (i = 0; i <= 10; i = i + 2) {\n  printf(\"%d\\n\", i);\n}"
+        }
+      ]
+    },
+    {
+      "heading": "Sum of Numbers",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "This example calculates the sum of numbers from `1` to `5`:"
+        },
+        {
+          "type": "code",
+          "content": "int sum = 0;\nint i;\n\nfor (i = 1; i <= 5; i++) {\n  sum = sum + i;\n}\n\nprintf(\"Sum is %d\", sum);"
+        }
+      ]
+    },
+    {
+      "heading": "Countdown",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "This example prints a countdown from `5` to `1`:"
+        },
+        {
+          "type": "code",
+          "content": "int i;\n\nfor (i = 5; i > 0; i--) {\n  printf(\"%d\\n\", i);\n}"
+        }
+      ]
     }
   ]
 }

@@ -1,0 +1,188 @@
+{
+  "tag": "pointer-arithmetic",
+  "language": "c",
+  "title": "C Pointer Arithmetic",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "subCategory": "Memory & Pointers",
+  "subCategoryOrder": 14,
+  "order": 5,
+  "sections": [
+    {
+      "heading": "Pointer Arithmetic",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "**Pointer arithmetic** means changing the value of a pointer to make it point to a different element in memory."
+        },
+        {
+          "type": "text",
+          "content": "Like we saw on the previous page, array elements are stored next to each other in memory. So if a pointer points to one element, adding `1` moves it to the next one:"
+        },
+        {
+          "type": "code",
+          "content": "    int myNumbers[4] = {25, 50, 75, 100};\n\n    int *p = myNumbers;  // points to myNumbers[0]\n\n    printf(\"%d\\n\", *p);       // 25\n\n    printf(\"%d\\n\", *(p + 1)); // 50\n\n    printf(\"%d\\n\", *(p + 2)); // 75\n\n    printf(\"%d\\n\", *(p + 3)); // 100"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        }
+      ]
+    },
+    {
+      "heading": "Increment and Decrement",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "You can move a pointer with `++` and `--` (and with `+=` / `-=`):"
+        },
+        {
+          "type": "code",
+          "content": "    int myNumbers[3] = {10, 20, 30};\n\n    int *p = myNumbers;  // myNumbers[0]\n\n    printf(\"%d\\n\", *p); // 10\n\n    p++;           // move to myNumbers[1]\n\n    printf(\"%d\\n\", *p); // 20\n\n    p--;           // back to myNumbers[0]\n\n    printf(\"%d\\n\", *p); // 10\n\n    p += 2;        // jump to myNumbers[2]\n\n    printf(\"%d\\n\", *p); // 30"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        },
+        {
+          "type": "text",
+          "content": "This shows that you can move a pointer just like a counter: each time you use `p++` or `p--`, it moves to the next or previous element in the array."
+        }
+      ]
+    },
+    {
+      "heading": "Pointer Subtraction (Distance)",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "You can subtract two pointers that point to elements in the **same array** to find out how many elements are between them:"
+        },
+        {
+          "type": "code",
+          "content": "    int myNumbers[5] = {10, 20, 30, 40, 50};\n\n    int *start = &myNumbers[1]; // points to 20\n\n    int *end = &myNumbers[4];   // points to 50\n\n    printf(\"%ld\\n\", end - start); // 3 elements apart"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        },
+        {
+          "type": "text",
+          "content": "Here:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "`start` points to the second element (`20`).",
+            "`end` points to the fifth element (`50`).",
+            "`end - start` gives the number of elements between them: **3**."
+          ]
+        },
+        {
+          "type": "text",
+          "content": "**Note:** Pointer subtraction only works when both pointers point into the *same array*. The result is measured in **elements**, not bytes."
+        }
+      ]
+    },
+    {
+      "heading": "Pointer Arithmetic Depends on Type",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Not all pointers move the same way."
+        },
+        {
+          "type": "text",
+          "content": "When you add `1` to a pointer, it moves forward by the size of the thing it points to - not just by 1 byte."
+        },
+        {
+          "type": "text",
+          "content": "For example:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "An `int*` pointer moves by the size of an integer (usually 4 bytes).",
+            "A `char*` pointer moves by the size of a character (1 byte)."
+          ]
+        },
+        {
+          "type": "text",
+          "content": "So if both pointers start at memory address `1000`:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "`int*` &#8594; `p + 1` would move to address `1004`",
+            "`char*` &#8594; `p + 1` would move to address `1001`"
+          ]
+        },
+        {
+          "type": "text",
+          "content": "This shows that pointer movement depends on the data type it points to - not on the number you add:"
+        },
+        {
+          "type": "code",
+          "content": "    int myNumbers[2] = {1, 2};\nchar letters[] = \"Hi\"; // 'H', 'i', '\\0'\n\nint *pi = myNumbers; // int pointer\nchar *pc = letters; // char \n    pointer\n\nprintf(\"%p\\n\", (void*)pi);\nprintf(\"%p\\n\", (void*)(pi + \n    1)); // moves by sizeof(int) (4 bytes)\nprintf(\"%p\\n\", (void*)(pi + 2)); \n    // moves by sizeof(int) (4 bytes)\n\nprintf(\"%p\\n\", (void*)pc);\n\n    printf(\"%p\\n\", (void*)(pc + 1)); // moves by 1 byte"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        }
+      ]
+    },
+    {
+      "heading": "Looping with Pointers",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "In the previous chapter, you learned how to loop through an array using `*(ptr + i)`."
+        },
+        {
+          "type": "text",
+          "content": "Now let's look at another way - by **moving the pointer itself** inside the loop. Each time the pointer is increased (`p++`), it moves to the next element in memory:"
+        },
+        {
+          "type": "code",
+          "content": "    int myNumbers[4] = {25, 50, 75, 100};\n\n    int *p = myNumbers;    // start of array\n\n    for (int i = 0; i < 4; i++) {\n\n      printf(\"%d\\n\", *p);\n\n      p++; // move to next element\n\n    }"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        },
+        {
+          "type": "text",
+          "content": "Here's what happens in each loop:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "`*p` gives the current element value.",
+            "`p++` moves the pointer to the next element in the array.",
+            "No array index (`i`) is needed - the pointer keeps track of the position."
+          ]
+        },
+        {
+          "type": "text",
+          "content": "**Tip:** This way of looping is common when working directly with memory, since the pointer itself moves through the array instead of using an index number."
+        }
+      ]
+    },
+    {
+      "heading": "Common Mistakes to Avoid",
+      "blocks": [
+        {
+          "type": "list",
+          "items": [
+            "**Using the wrong type:** Remember that pointer movement depends on its type. An `int*` moves in 4-byte steps, but a `char*` moves 1 byte at a time. Mixing them up will point to the wrong memory locations.",
+            "**Uninitialized pointers:** Always make sure a pointer is pointing to something real before you use it. Using a pointer that doesn't point anywhere can crash your program.",
+            "**Going out of bounds:** Never move a pointer past the end of an array or before it starts. The only safe \"outside\" position is *one step past the end*, and that's only for comparing pointers - not for accessing values."
+          ]
+        },
+        {
+          "type": "text",
+          "content": "And be careful; pointers must be handled with care, since it is possible to damage data stored in other memory addresses."
+        }
+      ]
+    }
+  ]
+}

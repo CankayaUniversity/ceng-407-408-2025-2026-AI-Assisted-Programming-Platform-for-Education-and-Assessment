@@ -1,0 +1,63 @@
+{
+  "tag": "null",
+  "language": "c",
+  "title": "C NULL",
+  "category": "C Errors",
+  "categoryOrder": 7,
+  "subCategory": null,
+  "subCategoryOrder": 0,
+  "order": 3,
+  "sections": [
+    {
+      "heading": "C NULL",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "`NULL` is a special value that represents a \"null pointer\" - a pointer that does not point to anything."
+        },
+        {
+          "type": "text",
+          "content": "It helps you avoid using pointers that are empty or invalid. You can compare a pointer to `NULL` to check if it is safe to use."
+        },
+        {
+          "type": "text",
+          "content": "Many C functions return `NULL` when something goes wrong. For example, `fopen()` returns `NULL` if a file cannot be opened, and `malloc()` returns `NULL` if memory allocation fails. We can check for this using an `if` statement, and print an error message if something goes wrong."
+        },
+        {
+          "type": "text",
+          "content": "In this example, we try to open a file that does not exist. Since `fopen()` fails, it returns `NULL` and we print an error message:"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        },
+        {
+          "type": "text",
+          "content": "If you try to allocate too much memory, `malloc()` may fail and return `NULL`:"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        }
+      ]
+    },
+    {
+      "heading": "Summary",
+      "blocks": [
+        {
+          "type": "list",
+          "items": [
+            "`NULL` represents a null (empty) pointer",
+            "It signals that a pointer is not pointing anywhere",
+            "You can compare a pointer to `NULL` to check if it's safe to use",
+            "Functions like `malloc()` and `fopen()` return `NULL` if they fail"
+          ]
+        },
+        {
+          "type": "text",
+          "content": "**Tip:** Always check if a pointer is `NULL` before using it. This helps avoid crashes caused by accessing invalid memory."
+        }
+      ]
+    }
+  ]
+}

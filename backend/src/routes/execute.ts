@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma";
-import { resolveLanguageId } from "../lib/judge0Languages";
 import { requireAuth } from "../middleware/requireAuth";
 import { AttemptMode } from "@prisma/client";
-import { runInJudge0, type Judge0RunResult } from "../services/judge0";
+import { type Judge0RunResult } from "../services/judge0";
+import { createDockerSession, runInDocker } from "../services/dockerRunner";
 import { executeSchema } from "../lib/schemas";
 
 const router = Router();
@@ -28,6 +28,19 @@ function normalizeOutput(s: string): string {
  *      e.g. expected="5", actual="The maximum number is: 5"  → passes
  *           expected="5\n3", actual=["Result: 5", "Min: 3"]  → passes
  */
+/**
+ * Returns true if `actual` ends with `expected` AND the character immediately
+ * before `expected` in `actual` is a word-boundary (space, colon, etc.) — not
+ * an alphanumeric or underscore.  This prevents "15".endsWith("5") from
+ * producing a false-positive when the expected output is "5".
+ */
+function suffixMatch(actual: string, expected: string): boolean {
+  if (!actual.endsWith(expected)) return false;
+  const prefix = actual.slice(0, actual.length - expected.length);
+  if (prefix.length === 0) return true;           // exact suffix — OK
+  return !/[a-zA-Z0-9_]/.test(prefix[prefix.length - 1]);
+}
+
 function outputMatches(actual: string, expected: string): boolean {
   const normActual   = normalizeOutput(actual);
   const normExpected = normalizeOutput(expected);
@@ -35,7 +48,10 @@ function outputMatches(actual: string, expected: string): boolean {
   // 1. Exact match
   if (normActual === normExpected) return true;
 
-  // 2. Loose match — each expected line must appear as a suffix of an actual line
+  // 2. Loose match — each expected line must appear as a word-boundary-safe
+  //    suffix of at least one actual line, in order.
+  //    e.g. expected="5",  actual="The maximum is: 5"   → passes
+  //         expected="5",  actual="The maximum is: 15"  → FAILS (word boundary)
   const expectedLines = normExpected.split("\n").filter(l => l.trim() !== "");
   const actualLines   = normActual.split("\n").map(l => l.trim());
 
@@ -43,7 +59,7 @@ function outputMatches(actual: string, expected: string): boolean {
   for (const aLine of actualLines) {
     if (ei >= expectedLines.length) break;
     const eLine = expectedLines[ei].trim();
-    if (aLine === eLine || aLine.endsWith(eLine) || aLine.endsWith(`: ${eLine}`)) {
+    if (aLine === eLine || suffixMatch(aLine, eLine) || suffixMatch(aLine, `: ${eLine}`)) {
       ei++;
     }
   }
@@ -52,11 +68,15 @@ function outputMatches(actual: string, expected: string): boolean {
 
 /**
  * Normalise stdin before feeding to Judge0 / child process.
- * Only fixes CRLF → LF; does NOT trim surrounding whitespace because
- * a test-case input could intentionally start/end with blank lines.
+ * Fixes CRLF → LF and ensures a trailing newline.
+ *
+ * Without a trailing newline, programs using Python's input() or Java's
+ * Scanner.nextLine() block waiting for the newline that never arrives,
+ * causing a spurious Time Limit Exceeded result.
  */
 function normalizeStdin(s: string): string {
-  return (s ?? "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const normalized = (s ?? "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  return normalized.endsWith("\n") ? normalized : `${normalized}\n`;
 }
 const SUBMISSION_STDOUT_MAX = 50_000;
 const SUPPORTED_LANGUAGES = new Set(["c", "python", "javascript", "js", "java", "cpp", "c++", "csharp", "c#"]);
@@ -75,6 +95,29 @@ function normalizeLanguage(value: unknown): string | undefined {
     cs: "csharp", "c#": "csharp", csharp: "csharp",
   };
   return aliases[key];
+}
+
+/**
+ * Map a legacy Judge0 numeric language ID to our canonical language string.
+ *
+ * Even though the backend no longer talks to Judge0, the frontend's submit
+ * payload still sends `languageId` (a numeric Judge0 CE 1.13.1 ID) so the
+ * student's dropdown choice can override the problem's configured language.
+ *
+ * Returning `undefined` for an unknown ID lets the caller fall back to the
+ * problem's stored language (test mode) or report an error (raw mode).
+ */
+function languageFromJudge0Id(id: number | undefined): string | undefined {
+  if (id === undefined) return undefined;
+  switch (id) {
+    case 63: return "javascript";
+    case 71: return "python";
+    case 50: return "c";
+    case 54: return "cpp";
+    case 51: return "csharp";
+    case 62: return "java";
+    default: return undefined;
+  }
 }
 
 function parseOptionalInt(value: unknown): number | undefined {
@@ -196,7 +239,8 @@ function normalizeJudge0Status(
   if (statusId === 11) return "runtime_error";
   if (statusId === 12) return "runtime_error";
   if (statusId === 13) return "internal_error";
-  if (statusId === 14) return "internal_error";
+  // 14 = Exec Format Error — binary/arch mismatch, treat as runtime_error
+  if (statusId === 14) return "runtime_error";
 
   if (statusText.includes("syntax")) return "syntax_error";
   if (statusText.includes("compile")) return "compile_error";
@@ -262,24 +306,35 @@ router.post("/", async (req, res) => {
     return;
   }
 
-  const body = req.body as Record<string, unknown>;
-  const sourceCode = typeof body.sourceCode === "string" ? body.sourceCode : "";
+  // Use the Zod-validated data directly instead of re-reading raw req.body.
+  // This ensures schema transforms (defaults, coercions) are actually applied.
+  const { sourceCode, language: languageBodyRaw, languageId: languageIdBody,
+          problemId, stdin: stdinRaw = "" } = schemaResult.data;
+
   if (!sourceCode.trim()) {
     res.status(400).json({ error: "sourceCode is required" });
     return;
   }
 
-  const problemId = parseOptionalInt(body.problemId);
-  const languageIdBody = parseOptionalInt(body.languageId);
-  const languageBodyRaw = typeof body.language === "string" ? body.language : undefined;
-  const languageBody = normalizeLanguage(languageBodyRaw);
+  // Resolve language string from either (a) explicit `language` field, or
+  // (b) legacy numeric `languageId` (Judge0 CE convention) — the latter is
+  // still what the frontend sends.
+  const languageBody =
+    normalizeLanguage(languageBodyRaw) ??
+    languageFromJudge0Id(languageIdBody);
+
   if (languageBodyRaw && !languageBody) {
     res.status(400).json({
       error: `Unsupported language "${languageBodyRaw}". Supported: python, c, cpp, javascript, java, csharp.`,
     });
     return;
   }
-  const stdinRaw = typeof body.stdin === "string" ? body.stdin : "";
+  if (languageIdBody !== undefined && !languageBody) {
+    res.status(400).json({
+      error: `Unsupported languageId ${languageIdBody}. Use one of: 50 (c), 54 (cpp), 62 (java), 51 (csharp), 63 (javascript), 71 (python).`,
+    });
+    return;
+  }
 
   const role = req.auth!.role;
   const userId = req.auth!.userId;
@@ -314,9 +369,12 @@ router.post("/", async (req, res) => {
         return;
       }
 
-      let langId: number;
+      // Create a Docker session — compiles once for compiled languages,
+      // then reuses the binary for every test case (much faster than
+      // recompiling per test case as the old Judge0 path did).
+      let session: Awaited<ReturnType<typeof createDockerSession>>;
       try {
-        langId = resolveLanguageId(effectiveLanguage);
+        session = await createDockerSession(sourceCode, effectiveLanguage);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         res.status(400).json({ error: msg });
@@ -349,18 +407,14 @@ router.post("/", async (req, res) => {
       let hiddenPassed = 0;
       let hiddenTotal = 0;
 
+      try {
       for (let i = 0; i < problem.testCases.length; i++) {
         const tc = problem.testCases[i];
-        const jr = await runInJudge0({
-          sourceCode,
-          languageId: langId,
+        const jr = await session.run(
           // Normalize CRLF in test-case input (browser textareas on Windows store \r\n).
           // Without this, input() in Python receives "Alice\r" instead of "Alice".
-          // int() silently strips \r, but string comparisons and strip() calls would fail.
-          stdin: normalizeStdin(tc.input),
-          // Don't pass expectedOutput to Judge0 — it does exact byte comparison which fails
-          // on trailing-newline mismatches. We compare manually after trimming both sides.
-        });
+          normalizeStdin(tc.input),
+        );
 
         // Accept if the program ran cleanly AND output matches.
         // outputMatches first tries exact comparison, then loose matching so that
@@ -399,6 +453,11 @@ router.post("/", async (req, res) => {
           time: jr.time,
           memory: jr.memory,
         });
+      }
+      } finally {
+        // Always remove the per-submission scratch directory, even if a test
+        // case throws (e.g. docker daemon dies mid-run).
+        session.cleanup();
       }
 
       const submissionPayload = buildSubmissionPayload({
@@ -452,7 +511,7 @@ router.post("/", async (req, res) => {
       res.json({
         mode: "tests",
         problemId,
-        languageId: langId,
+        language: effectiveLanguage,
         allPassed,
         publicPassed,
         publicTotal,
@@ -467,53 +526,39 @@ router.post("/", async (req, res) => {
       return;
     }
 
-    if (languageIdBody === undefined && !languageBody) {
+    if (!languageBody) {
       res.status(400).json({
-        error: "Provide problemId to run tests, or language/languageId for a raw run",
+        error: "Provide problemId to run tests, or language for a raw run",
       });
       return;
     }
 
-    let rawLanguageId: number;
-    try {
-      if (languageIdBody !== undefined) {
-        rawLanguageId = languageIdBody;
-      } else {
-        rawLanguageId = resolveLanguageId(languageBody!);
-      }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      res.status(400).json({ error: msg });
-      return;
-    }
-
-    const jr = await runInJudge0({
+    const jr = await runInDocker({
       sourceCode,
-      languageId: rawLanguageId,
-      stdin: normalizeInteractiveStdin(stdinRaw),
+      language: languageBody,
+      stdin:    normalizeInteractiveStdin(stdinRaw),
     });
 
     const normalizedStatus = normalizeJudge0Status(jr);
-    const executionTimeMs = parseExecutionTimeMs(jr.time);
-    const langLabel = languageBody ?? String(rawLanguageId);
+    const executionTimeMs  = parseExecutionTimeMs(jr.time);
 
     await prisma.submissionAttempt.create({
       data: {
         userId,
-        problemId: null,
+        problemId:    null,
         submissionId: null,
-        mode: AttemptMode.raw,
-        language: langLabel,
+        mode:         AttemptMode.raw,
+        language:     languageBody,
         sourceCode,
-        judge0Status: jr.statusDescription,
+        judge0Status:     jr.statusDescription,
         normalizedStatus,
-        publicPassed: null,
-        publicTotal: null,
-        hiddenPassed: null,
-        hiddenTotal: null,
-        allPassed: jr.statusId === ACCEPTED_STATUS_ID,
-        stdout: jr.stdout || null,
-        stderr: jr.stderr || null,
+        publicPassed:  null,
+        publicTotal:   null,
+        hiddenPassed:  null,
+        hiddenTotal:   null,
+        allPassed:     jr.statusId === ACCEPTED_STATUS_ID,
+        stdout:        jr.stdout        || null,
+        stderr:        jr.stderr        || null,
         compileOutput: jr.compileOutput || null,
         executionTimeMs,
         memoryKb: jr.memory ?? null,
@@ -521,15 +566,15 @@ router.post("/", async (req, res) => {
     });
 
     res.json({
-      mode: "raw",
-      passed: jr.statusId === ACCEPTED_STATUS_ID,
-      status: jr.statusDescription,
-      stdout: jr.stdout,
-      stderr: jr.stderr,
+      mode:          "raw",
+      passed:        jr.statusId === ACCEPTED_STATUS_ID,
+      status:        jr.statusDescription,
+      stdout:        jr.stdout,
+      stderr:        jr.stderr,
       compileOutput: jr.compileOutput,
-      time: jr.time,
-      memory: jr.memory,
-      languageId: rawLanguageId,
+      time:          jr.time,
+      memory:        jr.memory,
+      language:      languageBody,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

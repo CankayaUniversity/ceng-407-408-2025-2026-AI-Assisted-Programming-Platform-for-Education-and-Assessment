@@ -28,7 +28,33 @@ import { YEAR_OPTIONS, yearLabel } from "../../lib/classYear";
 
 const YEAR_COLORS = { 1: "primary", 2: "secondary", 3: "success", 4: "warning", 5: "info" };
 
-export default function EnrollModal({ open, onClose, onSaved, assignment, token }) {
+/**
+ * EnrollModal — dual-mode student enrollment picker.
+ *
+ * Two operating modes:
+ *
+ *   mode = "edit"  (default)
+ *     Loads the assignment's existing enrollments via the API and persists
+ *     adds/removes through the assignment's enroll endpoint when the teacher
+ *     clicks "Save Enrollment". Used by the assignments-list "Enroll" button.
+ *
+ *   mode = "select"
+ *     Pure transient picker. Does NOT touch the assignment API — useful when
+ *     the assignment is being CREATED in a parent form and doesn't exist yet.
+ *     The picker calls `onSelectionSave(selectedIds: number[])` with whatever
+ *     the teacher chose; the parent form is responsible for persisting later.
+ *     Pass `initialSelected: number[]` to pre-fill the picker.
+ */
+export default function EnrollModal({
+  open,
+  onClose,
+  onSaved,
+  assignment,
+  token,
+  mode = "edit",
+  initialSelected = [],
+  onSelectionSave,
+}) {
   const [students, setStudents] = useState([]);
   const [groups,   setGroups]   = useState([]);
   const [selected, setSelected] = useState(new Set());
@@ -37,27 +63,46 @@ export default function EnrollModal({ open, onClose, onSaved, assignment, token 
   const [error,    setError]    = useState("");
   const [yearFilter, setYearFilter] = useState(0);   // 0 = all
 
-  // Load students, groups, and current enrollments whenever modal opens
+  // Load students, groups, and (in edit mode only) current enrollments
+  // whenever the modal opens.
   useEffect(() => {
-    if (!open || !assignment?.id || !token) return;
+    if (!open || !token) return;
+    if (mode === "edit" && !assignment?.id) return;
     setError("");
     setLoading(true);
     setYearFilter(0);
 
     const headers = { Authorization: `Bearer ${token}` };
-    Promise.all([
+
+    // Always fetch students + groups; only fetch existing enrollments in edit mode.
+    const requests = [
       fetch(`${API_BASE}/api/teacher/students`, { headers }).then((r) => r.json()),
       fetch(`${API_BASE}/api/teacher/groups`,   { headers }).then((r) => r.json()),
-      fetch(`${API_BASE}/api/assignments/${assignment.id}`, { headers }).then((r) => r.json()),
-    ])
-      .then(([stuRes, grpRes, assRes]) => {
+    ];
+    if (mode === "edit") {
+      requests.push(
+        fetch(`${API_BASE}/api/assignments/${assignment.id}`, { headers }).then((r) => r.json()),
+      );
+    }
+
+    Promise.all(requests)
+      .then((results) => {
+        const [stuRes, grpRes, assRes] = results;
         setStudents(stuRes?.data ?? []);
         setGroups(grpRes?.data ?? []);
-        setSelected(new Set((assRes?.data?.enrollments ?? []).map((e) => e.userId)));
+        if (mode === "edit") {
+          setSelected(new Set((assRes?.data?.enrollments ?? []).map((e) => e.userId)));
+        } else {
+          // Select-mode pre-fill from the parent.
+          setSelected(new Set(initialSelected));
+        }
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
-  }, [open, assignment?.id, token]);
+    // initialSelected is intentionally NOT in the deps — we only re-initialise
+    // on open. Otherwise toggling a checkbox would reset selection.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, assignment?.id, token, mode]);
 
   // ── Toggles ────────────────────────────────────────────────────────────────
   function toggleStudent(id) {
@@ -120,6 +165,13 @@ export default function EnrollModal({ open, onClose, onSaved, assignment, token 
 
   // ── Save ───────────────────────────────────────────────────────────────────
   async function handleSave() {
+    // Select mode: no API calls. Just hand the chosen IDs to the parent and close.
+    if (mode === "select") {
+      onSelectionSave?.([...selected]);
+      onClose?.();
+      return;
+    }
+
     if (!assignment?.id) return;
     setSaving(true);
     setError("");
@@ -138,10 +190,14 @@ export default function EnrollModal({ open, onClose, onSaved, assignment, token 
 
       const toAdd = [...selected].filter((id) => !existing.has(id));
       if (toAdd.length > 0) {
-        await fetch(`${API_BASE}/api/assignments/${assignment.id}/enroll`, {
+        const enrollRes = await fetch(`${API_BASE}/api/assignments/${assignment.id}/enroll`, {
           method: "POST", headers,
           body: JSON.stringify({ studentIds: toAdd }),
         });
+        if (!enrollRes.ok) {
+          const errData = await enrollRes.json().catch(() => ({}));
+          throw new Error(errData.error || "Failed to enroll students");
+        }
       }
       onSaved();
     } catch (err) {

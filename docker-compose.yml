@@ -26,6 +26,15 @@ services:
       - "5000:5000"
     env_file:
       - .env
+    environment:
+      # Docker-outside-of-Docker paths for the interactive terminal sandbox
+      - RUNNER_TMP_HOST=/tmp/ai-runner      # path on the Docker HOST daemon
+      - RUNNER_TMP_CONTAINER=/runner-tmp    # same tree mounted inside backend
+    volumes:
+      # Docker socket — lets the backend call `docker run` on the host daemon
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Shared temp dir: backend writes code files here; Docker daemon mounts them
+      - /tmp/ai-runner:/runner-tmp
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
@@ -40,6 +49,24 @@ services:
       ollama:
         condition: service_healthy
     restart: unless-stopped
+
+  # Pre-pull all language runner images so students don't wait on first run.
+  # Runs once at stack startup, then exits.
+  runner-init:
+    image: docker:cli
+    container_name: runner-init
+    restart: "no"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    entrypoint: >
+      sh -c "
+        docker pull python:3.12-slim &&
+        docker pull node:20-slim &&
+        docker pull gcc:13 &&
+        docker pull eclipse-temurin:21-jdk-alpine &&
+        docker pull mcr.microsoft.com/dotnet/sdk:8.0-alpine &&
+        echo 'All runner images ready.'
+      "
 
   postgres:
     image: postgres:16
@@ -65,13 +92,26 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
+    environment:
+      # Keep loaded models resident in VRAM forever so the first request after
+      # an idle period does not pay cold-load latency.
+      - OLLAMA_KEEP_ALIVE=-1
+      # Allow both the mentor (~9 GB) and validator (~2.4 GB) to coexist in
+      # VRAM at the same time — 14B + 3B easily fit on a single 23 GB L4.
+      - OLLAMA_MAX_LOADED_MODELS=2
+      # Serve up to two concurrent requests per loaded model. Safe with the
+      # 14B mentor; revisit if upgrading to 30B on a tighter VRAM budget.
+      - OLLAMA_NUM_PARALLEL=2
+      # Flash attention shrinks KV-cache memory by ~30-40 %. Free win on Ampere
+      # and Ada (L4 is Ada) — no downside.
+      - OLLAMA_FLASH_ATTENTION=1
     healthcheck:
       test: ["CMD", "ollama", "list"]
       interval: 15s
       timeout: 5s
       start_period: 30s
       retries: 5
-    
+
     deploy:
      resources:
        reservations:
@@ -91,36 +131,16 @@ services:
       - ollama_data:/root/.ollama
     entrypoint: >
       sh -c "
-        ollama pull ${OLLAMA_MODEL:-qwen2.5-coder:14b} &&
-        ollama pull ${OLLAMA_VALIDATOR_MODEL:-qwen2.5:3b-instruct}
+        ollama pull $$OLLAMA_MODEL &&
+        ollama pull $$OLLAMA_VALIDATOR_MODEL
       "
     environment:
       - OLLAMA_HOST=http://ollama:11434
-
-  openwebui:
-    image: ghcr.io/open-webui/open-webui:main
-    container_name: openwebui
-    restart: unless-stopped
-    depends_on:
-      ollama:
-        condition: service_healthy
-    ports:
-      - "8080:8080"
-    environment:
-      OLLAMA_BASE_URL: http://ollama:11434
-      WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY}
-    volumes:
-      - openwebui_data:/app/backend/data
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    healthcheck:
-      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/health')\" || exit 1"]
-      interval: 15s
-      timeout: 10s
-      start_period: 60s
-      retries: 5
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5-coder:14b}
+      - OLLAMA_VALIDATOR_MODEL=${OLLAMA_VALIDATOR_MODEL:-qwen2.5:3b-instruct}
 
 volumes:
   postgres_data:
-  openwebui_data:
   ollama_data:
+  # NuGet package cache shared across C# runner containers so restore is fast
+  ai-runner-nuget:

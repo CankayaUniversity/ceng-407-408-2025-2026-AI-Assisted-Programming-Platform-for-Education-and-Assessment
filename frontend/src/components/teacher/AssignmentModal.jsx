@@ -12,10 +12,13 @@ import {
   Divider,
   FormControl,
   FormControlLabel,
+  FormLabel,
   InputAdornment,
   InputLabel,
   ListSubheader,
   MenuItem,
+  Radio,
+  RadioGroup,
   Select,
   Stack,
   Switch,
@@ -24,17 +27,10 @@ import {
   Typography,
 } from "@mui/material";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
+import GroupAddIcon         from "@mui/icons-material/GroupAdd";
 import { API_BASE } from "../../apiBase";
 import ProblemForm, { EMPTY_FORM } from "./ProblemForm";
-
-const ALL_LANGUAGES = [
-  { value: "python",     label: "Python"     },
-  { value: "javascript", label: "JavaScript" },
-  { value: "c",          label: "C"          },
-  { value: "cpp",        label: "C++"        },
-  { value: "csharp",     label: "C#"         },
-  { value: "java",       label: "Java"       },
-];
+import EnrollModal from "./EnrollModal";
 
 const ASSIGNMENT_MODES = [
   { value: "homework", label: "Homework",  color: "#6366f1" },
@@ -43,16 +39,41 @@ const ASSIGNMENT_MODES = [
 ];
 
 const EMPTY = {
-  title:            "",
-  description:      "",
-  problemId:        "",
-  mode:             "homework",
-  dueDate:          "",
-  isPublished:      false,
-  allowedLanguages: [],
-  lateDeadline:     "",
-  lateDeduction:    0,
+  title:               "",
+  description:         "",
+  problemId:           "",
+  mode:                "homework",
+  examType:            "unscheduled",   // "scheduled" | "unscheduled"
+  startDate:           "",
+  dueDate:             "",
+  isPublished:         false,
+  allowedLanguages:    [],
+  lateDeadline:        "",
+  lateDeduction:       0,
+  // Per-student enrollment chosen during creation. Synced to the backend
+  // after the assignment is saved. Empty array = no one specifically
+  // enrolled (the teacher can still publish to all via `isPublished`).
+  enrolledStudentIds:  [],
 };
+
+// ── Date helpers ─────────────────────────────────────────────────────────────
+// datetime-local inputs expect "YYYY-MM-DDTHH:MM" in the user's LOCAL timezone.
+// JS's toISOString() always returns UTC — so we must format manually.
+
+function toLocalISO(isoStr) {
+  if (!isoStr) return "";
+  const d = new Date(isoStr);
+  if (isNaN(d.getTime())) return "";
+  const pad = (n) => String(n).padStart(2, "0");
+  return (
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+    `T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  );
+}
+
+function localNow() {
+  return toLocalISO(new Date());
+}
 
 export default function AssignmentModal({
   open,
@@ -78,6 +99,9 @@ export default function AssignmentModal({
   const [newQSaving,  setNewQSaving]  = useState(false);
   const [newQError,   setNewQError]   = useState("");
 
+  // ── "Enroll students" sub-dialog (select mode) ─────────────────────────────
+  const [enrollPickerOpen, setEnrollPickerOpen] = useState(false);
+
   // ── Combined problem list: upstream prop + anything created inline ──────────
   const allProblems = [...(problems ?? []), ...inlineProblems];
 
@@ -87,44 +111,96 @@ export default function AssignmentModal({
     setInlineProblems([]);
     if (assignment) {
       setForm({
-        title:            assignment.title            ?? "",
-        description:      assignment.description      ?? "",
-        problemId:        assignment.problemId        ?? "",
-        mode:             assignment.mode             ?? "homework",
-        dueDate:          assignment.dueDate
-          ? new Date(assignment.dueDate).toISOString().slice(0, 16)
-          : "",
-        isPublished:      assignment.isPublished      ?? false,
-        allowedLanguages: assignment.allowedLanguages ?? [],
-        lateDeadline:     assignment.lateDeadline
-          ? new Date(assignment.lateDeadline).toISOString().slice(0, 16)
-          : "",
-        lateDeduction:    assignment.lateDeduction    ?? 0,
+        title:               assignment.title            ?? "",
+        description:         assignment.description      ?? "",
+        problemId:           assignment.problemId        ?? "",
+        mode:                assignment.mode             ?? "homework",
+        examType:            assignment.examType         ?? "unscheduled",
+        // Use toLocalISO so the datetime-local input shows the teacher's local time,
+        // not the UTC representation of the stored ISO string.
+        startDate:           toLocalISO(assignment.startDate),
+        dueDate:             toLocalISO(assignment.dueDate),
+        isPublished:         assignment.isPublished      ?? false,
+        allowedLanguages:    assignment.allowedLanguages ?? [],
+        lateDeadline:        toLocalISO(assignment.lateDeadline),
+        lateDeduction:       assignment.lateDeduction    ?? 0,
+        // Pre-populated below from the API since `assignment` rarely includes
+        // enrollments. Loaded asynchronously after this initial render.
+        enrolledStudentIds:  [],
       });
+      // Fetch existing enrollments for this assignment so the inline picker
+      // reflects the current state when the teacher reopens the form.
+      if (assignment.id && token) {
+        fetch(`${API_BASE}/api/assignments/${assignment.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+          .then((r) => r.json())
+          .then((data) => {
+            const ids = (data?.data?.enrollments ?? []).map((e) => e.userId);
+            setForm((prev) => ({ ...prev, enrolledStudentIds: ids }));
+          })
+          .catch(() => { /* non-fatal — picker just starts empty */ });
+      }
     } else {
       setForm(EMPTY);
     }
-  }, [open, assignment]);
+  }, [open, assignment, token]);
 
   function set(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
     setError("");
   }
 
-  function toggleLanguage(lang) {
-    setForm((prev) => {
-      const has  = prev.allowedLanguages.includes(lang);
-      const next = has
-        ? prev.allowedLanguages.filter((l) => l !== lang)
-        : [...prev.allowedLanguages, lang];
-      return { ...prev, allowedLanguages: next };
-    });
+  /**
+   * Select a problem from the question bank AND auto-fill the assignment's
+   * title + description from the problem's own title + description. The teacher
+   * can still edit those fields afterwards if they want a per-assignment
+   * override (e.g. "Edit Distance — HW3"). Picking a different problem
+   * overwrites again, by design.
+   */
+  function setProblemId(id) {
+    const problem = allProblems.find((p) => p.id === Number(id));
+    setForm((prev) => ({
+      ...prev,
+      problemId:   id,
+      // Auto-fill only when a real problem is found. If `problem` is missing
+      // (e.g. the dropdown was cleared), keep whatever the teacher had.
+      ...(problem ? {
+        title:       problem.title       ?? prev.title,
+        description: problem.description ?? prev.description,
+      } : {}),
+    }));
+    setError("");
   }
 
   // ── Save assignment ─────────────────────────────────────────────────────────
   async function handleSave() {
     if (!form.title.trim())  { setError("Title is required."); return; }
     if (!form.problemId)     { setError("Please select a problem."); return; }
+    if (form.mode === "exam" && form.examType === "scheduled" && !form.startDate) {
+      setError("A start date is required for scheduled exams."); return;
+    }
+
+    // ── Past-date guard (new assignments only) ────────────────────────────
+    // When editing an existing assignment the teacher may not change every date,
+    // so we only reject a date that is BOTH set AND in the past AND is a new
+    // assignment (isEdit === false). Editing keeps whatever dates exist.
+    if (!isEdit) {
+      const nowMs = Date.now();
+      if (form.startDate && new Date(form.startDate).getTime() <= nowMs) {
+        setError("Start date/time must be in the future."); return;
+      }
+      if (form.dueDate && new Date(form.dueDate).getTime() <= nowMs) {
+        setError("Due date/time must be in the future."); return;
+      }
+      if (form.lateDeadline && new Date(form.lateDeadline).getTime() <= nowMs) {
+        setError("Late submission deadline must be in the future."); return;
+      }
+    }
+
+    if (form.mode === "exam" && form.examType === "scheduled" && form.dueDate && form.startDate >= form.dueDate) {
+      setError("Exam end date must be after the start date."); return;
+    }
     if (form.lateDeadline && form.dueDate && form.lateDeadline <= form.dueDate) {
       setError("Late submission deadline must be after the due date."); return;
     }
@@ -140,15 +216,32 @@ export default function AssignmentModal({
         : `${API_BASE}/api/assignments`;
       const method = isEdit ? "PUT" : "POST";
 
+      // Convert datetime-local strings (timezone-naive) to full ISO strings so
+      // Node.js on the backend receives the correct UTC time instead of treating
+      // the local time as UTC (which would shift by the teacher's UTC offset).
+      const toISO = (s) => s ? new Date(s).toISOString() : null;
+
+      // allowedLanguages is no longer chosen on the assignment form.
+      // We derive it from the selected problem so a JS problem can never be
+      // assigned with a C-only allow-list (the previous bug: teacher picked
+      // JS question + C language → student got JS starter + C compiler).
+      const selectedProblem  = allProblems.find((p) => p.id === Number(form.problemId));
+      const allowedLanguages =
+        selectedProblem?.languages?.length ? selectedProblem.languages
+        : selectedProblem?.language        ? [selectedProblem.language]
+        : [];
+
       const body = {
         title:            form.title.trim(),
         description:      form.description.trim() || null,
         problemId:        Number(form.problemId),
         mode:             form.mode,
-        dueDate:          form.dueDate       || null,
+        examType:         form.mode === "exam" ? form.examType : null,
+        startDate:        form.mode === "exam" && form.examType === "scheduled" ? toISO(form.startDate) : null,
+        dueDate:          toISO(form.dueDate),
         isPublished:      form.isPublished,
-        allowedLanguages: form.allowedLanguages,
-        lateDeadline:     form.lateDeadline  || null,
+        allowedLanguages,
+        lateDeadline:     toISO(form.lateDeadline),
         lateDeduction:    Number(form.lateDeduction) || 0,
       };
 
@@ -159,7 +252,46 @@ export default function AssignmentModal({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save");
-      onSaved(data.data);
+
+      // ── Sync per-student enrollments after the assignment is saved ─────────
+      // We use the same diff-and-apply strategy as EnrollModal: remove students
+      // no longer in the selection, add ones newly in it. For new assignments
+      // (no prior enrollments) this is just a single POST.
+      const newAssignment = data.data;
+      try {
+        const headers  = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+        const wanted   = new Set(form.enrolledStudentIds);
+
+        // Fetch current enrollments for this assignment to compute the diff.
+        // For new assignments this returns an empty list.
+        const currentRes  = await fetch(`${API_BASE}/api/assignments/${newAssignment.id}`, { headers });
+        const currentData = await currentRes.json();
+        const existing    = new Set((currentData?.data?.enrollments ?? []).map((e) => e.userId));
+
+        const toRemove = [...existing].filter((id) => !wanted.has(id));
+        const toAdd    = [...wanted].filter((id) => !existing.has(id));
+
+        await Promise.all(
+          toRemove.map((uid) =>
+            fetch(`${API_BASE}/api/assignments/${newAssignment.id}/enroll/${uid}`, {
+              method: "DELETE", headers,
+            }),
+          ),
+        );
+        if (toAdd.length > 0) {
+          await fetch(`${API_BASE}/api/assignments/${newAssignment.id}/enroll`, {
+            method: "POST", headers,
+            body: JSON.stringify({ studentIds: toAdd }),
+          });
+        }
+      } catch (enrollErr) {
+        // Enrollment sync failure is non-fatal — the assignment was saved.
+        // Surface a soft warning so the teacher can re-enroll via the
+        // assignments-list "Enroll" button if something went wrong.
+        console.warn("[AssignmentModal] enrollment sync failed:", enrollErr);
+      }
+
+      onSaved(newAssignment);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -206,8 +338,8 @@ export default function AssignmentModal({
       // Add to inline list so it appears in dropdown immediately
       setInlineProblems((prev) => [...prev, newProblem]);
 
-      // Auto-select the new problem
-      set("problemId", newProblem.id);
+      // Auto-select the new problem AND auto-fill title + description.
+      setProblemId(newProblem.id);
 
       // Notify parent to refresh question bank for future sessions
       onProblemsChanged?.();
@@ -219,8 +351,6 @@ export default function AssignmentModal({
       setNewQSaving(false);
     }
   }
-
-  const allSelected = form.allowedLanguages.length === 0;
 
   return (
     <>
@@ -236,31 +366,19 @@ export default function AssignmentModal({
           <Stack spacing={2.5} sx={{ pt: 0.5 }}>
             {error && <Alert severity="error">{error}</Alert>}
 
-            <TextField
-              label="Title"
-              value={form.title}
-              onChange={(e) => set("title", e.target.value)}
-              required fullWidth autoFocus
-            />
-
-            <TextField
-              label="Description (optional)"
-              value={form.description}
-              onChange={(e) => set("description", e.target.value)}
-              multiline minRows={2} fullWidth
-            />
-
-            {/* ── Problem selector + New Question button ──────────────── */}
+            {/* ── Problem selector — FIRST. Picking a problem auto-fills the
+                   title and description fields below (still editable). The
+                   problem's language is used implicitly; there is no
+                   separate language picker. ─────────────────────────────── */}
             <Box>
               <Stack direction="row" spacing={1} alignItems="flex-start">
                 <FormControl fullWidth required>
-                  <InputLabel>Problem</InputLabel>
+                  <InputLabel>Problem (from Question Bank)</InputLabel>
                   <Select
                     value={form.problemId}
-                    label="Problem"
-                    onChange={(e) => set("problemId", e.target.value)}
+                    label="Problem (from Question Bank)"
+                    onChange={(e) => setProblemId(e.target.value)}
                   >
-                    {/* Existing problems */}
                     {allProblems.length > 0 && (
                       <ListSubheader sx={{ lineHeight: "32px", fontSize: 11, fontWeight: 700, letterSpacing: 0.5 }}>
                         QUESTION BANK
@@ -301,6 +419,10 @@ export default function AssignmentModal({
                 </Tooltip>
               </Stack>
 
+              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.75, display: "block" }}>
+                Selecting a problem auto-fills the title and description below — you can still edit them for this assignment if you want a different label.
+              </Typography>
+
               {/* Show newly-created problem confirmation */}
               {inlineProblems.length > 0 && (
                 <Alert severity="success" sx={{ mt: 1 }}>
@@ -308,6 +430,22 @@ export default function AssignmentModal({
                 </Alert>
               )}
             </Box>
+
+            <TextField
+              label="Title"
+              value={form.title}
+              onChange={(e) => set("title", e.target.value)}
+              required fullWidth
+              helperText="Auto-filled from the selected problem. Edit if you want a per-assignment label."
+            />
+
+            <TextField
+              label="Description (optional)"
+              value={form.description}
+              onChange={(e) => set("description", e.target.value)}
+              multiline minRows={2} fullWidth
+              helperText="Auto-filled from the selected problem. Edit to customise per assignment."
+            />
 
             {/* ── Assignment Mode ────────────────────────────────────────── */}
             <Box>
@@ -344,50 +482,68 @@ export default function AssignmentModal({
               </Typography>
             </Box>
 
+            {/* ── Exam type (only when mode = exam) ─────────────────────── */}
+            {form.mode === "exam" && (
+              <Box sx={{ border: 1, borderColor: "error.light", borderRadius: 2, p: 1.5 }}>
+                <FormControl component="fieldset">
+                  <FormLabel component="legend" sx={{ fontSize: 13, fontWeight: 700, mb: 0.5, color: "error.main" }}>
+                    Exam Type
+                  </FormLabel>
+                  <RadioGroup
+                    row
+                    value={form.examType}
+                    onChange={(e) => set("examType", e.target.value)}
+                  >
+                    <FormControlLabel
+                      value="unscheduled"
+                      control={<Radio size="small" color="error" />}
+                      label={<Typography variant="body2">Unscheduled — students can start any time before the deadline</Typography>}
+                    />
+                    <FormControlLabel
+                      value="scheduled"
+                      control={<Radio size="small" color="error" />}
+                      label={<Typography variant="body2">Scheduled — exam opens at a specific time and closes at the deadline</Typography>}
+                    />
+                  </RadioGroup>
+                </FormControl>
+
+                {form.examType === "scheduled" && (
+                  <TextField
+                    label="Exam Start Date & Time"
+                    type="datetime-local"
+                    value={form.startDate}
+                    onChange={(e) => set("startDate", e.target.value)}
+                    fullWidth InputLabelProps={{ shrink: true }}
+                    inputProps={{ min: localNow() }}
+                    helperText="Students cannot see exam content before this time."
+                    sx={{ mt: 1.5 }}
+                    error={!form.startDate}
+                  />
+                )}
+              </Box>
+            )}
+
             {/* ── Deadline ──────────────────────────────────────────────── */}
             <TextField
-              label="Due Date (optional)"
+              label={form.mode === "exam" && form.examType === "scheduled" ? "Exam End Date & Time" : "Due Date (optional)"}
               type="datetime-local"
               value={form.dueDate}
               onChange={(e) => set("dueDate", e.target.value)}
               fullWidth InputLabelProps={{ shrink: true }}
+              inputProps={{
+                min: form.mode === "exam" && form.examType === "scheduled" && form.startDate
+                  ? form.startDate
+                  : localNow(),
+              }}
+              helperText={form.mode === "exam" && form.examType === "scheduled" ? "Students cannot submit after this time." : undefined}
             />
 
-            {/* ── Allowed languages ─────────────────────────────────────── */}
-            <Box>
-              <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>
-                Allowed Languages
-              </Typography>
-              <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
-                <Chip
-                  label="All languages"
-                  size="small"
-                  variant={allSelected ? "filled" : "outlined"}
-                  color={allSelected ? "primary" : "default"}
-                  onClick={() => set("allowedLanguages", [])}
-                  sx={{ cursor: "pointer" }}
-                />
-                {ALL_LANGUAGES.map((lang) => {
-                  const checked = form.allowedLanguages.includes(lang.value);
-                  return (
-                    <Chip
-                      key={lang.value}
-                      label={lang.label}
-                      size="small"
-                      variant={checked ? "filled" : "outlined"}
-                      color={checked ? "primary" : "default"}
-                      onClick={() => toggleLanguage(lang.value)}
-                      sx={{ cursor: "pointer" }}
-                    />
-                  );
-                })}
-              </Stack>
-              <Typography variant="caption" color="text.secondary">
-                {allSelected
-                  ? "Students may submit in any language."
-                  : `Only: ${form.allowedLanguages.join(", ")}`}
-              </Typography>
-            </Box>
+            {/* ── Allowed languages section removed ──────────────────────
+                The assignment's allowed-languages list is now derived from
+                the selected problem on save. The teacher's only "language"
+                input is choosing the problem itself — which prevents the old
+                bug where a JS problem could be assigned with a C-only allow-
+                list, leaving the student with a JS editor + C compiler. */}
 
             <Divider />
 
@@ -403,6 +559,7 @@ export default function AssignmentModal({
                   value={form.lateDeadline}
                   onChange={(e) => set("lateDeadline", e.target.value)}
                   fullWidth InputLabelProps={{ shrink: true }}
+                  inputProps={{ min: form.dueDate || localNow() }}
                   helperText="Students may still submit after the due date until this deadline, with a point deduction."
                 />
                 <TextField
@@ -432,6 +589,43 @@ export default function AssignmentModal({
               }
               label="Published (visible to enrolled students)"
             />
+
+            {/* ── Enroll Students ──────────────────────────────────────────
+                Lets the teacher pick specific students/groups at creation
+                time. Without this, an assignment is "published to all" but
+                no one is enrolled. After save we POST the picked IDs to
+                /api/assignments/:id/enroll. */}
+            <Box
+              sx={{
+                border: 1,
+                borderColor: "divider",
+                borderRadius: 2,
+                p: 1.5,
+                bgcolor: "background.default",
+              }}
+            >
+              <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={700}>
+                    Enroll Students
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {form.enrolledStudentIds.length === 0
+                      ? "No students selected. Pick individuals or whole groups to enroll."
+                      : `${form.enrolledStudentIds.length} student${form.enrolledStudentIds.length !== 1 ? "s" : ""} will be enrolled when you save.`}
+                  </Typography>
+                </Box>
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  startIcon={<GroupAddIcon />}
+                  onClick={() => setEnrollPickerOpen(true)}
+                  sx={{ whiteSpace: "nowrap" }}
+                >
+                  {form.enrolledStudentIds.length === 0 ? "Pick students" : "Change selection"}
+                </Button>
+              </Stack>
+            </Box>
           </Stack>
         </DialogContent>
 
@@ -488,6 +682,24 @@ export default function AssignmentModal({
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* ── Enroll-students picker (select mode — no API calls until the
+             parent AssignmentModal is saved). Reuses the same component the
+             "Enroll" button on the assignments-list opens. ──────────────── */}
+      <EnrollModal
+        open={enrollPickerOpen}
+        onClose={() => setEnrollPickerOpen(false)}
+        mode="select"
+        token={token}
+        // Pass a stub "assignment" so the dialog title shows the current
+        // working title even before save.
+        assignment={{ title: form.title || (isEdit ? assignment?.title : "New assignment") }}
+        initialSelected={form.enrolledStudentIds}
+        onSelectionSave={(ids) => {
+          set("enrolledStudentIds", ids);
+          setEnrollPickerOpen(false);
+        }}
+      />
     </>
   );
 }

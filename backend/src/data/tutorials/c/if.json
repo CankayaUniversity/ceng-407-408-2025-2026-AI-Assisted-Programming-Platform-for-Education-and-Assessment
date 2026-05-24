@@ -1,0 +1,103 @@
+{
+  "tag": "if",
+  "language": "c",
+  "title": "C If Statement",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "order": 1,
+  "sections": [
+    {
+      "heading": "Conditions and If Statements",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "You already know that C supports familiar comparison conditions from mathematics, such as:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "Less than: `a < b`",
+            "Less than or equal to: `a <= b`",
+            "Greater than: `a > b`",
+            "Greater than or equal to: `a >= b`",
+            "Equal to: `a == b`",
+            "Not equal to: `a != b`"
+          ]
+        },
+        {
+          "type": "text",
+          "content": "You can use these conditions to perform different actions for different decisions.\n\nC has the following conditional statements:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "Use **`if`** to specify a block of code to be executed, if a specified condition is true",
+            "Use **`else`** to specify a block of code to be executed, if the same condition is false",
+            "Use **`else if`** to specify a new condition to test, if the first condition is false",
+            "Use **`switch`** to specify many alternative blocks of code to be executed"
+          ]
+        }
+      ]
+    },
+    {
+      "heading": "The if Statement",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Use the **`if`** statement to specify a block of code to be executed if a condition is `true`."
+        },
+        {
+          "type": "note",
+          "content": "Note that `if` is written in **lowercase letters**. Uppercase letters (`If` or `IF`) will generate an error."
+        },
+        {
+          "type": "syntax",
+          "content": "if (condition) {\n  // block of code to be executed if the condition is true\n}"
+        },
+        {
+          "type": "text",
+          "content": "In the example below, we test two values to find out if 20 is greater than 18. If the condition is `true`, we print a message:"
+        },
+        {
+          "type": "code",
+          "content": "if (20 > 18) {\n  printf(\"20 is greater than 18\");\n}"
+        },
+        {
+          "type": "text",
+          "content": "We can also test variables:"
+        },
+        {
+          "type": "code",
+          "content": "int x = 20;\nint y = 18;\n\nif (x > y) {\n  printf(\"x is greater than y\");\n}"
+        },
+        {
+          "type": "text",
+          "content": "**Example explained** — In the example above we use two variables, `x` and `y`, to test whether `x` is greater than `y` (using the `>` operator). As `x` is `20` and `y` is `18`, the condition is `true`, so the program prints *\"x is greater than y\"*."
+        }
+      ]
+    },
+    {
+      "heading": "Using a Boolean Variable",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Since the condition in an `if` statement must be either `true` or `false`, you can store the result in a boolean variable instead of writing the comparison directly:"
+        },
+        {
+          "type": "code",
+          "content": "int x = 20;\nint y = 18;\n\nbool isGreater = x > y;\n\nif (isGreater) {\n  printf(\"x is greater than y\");\n}"
+        },
+        {
+          "type": "text",
+          "content": "This can make your code easier to read, especially when the condition is complex or used more than once."
+        },
+        {
+          "type": "note",
+          "content": "Remember to include `<stdbool.h>` when working with `bool` variables."
+        }
+      ]
+    }
+  ],
+  "subCategory": "If...Else",
+  "subCategoryOrder": 7
+}

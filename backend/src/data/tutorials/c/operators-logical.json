@@ -1,0 +1,46 @@
+{
+  "tag": "operators-logical",
+  "language": "c",
+  "title": "C Logical Operators",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "subCategory": "Operators",
+  "subCategoryOrder": 5,
+  "order": 5,
+  "sections": [
+    {
+      "heading": "Logical Operators",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "As with comparison operators, you can also test for true or false values with logical operators."
+        },
+        {
+          "type": "text",
+          "content": "Logical operators are used to determine the logic between variables or values, by combining multiple conditions:"
+        }
+      ]
+    },
+    {
+      "heading": "Real-Life Example: Login Check",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "The example below shows how logical operators can be used in a real situation, e.g. when checking login status and access rights:"
+        },
+        {
+          "type": "text",
+          "content": "Result:"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        },
+        {
+          "type": "text",
+          "content": "Remember: in C, `1` means true and `0` means false. Logical operators often become easier to understand once you start using them inside `if` statements, which you will learn about in the upcoming chapters."
+        }
+      ]
+    }
+  ]
+}

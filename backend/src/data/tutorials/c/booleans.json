@@ -4,17 +4,121 @@
   "title": "C Booleans",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 11,
+  "subCategory": "Booleans",
+  "subCategoryOrder": 6,
+  "order": 1,
   "sections": [
     {
       "heading": "Booleans",
-      "body": "Booleans\n\nVery often, in programming, you will need a data type that can only have one of two values, like:\nYES / NO\n  ON / OFF\n  TRUE / FALSE\nFor this, C has a bool data type, which is known as booleans.\nBooleans represent one of two values: true or false.\n\nBoolean Variables\n\nIn C, the bool type is not a built-in data type, like int or char.\nIt was introduced in C99, and you must include the following header file to use it:\nA boolean variable is declared with the bool keyword and can take the\nvalues true or false:\nBefore trying to print the boolean variables, you should know that boolean values are returned as integers:\n1 (or any other number that is not 0) represents true 0 represents false\nTherefore, you can use the %d format specifier to print a boolean value:\n\nExample\n\nHowever, it is more common to get boolean values by comparing values and variables.\n\nComparing Values and Variables\n\nComparing values are useful in programming, because they help us to find answers and make decisions.\nFor example, you can use a comparison operator,\nsuch as the greater than (>)\noperator, to compare two values:\n\nExample\n\nIn C, comparisons return 1 (true) or 0 (false).\nYou can also compare two variables:\n\nExample\n\nIn the example below, we use the equal to (==)\noperator to compare different values:\n\nExample\n\nYou are not limited to comparing numbers. You can also compare boolean variables:\n\nExample\n\nRemember to include the <stdbool.h> header file when working with bool variables.\n\nStoring Comparison Results\n\nYou can also store the result of a comparison in a bool\nvariable:\n\nExample\n\nNote: It is up to you whether you store the result of a comparison in a boolean variable\nor use the comparison directly.\nStoring the result can make your code easier to read, especially if you want to reuse it.",
-      "code": "#include <stdbool.h>\n\n// ─────────────────────────────────────\n\nbool isProgrammingFun = true;\n\n  bool isFishTasty = false;\n\n// ─────────────────────────────────────\n\n// Create boolean variables\n\n  bool isProgrammingFun = true;\n\n  bool isFishTasty = false;\n\n  // Print boolean values\n\n  printf(\"%d\", isProgrammingFun);   // Prints 1 (true)\n\n  printf(\"%d\", isFishTasty);        // Prints 0 (false)\n\n// ─────────────────────────────────────\n\nprintf(\"%d\", 10 > 9);  // Prints 1 (true), because 10 is greater than 9\n\n// ─────────────────────────────────────\n\nint x = 10;\n\n  int y = 9;\n\n  printf(\"%d\", x > y);\n\n// ─────────────────────────────────────\n\nprintf(\"%d\", 10 == 10); // Prints 1 (true), because 10 is equal to 10\n\n  printf(\"%d\", 10 == 15); // Prints 0 (false), because 10 is not equal to 15\n\n  printf(\"%d\", 5 == 55);  // Prints 0 (false), because 5 is not equal to 55\n\n// ─────────────────────────────────────\n\nbool isHamburgerTasty = true;\n\n  bool isPizzaTasty = true;\n\n  // Find out if both hamburger and pizza are tasty\n\n  printf(\"%d\", isHamburgerTasty == isPizzaTasty);\n\n// ─────────────────────────────────────\n\nint x = 10;\n\n  int y = 9;\n\n  bool isGreater = x > y;\n\n  printf(\"%d\", isGreater); // Prints 1 (true)"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Very often, in programming, you will need a data type that can only have one of two values, like:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "YES / NO",
+            "ON / OFF",
+            "TRUE / FALSE"
+          ]
+        },
+        {
+          "type": "text",
+          "content": "For this, C has a `bool` data type, which can take the values `true` (1) or `false` (0)."
+        }
+      ]
     },
     {
-      "heading": "Boolean Examples",
-      "body": "Real Life Example\n\nLet's use booleans in a real-life example where we want to find out if a person is old enough to vote.\nIn the example below, we use the >= comparison operator to find out if the age (25) is greater than OR\nequal to the voting age limit, which is set\nto 18:\n\nExample\n\nCool, right? An even better approach (since we are on a roll now), would be to wrap the code above in an\nif...else statement, so we can perform\ndifferent actions depending on the result:\n\nExample\n\nBooleans are the basis for all comparisons and conditions.\nYou will learn more about conditions (if...else) in the next chapter.",
-      "code": "int myAge = 25;\nint votingAge = 18;\n\nprintf(\"%d\", myAge >=\n  votingAge); // Returns 1 (true), meaning 25 year olds are allowed to vote!\n\n// ─────────────────────────────────────\n\nint myAge = 25;\nint votingAge = 18;\n\nif (myAge >= votingAge) {\n\n  printf(\"Old enough to vote!\");\n} else {\n  printf(\"Not old enough\n  to vote.\");\n}"
+      "heading": "Boolean Variables",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "The `bool` type was introduced in C99, and to use it you must include this header file at the top of the program:"
+        },
+        {
+          "type": "code",
+          "content": "#include <stdbool.h>"
+        },
+        {
+          "type": "text",
+          "content": "A boolean variable is declared with the `bool` keyword and can take the values `true` or `false`:"
+        },
+        {
+          "type": "code",
+          "content": "bool isProgrammingFun = true;\nbool isFishTasty = false;"
+        },
+        {
+          "type": "text",
+          "content": "Before you print boolean values, you should know that boolean values are returned as integers: `1` (or any other number that is not 0) represents `true`, `0` represents `false`. Therefore you must use the `%d` format specifier to print a boolean value:"
+        },
+        {
+          "type": "code",
+          "content": "// Create boolean variables\nbool isProgrammingFun = true;\nbool isFishTasty = false;\n\n// Print boolean values\nprintf(\"%d\", isProgrammingFun);   // Returns 1 (true)\nprintf(\"%d\", isFishTasty);        // Returns 0 (false)"
+        },
+        {
+          "type": "text",
+          "content": "However, it is more common to return a boolean value by comparing values and variables (see below)."
+        }
+      ]
+    },
+    {
+      "heading": "Comparing Values and Variables",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Comparison helps you find answers and make decisions. For example, you can use a comparison operator, such as the *greater than* (`>`) operator, to find out if an expression (or a variable) is `true`:"
+        },
+        {
+          "type": "code",
+          "content": "printf(\"%d\", 10 > 9); // Returns 1 (true), because 10 is greater than 9"
+        },
+        {
+          "type": "text",
+          "content": "Or even easier:"
+        },
+        {
+          "type": "code",
+          "content": "int x = 10;\nint y = 9;\n\nprintf(\"%d\", x > y);"
+        },
+        {
+          "type": "text",
+          "content": "In the examples above, the comparisons return `1` (true) or `0` (false). You can also use the `==` operator to compare values for equality:"
+        },
+        {
+          "type": "code",
+          "content": "printf(\"%d\", 10 == 10); // Returns 1 (true), because 10 is equal to 10\nprintf(\"%d\", 10 == 15); // Returns 0 (false), because 10 is not equal to 15\nprintf(\"%d\", 5 == 55);  // Returns 0 (false), because 5 is not equal to 55"
+        },
+        {
+          "type": "text",
+          "content": "You can also compare boolean variables:"
+        },
+        {
+          "type": "code",
+          "content": "bool isHamburgerTasty = true;\nbool isPizzaTasty = true;\n\n// Find out if both hamburger and pizza are tasty\nprintf(\"%d\", isHamburgerTasty == isPizzaTasty);"
+        },
+        {
+          "type": "note",
+          "content": "Remember to include the `<stdbool.h>` header file when working with `bool` variables."
+        }
+      ]
+    },
+    {
+      "heading": "Storing Comparison Results",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "You can also store the result of a comparison in a `bool` variable:"
+        },
+        {
+          "type": "code",
+          "content": "int x = 10;\nint y = 9;\n\nbool isGreater = x > y;\n\nprintf(\"%d\", isGreater); // Prints 1 (true)"
+        },
+        {
+          "type": "goodtoknow",
+          "content": "Whether to store the result or use the comparison directly depends on readability and reusability needs."
+        }
+      ]
     }
   ]
 }

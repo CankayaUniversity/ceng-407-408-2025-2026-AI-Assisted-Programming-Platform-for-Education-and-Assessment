@@ -31,12 +31,6 @@ async function pingWithTimeout(url: string): Promise<{ ok: boolean; latencyMs: n
   }
 }
 
-function judge0PingUrl(): string {
-  const base = (process.env.JUDGE0_URL ?? "http://localhost:2358").replace(/\/$/, "");
-  // Judge0 CE exposes active languages; works without auth on default installs.
-  return `${base}/languages`;
-}
-
 function ollamaTagsUrl(): string {
   const base = (process.env.OLLAMA_BASE_URL ?? "http://localhost:11434").replace(/\/$/, "");
   return `${base}/api/tags`;
@@ -44,8 +38,7 @@ function ollamaTagsUrl(): string {
 
 export type DependenciesHealth = {
   database: { ok: boolean; error?: string; latencyMs: number };
-  judge0: { ok: boolean; error?: string; latencyMs: number };
-  ollama: { ok: boolean; error?: string; latencyMs: number };
+  ollama:   { ok: boolean; error?: string; latencyMs: number };
 };
 
 export async function checkDependenciesHealth(): Promise<DependenciesHealth> {
@@ -59,10 +52,7 @@ export async function checkDependenciesHealth(): Promise<DependenciesHealth> {
     database = { ok: false, error: msg, latencyMs: Date.now() - startDb };
   }
 
-  const [judge0, ollama] = await Promise.all([
-    pingWithTimeout(judge0PingUrl()),
-    pingWithTimeout(ollamaTagsUrl()),
-  ]);
+  const ollama = await pingWithTimeout(ollamaTagsUrl());
 
-  return { database, judge0, ollama };
+  return { database, ollama };
 }

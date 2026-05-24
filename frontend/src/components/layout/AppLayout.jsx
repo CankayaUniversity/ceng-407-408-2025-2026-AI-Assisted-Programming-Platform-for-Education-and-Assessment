@@ -12,8 +12,10 @@ export default function AppLayout({
   maxWidth = "xl",
   children,
   headerVariant = "default",
-  roleLabel, 
+  roleLabel,
   showPageTitle = true,
+  /** Exam-mode lockdown — hides nav links + admin bell. */
+  lockdown = false,
 }) {
   return (
     <Box
@@ -30,6 +32,7 @@ export default function AppLayout({
         navItems={navItems}
         variant={headerVariant}
         roleLabel={roleLabel}
+        lockdown={lockdown}
       />
 
       {/* 60px spacer — compensates for position="fixed" AppBar height */}

@@ -20,3 +20,22 @@ body,
 ::-webkit-scrollbar-track        { background: transparent; }
 ::-webkit-scrollbar-thumb        { background: #334155; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover  { background: #6366f1; }
+
+/* ── Print / PDF export (tutorial pages) ──────────────────
+   When the user clicks the Print button inside a tutorial
+   section, everything is hidden except the tutorial content
+   element tagged with data-print-tutorial="true".           */
+@media print {
+  body > * { display: none !important; }
+  [data-print-tutorial="true"] { display: block !important; }
+
+  [data-print-tutorial="true"] * {
+    color: #000 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    border-color: #ccc !important;
+  }
+
+  /* Avoid page-break inside code blocks */
+  pre, code, .monaco-editor { page-break-inside: avoid; }
+}

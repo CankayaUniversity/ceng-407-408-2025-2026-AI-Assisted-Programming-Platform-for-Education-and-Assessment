@@ -1,0 +1,112 @@
+{
+  "tag": "date-time",
+  "language": "c",
+  "title": "C Date and Time",
+  "category": "C More",
+  "categoryOrder": 8,
+  "subCategory": null,
+  "subCategoryOrder": 0,
+  "order": 1,
+  "sections": [
+    {
+      "heading": "Time and Date",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "In C, you can use the `<time.h>` header to work with dates and times."
+        },
+        {
+          "type": "text",
+          "content": "This library lets you get the current time, format it, and perform time-related calculations."
+        }
+      ]
+    },
+    {
+      "heading": "Getting the Current Time",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "The `<time.h>` library has a variety of functions to measure dates and times."
+        },
+        {
+          "type": "text",
+          "content": "For example, the `time()` function returns the current time as a value of type `time_t`."
+        },
+        {
+          "type": "text",
+          "content": "You can use `ctime()` to convert the time into a readable string, like \"Mon Jun 24 10:15:00 2025\":"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        }
+      ]
+    },
+    {
+      "heading": "Breaking Down the Time",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "If you want to access individual parts of the date or time, like the year, month, or hour, you can use the `localtime()` function."
+        },
+        {
+          "type": "text",
+          "content": "This function converts the current time (from `time()`) into a `struct tm`, which is a special structure that holds the date and time in separate fields."
+        },
+        {
+          "type": "text",
+          "content": "Here's how you can use it to print each part of the current date and time:"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        },
+        {
+          "type": "text",
+          "content": "**Note:** The `tm_year` stores the number of years since 1900, so we add 1900 to get the full year, and `tm_mon` starts from 0 (so 0 = January, 11 = December)."
+        },
+        {
+          "type": "text",
+          "content": "**Note:** We use `->` because `localtime()` returns a pointer to a `struct tm`."
+        },
+        {
+          "type": "text",
+          "content": "As you learned in the Structs & Pointers chapter: If you have a pointer to a `struct`, use `->` to access its members. Use the dot `.` only when you're working with the struct directly, not a pointer to it."
+        }
+      ]
+    },
+    {
+      "heading": "Formatting Date and Time",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "You can use `strftime()` to format the date and time as a string:"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        }
+      ]
+    },
+    {
+      "heading": "When to use Date and Time",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Use date and time in C when you want to:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "Display the current time or date",
+            "Log events like errors or user actions",
+            "Add timestamps to files or messages",
+            "Measure how long something takes",
+            "Schedule or delay actions",
+            "Seed random numbers (so you get different results each run)"
+          ]
+        }
+      ]
+    }
+  ]
+}

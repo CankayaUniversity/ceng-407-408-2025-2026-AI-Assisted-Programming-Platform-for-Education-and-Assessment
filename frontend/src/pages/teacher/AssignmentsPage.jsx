@@ -20,6 +20,7 @@ import EditIcon        from "@mui/icons-material/Edit";
 import DeleteIcon      from "@mui/icons-material/Delete";
 import GroupAddIcon    from "@mui/icons-material/GroupAdd";
 import GradingIcon     from "@mui/icons-material/Grading";
+import PublishIcon     from "@mui/icons-material/PublishedWithChanges";
 
 import AppLayout        from "../../components/layout/AppLayout";
 import SectionCard      from "../../components/common/SectionCard";
@@ -53,6 +54,7 @@ export default function AssignmentsPage({ currentUser, problems, token, handleLo
   const [enrollModal,     setEnrollModal]     = useState(false);
   const [enrollTarget,    setEnrollTarget]    = useState(null);
   const [deletingId,      setDeletingId]      = useState(null);
+  const [publishingId,    setPublishingId]    = useState(null);
 
   const headers = { Authorization: `Bearer ${token}` };
 
@@ -86,6 +88,37 @@ export default function AssignmentsPage({ currentUser, problems, token, handleLo
   function openEnroll(assignment) {
     setEnrollTarget(assignment);
     setEnrollModal(true);
+  }
+
+  /** Publish an assignment AND enroll every active student in one click */
+  async function handlePublishToAll(assignment) {
+    if (!window.confirm(`Publish "${assignment.title}" and enroll ALL students? This will make it visible to every student immediately.`)) return;
+    setPublishingId(assignment.id);
+    try {
+      const jsonHeaders = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+      // 1. Mark published
+      const pubRes = await fetch(`${API_BASE}/api/assignments/${assignment.id}`, {
+        method: "PUT",
+        headers: jsonHeaders,
+        body: JSON.stringify({ isPublished: true }),
+      });
+      if (!pubRes.ok) throw new Error("Failed to publish assignment");
+      // 2. Enroll all students
+      const enrollRes = await fetch(`${API_BASE}/api/assignments/${assignment.id}/enroll`, {
+        method: "POST",
+        headers: jsonHeaders,
+        body: JSON.stringify({ all: true }),
+      });
+      if (!enrollRes.ok) {
+        const errData = await enrollRes.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to enroll students");
+      }
+      await fetchAssignments();
+    } catch (err) {
+      alert(`Publish to all failed: ${err.message}`);
+    } finally {
+      setPublishingId(null);
+    }
   }
 
   async function handleDelete(id) {
@@ -207,6 +240,20 @@ export default function AssignmentsPage({ currentUser, problems, token, handleLo
 
                     <TableCell align="right">
                       <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                        <Tooltip title="Publish & enroll ALL students">
+                          <span>
+                            <IconButton
+                              size="small"
+                              color="success"
+                              onClick={() => handlePublishToAll(a)}
+                              disabled={publishingId === a.id}
+                            >
+                              {publishingId === a.id
+                                ? <CircularProgress size={16} />
+                                : <PublishIcon fontSize="small" />}
+                            </IconButton>
+                          </span>
+                        </Tooltip>
                         <Tooltip title="Enroll students">
                           <IconButton size="small" color="primary" onClick={() => openEnroll(a)}>
                             <GroupAddIcon fontSize="small" />

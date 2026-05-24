@@ -4,12 +4,109 @@
   "title": "C Scope",
   "category": "C Functions",
   "categoryOrder": 2,
+  "subCategory": null,
+  "subCategoryOrder": 0,
   "order": 3,
   "sections": [
     {
-      "heading": "Variable Scope",
-      "body": "Scope\n\nNow that you understand how functions work, it is important to\nlearn how variables act inside and outside of functions.\nIn C, variables are only accessible inside the region they are created. This is called scope.\n\nLocal Scope\n\nA variable created inside a function belongs to the local scope\nof that function, and can only be used inside that function:\n\nExample\n\nA local variable cannot be used outside the function it belongs to.\nIf you try to access it outside the function, an error occurs:\n\nExample\n\nGlobal Scope\n\nA variable created outside of a function, is called a global variable and\nbelongs to the global scope.\nGlobal variables are available from within any scope, global and local:\n\nExample\n\nNaming Variables\n\nIf you operate with the same variable name inside and outside of a function,\nC will treat them as two separate variables; One available in the global scope (outside the function) and one available in the local scope (inside the function):\n\nExample\n\nHowever, you should avoid using the same variable name for both globally and locally variables as it can lead to errors and confusion.\nIn general, you should be careful with global variables, since they can be\naccessed and modified from any function:\n\nExample\n\nConclusion\n\nTo sum up, use local variables (with good variable names) as much as you can. This will make your code easier to maintain and\nbetter to understand. However, you may find global variables when working on existing C programs or\nwhile collaborating with others. Therefore, it is good to understand how the scope works and how to use it effectively to make sure your code is clear and functional.",
-      "code": "void myFunction() {\n  // Local variable that belongs to myFunction\n  int x = 5;\n\n  // Print the variable x\n  printf(\"%d\", x);\n}\n\nint main() {\n  myFunction();\n  return\n  0;\n}\n\n// ─────────────────────────────────────\n\nvoid myFunction() {\n  // Local variable that belongs to myFunction\n\n  int x = 5;\n}\n\nint main()\n  {\n  myFunction();\n\n  // Print the variable x in the main\n  function\n\n  printf(\"%d\", x);\n  return 0;\n}\n\n// ─────────────────────────────────────\n\n// Global variable x\nint x = 5;\n\nvoid myFunction() {\n  // We\n  can use x here\n  printf(\"%d\", x);\n}\n\nint main() {\n  myFunction();\n\n  // We can also use x here\n  printf(\"%d\", x);\n  return\n  0;\n}\n\n// ─────────────────────────────────────\n\n// Global variable x\nint x = 5;\n\nvoid myFunction() {\n  // Local\n  variable with the same name as the global variable (x)\n  int x = 22;\n\n  printf(\"%d\\n\", x); // Refers to the local variable x\n}\n\nint main() {\n  myFunction();\n\n  printf(\"%d\\n\", x); // Refers to the global variable x\n  return 0;\n}\n\n// ─────────────────────────────────────\n\n// Global variable\nint x = 5;\n\nvoid myFunction() {\n\n    printf(\"%d\\n\", ++x); // Increment the value of x by 1 and print it\n}\n\nint main() {\n  myFunction();\n\n  printf(\"%d\\n\", x); //\n    Print the global variable x\n  return 0;\n}\n\n// The value of\n    x is now 6 (no longer 5)"
+      "heading": "Scope",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Now that you understand how functions work, it is important to learn how variables act inside and outside of functions."
+        },
+        {
+          "type": "text",
+          "content": "In C, variables are only accessible inside the region they are created. This is called **scope**."
+        }
+      ]
+    },
+    {
+      "heading": "Local Scope",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "A variable created inside a function belongs to the *local scope* of that function, and can only be used inside that function:"
+        },
+        {
+          "type": "code",
+          "content": "  void myFunction() {\n  // Local variable that belongs to myFunction\n  int x = 5;\n\n  // Print the variable x\n  printf(\"%d\", x); \n}\n\nint main() {\n  myFunction();\n  return \n  0;\n}"
+        },
+        {
+          "type": "text",
+          "content": "A **local variable** cannot be used outside the function it belongs to."
+        },
+        {
+          "type": "text",
+          "content": "If you try to access it outside the function, an error occurs:"
+        },
+        {
+          "type": "code",
+          "content": "  void myFunction() {\n  // Local variable that belongs to myFunction\n  \n  int x = 5;\n}\n\nint main() \n  {\n  myFunction();\n\n  // Print the variable x in the main \n  function\n  \n  printf(\"%d\", x); \n  return 0;\n}"
+        }
+      ]
+    },
+    {
+      "heading": "Global Scope",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "A variable created outside of a function, is called a **global variable** and belongs to the *global scope*."
+        },
+        {
+          "type": "text",
+          "content": "Global variables are available from within any scope, global and local:"
+        },
+        {
+          "type": "text",
+          "content": "A variable created outside of a function is global and can therefore be used by anyone:"
+        },
+        {
+          "type": "code",
+          "content": "  // Global variable x\nint x = 5;\n\nvoid myFunction() {\n  // We \n  can use x here\n  printf(\"%d\", x); \n}\n\nint main() {\n  myFunction();\n\n  // We can also use x here\n  printf(\"%d\", x);\n  return \n  0;\n}"
+        },
+        {
+          "type": "text",
+          "content": "**Naming Variables**"
+        },
+        {
+          "type": "text",
+          "content": "If you operate with the same variable name inside and outside of a function, C will treat them as two separate variables; One available in the global scope (outside the function) and one available in the local scope (inside the function):"
+        },
+        {
+          "type": "text",
+          "content": "The function will print the local `x`, and then the code will print the global `x`:"
+        },
+        {
+          "type": "code",
+          "content": "  // Global variable x\nint x = 5;\n\nvoid myFunction() {\n  // Local \n  variable with the same name as the global variable (x)\n  int x = 22;\n  \n  printf(\"%d\\n\", x); // Refers to the local variable x\n}\n\nint main() {\n  myFunction();\n\n  printf(\"%d\\n\", x); // Refers to the global variable x\n  return 0;\n}"
+        },
+        {
+          "type": "text",
+          "content": "However, you should avoid using the same variable name for both globally and locally variables as it can lead to errors and confusion."
+        },
+        {
+          "type": "text",
+          "content": "In general, you should be careful with global variables, since they can be accessed and modified from any function:"
+        },
+        {
+          "type": "text",
+          "content": "Change the value of `x` from `myFunction`:"
+        },
+        {
+          "type": "code",
+          "content": "    // Global variable\nint x = 5;\n\nvoid myFunction() {\n  \n    printf(\"%d\\n\", ++x); // Increment the value of x by 1 and print it\n}\n\nint main() {\n  myFunction();\n\n  printf(\"%d\\n\", x); // \n    Print the global variable x\n  return 0;\n}\n\n// The value of \n    x is now 6 (no longer 5)"
+        }
+      ]
+    },
+    {
+      "heading": "Conclusion",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "To sum up, use local variables (with good variable names) as much as you can. This will make your code easier to maintain and better to understand. However, you may find global variables when working on existing C programs or while collaborating with others. Therefore, it is good to understand how the scope works and how to use it effectively to make sure your code is clear and functional."
+        }
+      ]
     }
   ]
 }

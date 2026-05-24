@@ -14,12 +14,23 @@ function parseId(raw: string): number | null {
   return Number.isNaN(n) ? null : n;
 }
 
-router.get("/students", async (_req, res) => {
+router.get("/students", async (req, res) => {
+  const { userId, isAdmin } = req.auth!;
+
+  // Admin sees all students; regular teachers see only their assigned students
+  const studentWhere = isAdmin
+    ? { role: { is: { name: "student" } } }
+    : {
+        role:             { is: { name: "student" } },
+        assignedTeacher:  { teacherId: userId },
+      };
+
   const students = await prisma.user.findMany({
-    where: { role: { is: { name: "student" } } },
+    where:   studentWhere,
     include: {
       submissionAttempts: true,
-      hintEvents: true,
+      hintEvents:         true,
+      assignedTeacher:    { include: { teacher: { select: { id: true, name: true, email: true } } } },
     },
     orderBy: { id: "asc" },
   });
@@ -42,6 +53,7 @@ router.get("/students", async (_req, res) => {
         totalHints: student.hintEvents.length,
         acceptedAttempts: accepted.length,
         distinctProblemsSolved: distinctSolved,
+        assignedTeacher: student.assignedTeacher?.teacher ?? null,
       };
     }),
     meta: { totalProblems },

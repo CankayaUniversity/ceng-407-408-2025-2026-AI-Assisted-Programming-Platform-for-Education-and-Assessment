@@ -54,7 +54,9 @@ router.post("/register", async (req, res) => {
     // If the existing account is stuck in pending_email, allow resending OTP
     if (existing.status === "pending_email") {
       const code = await issueOtp(existing.id);
-      await sendVerificationEmail(email, existing.name, code);
+      await sendVerificationEmail(email, existing.name, code).catch((err) =>
+        console.error("[auth/register] resend email failed:", err.message),
+      );
       res.status(200).json({
         requiresVerification: true,
         userId: existing.id,
@@ -82,7 +84,9 @@ router.post("/register", async (req, res) => {
   });
 
   const code = await issueOtp(user.id);
-  await sendVerificationEmail(email, name, code);
+  await sendVerificationEmail(email, name, code).catch((err) =>
+    console.error("[auth/register] verification email failed:", err.message),
+  );
 
   res.status(201).json({
     requiresVerification: true,
@@ -149,6 +153,8 @@ router.post("/verify-email", async (req, res) => {
       admins.map((a) => a.email),
       user.name,
       user.email,
+    ).catch((err) =>
+      console.error("[auth/verify-email] admin alert email failed:", err.message),
     );
 
     res.json({
@@ -166,7 +172,7 @@ router.post("/verify-email", async (req, res) => {
     include: { role: true },
   });
 
-  const payload      = { userId: activated.id, email: activated.email, role: activated.role.name };
+  const payload      = { userId: activated.id, email: activated.email, role: activated.role.name, isAdmin: activated.isAdmin };
   const accessToken  = signAccessToken(payload);
   const refreshToken = signRefreshToken(payload);
 
@@ -199,7 +205,9 @@ router.post("/resend-otp", async (req, res) => {
   }
 
   const code = await issueOtp(userId);
-  await sendVerificationEmail(user.email, user.name, code);
+  await sendVerificationEmail(user.email, user.name, code).catch((err) =>
+    console.error("[auth/resend-otp] email failed:", err.message),
+  );
 
   res.json({ message: "A new verification code has been sent to your email." });
 });
@@ -253,7 +261,7 @@ router.post("/login", async (req, res) => {
     return;
   }
 
-  const payload      = { userId: user.id, email: user.email, role: user.role.name };
+  const payload      = { userId: user.id, email: user.email, role: user.role.name, isAdmin: user.isAdmin };
   const accessToken  = signAccessToken(payload);
   const refreshToken = signRefreshToken(payload);
 
@@ -285,9 +293,10 @@ router.post("/refresh", (req, res) => {
   try {
     const payload     = verifyRefreshToken(refreshToken);
     const accessToken = signAccessToken({
-      userId: payload.userId,
-      email:  payload.email,
-      role:   payload.role,
+      userId:  payload.userId,
+      email:   payload.email,
+      role:    payload.role,
+      isAdmin: payload.isAdmin,
     });
     res.json({ accessToken, tokenType: "Bearer" });
   } catch {

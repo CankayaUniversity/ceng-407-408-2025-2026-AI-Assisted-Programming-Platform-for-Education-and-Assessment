@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Option 2: "Graduation cap + terminal cursor"
+       Academic vibe + coding/terminal. Hits the "platform for education" angle. -->
+  <defs>
+    <linearGradient id="g2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0F172A"/>
+      <stop offset="100%" stop-color="#1E293B"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="64" height="64" rx="14" fill="url(#g2)"/>
+  <!-- Mortarboard (graduation cap) -->
+  <path d="M32 18 L52 26 L32 34 L12 26 Z"
+        fill="#6366F1" stroke="#A5B4FC" stroke-width="1"/>
+  <!-- Tassel -->
+  <line x1="50" y1="26" x2="50" y2="36" stroke="#FBBF24" stroke-width="2"/>
+  <circle cx="50" cy="37" r="2" fill="#FBBF24"/>
+  <!-- Cap base / stand -->
+  <path d="M22 30 L22 38 Q32 44 42 38 L42 30" fill="none"
+        stroke="#A5B4FC" stroke-width="2" stroke-linecap="round"/>
+  <!-- ">" cursor (terminal prompt) -->
+  <path d="M22 48 L28 52 L22 56" stroke="#22D3EE" stroke-width="3" fill="none"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="32" y1="56" x2="44" y2="56" stroke="#22D3EE" stroke-width="3"
+        stroke-linecap="round"/>
+</svg>

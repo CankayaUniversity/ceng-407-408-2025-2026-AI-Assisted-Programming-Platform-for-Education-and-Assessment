@@ -1,0 +1,66 @@
+{
+  "tag": "data-types-extended",
+  "language": "c",
+  "title": "C Extended Types",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "subCategory": "Data Types",
+  "subCategoryOrder": 4,
+  "order": 7,
+  "sections": [
+    {
+      "heading": "More Data Types",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Besides the basic types (`int`, `float`, `double`, `char`), C also gives you **extended keywords** (`short`, `long`, `unsigned`) to control how large the number is, or whether it can be negative:"
+        },
+        {
+          "type": "text",
+          "content": "`unsigned` means the type can only store non-negative values (0 and up)."
+        },
+        {
+          "type": "text",
+          "content": "***Note:** The size of these types can differ between systems (for example, 2 or 4 bytes, or 4 or 8 bytes), depending on whether the computer is older or newer, 32-bit or 64-bit, and which compiler is used."
+        },
+        {
+          "type": "text",
+          "content": "Here is an example of how you can create and print these extended types:"
+        },
+        {
+          "type": "text",
+          "content": "**Try it Yourself »**"
+        },
+        {
+          "type": "text",
+          "content": "**Note:** These extended types are mostly used when you need very specific control over memory usage or number ranges."
+        },
+        {
+          "type": "text",
+          "content": "**Note:** For everyday programming, `int`, `float`, `double`, and `char` are usually enough."
+        }
+      ]
+    },
+    {
+      "heading": "Check Size",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "**The exact sizes depend on your system and compiler.** Remember that you can check them with the `sizeof` operator:"
+        },
+        {
+          "type": "text",
+          "content": "**Try it Yourself »**"
+        },
+        {
+          "type": "text",
+          "content": "**Tip:** When you really need exact control over the size of your numbers, you can use the fixed-width types, which you will learn about later."
+        },
+        {
+          "type": "text",
+          "content": "**Note:** This page is just to show you that C has other extended types, but for now **we will keep focusing on the basic types** (`int`, `float`, `double`, `char`) in this tutorial."
+        }
+      ]
+    }
+  ]
+}

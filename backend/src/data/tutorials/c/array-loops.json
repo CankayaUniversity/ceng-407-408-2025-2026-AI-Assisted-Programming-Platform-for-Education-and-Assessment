@@ -1,0 +1,46 @@
+{
+  "tag": "array-loops",
+  "language": "c",
+  "title": "C Array Loops",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "subCategory": "Arrays",
+  "subCategoryOrder": 12,
+  "order": 3,
+  "sections": [
+    {
+      "heading": "Loop Through an Array",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "You can use a `for` loop to go through the elements of an array by writing the size of the array in the loop condition (in this example the array has 4 elements, so we use `i < 4`). However, this is not ideal, since it will only work for arrays of a specified size:"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        }
+      ]
+    },
+    {
+      "heading": "Making Better Loops",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "In the previous chapter, you learned how to calculate the number of elements in an array using the `sizeof` formula. Now we can use that to write loops that work for arrays of any size. This is more flexible and sustainable:"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        },
+        {
+          "type": "text",
+          "content": "This loop will automatically work no matter how many elements the array has!"
+        },
+        {
+          "type": "text",
+          "content": "**Summary:** Always use the `sizeof` formula when looping through arrays. It makes your loops adapt to the array size automatically."
+        }
+      ]
+    }
+  ]
+}

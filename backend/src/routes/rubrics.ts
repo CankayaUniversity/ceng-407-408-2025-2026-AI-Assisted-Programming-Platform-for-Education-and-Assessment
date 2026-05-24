@@ -54,9 +54,12 @@ router.post(
 
     // Upsert: if a rubric already exists for this problem, update it; otherwise create.
     const existing = await prisma.rubric.findFirst({ where: { problemId } });
+
+    // gradingNotes is stored alongside criteria in the JSON blob so it survives
+    // subsequent GET requests without requiring a separate DB column.
     const rubricData = {
-      title: `${problem.title} — Rubric`,
-      criteria: result.rubric.criteria as object,
+      title:       `${problem.title} — Rubric`,
+      criteria:    { items: result.rubric.criteria, gradingNotes: result.rubric.gradingNotes } as object,
       totalPoints: result.rubric.totalPoints,
       aiGenerated: true,
     };
@@ -68,6 +71,8 @@ router.post(
       success: true,
       data: {
         ...rubric,
+        // Expose criteria and gradingNotes as flat fields for the frontend
+        criteria:    result.rubric.criteria,
         gradingNotes: result.rubric.gradingNotes,
         model: result.model,
       },
@@ -96,6 +101,13 @@ router.put(
     const { title, criteria } = parsed.data;
     const totalPoints = criteria.reduce((sum, c) => sum + c.maxScore, 0);
 
+    // Warn if the teacher submits a rubric that doesn't total 100 points.
+    // We accept it but include a warning in the response so the UI can flag it.
+    const pointsWarning =
+      totalPoints !== 100
+        ? `Rubric total is ${totalPoints} pts — consider adjusting criteria to sum to 100.`
+        : null;
+
     const existing = await prisma.rubric.findFirst({ where: { problemId } });
     const rubricData = {
       title: title ?? "Rubric",
@@ -107,7 +119,7 @@ router.put(
       ? await prisma.rubric.update({ where: { id: existing.id }, data: rubricData })
       : await prisma.rubric.create({ data: { problemId, ...rubricData } });
 
-    res.json({ success: true, data: rubric });
+    res.json({ success: true, data: rubric, ...(pointsWarning ? { warning: pointsWarning } : {}) });
   },
 );
 

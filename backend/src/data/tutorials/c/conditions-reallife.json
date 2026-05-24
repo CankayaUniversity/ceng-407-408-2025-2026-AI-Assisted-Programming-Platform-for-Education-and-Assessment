@@ -1,0 +1,73 @@
+{
+  "tag": "conditions-reallife",
+  "language": "c",
+  "title": "C Conditions Real-Life",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "subCategory": "If...Else",
+  "subCategoryOrder": 7,
+  "order": 7,
+  "sections": [
+    {
+      "heading": "Real-Life Examples",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "This example shows how you can use `if..else` to *\"open a door\"* if the user enters the correct code:"
+        },
+        {
+          "type": "code",
+          "content": "int doorCode = 1337;\n\nif (doorCode == 1337) {\n  printf(\"Correct code.\\nThe door is now open.\");\n} else {\n  printf(\"Wrong code.\\nThe door remains closed.\");\n}"
+        },
+        {
+          "type": "text",
+          "content": "This example shows how you can use `if..else` to find out if a number is positive or negative:"
+        },
+        {
+          "type": "code",
+          "content": "int myNum = 10; // Is this a positive or negative number?\n\nif (myNum > 0) {\n  printf(\"The value is a positive number.\");\n} else if (myNum < 0) {\n  printf(\"The value is a negative number.\");\n} else {\n  printf(\"The value is 0.\");\n}"
+        },
+        {
+          "type": "text",
+          "content": "Find out if a person is old enough to vote:"
+        },
+        {
+          "type": "code",
+          "content": "int myAge = 25;\nint votingAge = 18;\n\nif (myAge >= votingAge) {\n  printf(\"Old enough to vote!\");\n} else {\n  printf(\"Not old enough to vote.\");\n}"
+        },
+        {
+          "type": "text",
+          "content": "Find out if a person is old enough to vote, **and** if they are a citizen (using nested `if` statements):"
+        },
+        {
+          "type": "code",
+          "content": "int age = 20;\nbool isCitizen = true;\n\nif (age >= 18) {\n  printf(\"Old enough to vote.\\n\");\n\n  if (isCitizen) {\n    printf(\"And you are a citizen, so you can vote!\\n\");\n  } else {\n    printf(\"But you must be a citizen to vote.\\n\");\n  }\n} else {\n  printf(\"Not old enough to vote.\\n\");\n}"
+        },
+        {
+          "type": "text",
+          "content": "Find out if a number is even or odd:"
+        },
+        {
+          "type": "code",
+          "content": "int myNum = 5;\n\nif (myNum % 2 == 0) {\n  printf(\"%d is even.\\n\", myNum);\n} else {\n  printf(\"%d is odd.\\n\", myNum);\n}"
+        },
+        {
+          "type": "text",
+          "content": "Check temperature (Celsius):"
+        },
+        {
+          "type": "code",
+          "content": "int temperature = 30;\n\nif (temperature < 0) {\n  printf(\"It's freezing!\\n\");\n} else if (temperature < 20) {\n  printf(\"It's cool.\\n\");\n} else {\n  printf(\"It's warm.\\n\");\n}"
+        },
+        {
+          "type": "text",
+          "content": "System access control — you must be logged in, and then you either need to be an admin, or have a high security clearance (level 1 or 2) to get access:"
+        },
+        {
+          "type": "code",
+          "content": "bool isLoggedIn = true;\nbool isAdmin = false;\nint securityLevel = 3; // 1 = highest\n\nif (isLoggedIn && (isAdmin || securityLevel <= 2)) {\n  printf(\"Access granted\\n\");\n} else {\n  printf(\"Access denied\\n\");\n}\n\n// Try changing securityLevel and isAdmin to test different outcomes:\n// securityLevel 1 = Access granted\n// securityLevel 2 = Access granted\n// securityLevel 3 = Access denied\n// securityLevel 4 = Access denied\n// If isAdmin = true, access is granted."
+        }
+      ]
+    }
+  ]
+}

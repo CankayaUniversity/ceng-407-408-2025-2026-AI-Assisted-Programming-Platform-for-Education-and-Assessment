@@ -4,32 +4,114 @@
   "title": "C Arrays",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 17,
+  "subCategory": "Arrays",
+  "subCategoryOrder": 12,
+  "order": 1,
   "sections": [
     {
       "heading": "Arrays",
-      "body": "Arrays\n\nArrays are used to store multiple values in a single variable, instead of declaring separate variables for each\nvalue.\nTo create an array, define the data type (like int) and specify the name\nof the array followed by square brackets [].\nTo insert values to it, use a comma-separated list inside curly braces, and\nmake sure all values are of the same data type:\nWe have now created a variable that holds an array of four integers.\n\nAccess the Elements of an Array\n\nTo access an array element, refer to its index number.\nArray indexes start with 0: [0] is the first element. [1] is the second element, etc.\nThis statement accesses the value of the first element [0] in\nmyNumbers:\n\nExample\n\nChange an Array Element\n\nTo change the value of a specific element, refer to the index number:\n\nExample\n\nExample\n\nSet Array Size\n\nAnother common way to create arrays, is to specify the size of the array, and add\nelements later:\n\nExample\n\nUsing this method, you should know the number of array elements in advance,\nin order for the program to store enough memory.\nYou are not able to change the size of the array after creation.\n\nAvoid Mixing Data Types\n\nIt is important to note that all elements in an array must be of the same\ndata type.\nThis means you cannot mix different types of values, like integers and\nfloating point numbers, in the same array:\n\nExample\n\nIn the example above, the values 3.15 and 5.99 will be truncated to 3 and 5. In some cases it might also result in an error, so\nit is important to always make sure that the elements in the array are of the\nsame type.",
-      "code": "int myNumbers[] = {25,\n  50, 75, 100};\n\n// ─────────────────────────────────────\n\nint myNumbers[] = {25, 50, 75, 100};\n\n  printf(\"%d\", myNumbers[0]);\n\n// Outputs 25\n\n// ─────────────────────────────────────\n\nmyNumbers[0] = 33;\n\n// ─────────────────────────────────────\n\nint myNumbers[] = {25, 50, 75, 100};\nmyNumbers[0] = 33;\n\n  printf(\"%d\", myNumbers[0]);\n\n  // Now outputs 33 instead of 25\n\n// ─────────────────────────────────────\n\n// Declare an array of four integers:\nint myNumbers[4];\n\n// Add\n  elements\nmyNumbers[0] = 25;\nmyNumbers[1] = 50;\nmyNumbers[2] = 75;\n\n  myNumbers[3] = 100;\n\n// ─────────────────────────────────────\n\nint myArray[] = {25, 50, 75,\n  3.15, 5.99};"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Arrays are used to store multiple values in a single variable, instead of declaring separate variables for each value."
+        },
+        {
+          "type": "text",
+          "content": "To create an array, define the data type (like `int`) and specify the name of the array followed by **square brackets []**."
+        },
+        {
+          "type": "text",
+          "content": "To insert values to it, use a comma-separated list inside curly braces, and make sure all values are of the same data type:"
+        },
+        {
+          "type": "code",
+          "content": "  int myNumbers[] = {25, \n  50, 75, 100};"
+        },
+        {
+          "type": "text",
+          "content": "We have now created a variable that holds an array of four integers."
+        }
+      ]
     },
     {
-      "heading": "Array Size",
-      "body": "Get Array Size\n\nTo get the size of an array, you can use the sizeof operator:\n\nExample\n\nNote: Why did the result show 20 instead of 5, when the array contains 5 elements?\n- It is because the sizeof operator returns the size of a type in\nbytes.\nYou learned from the Data Types chapter that an int type is usually 4 bytes, so from the example above, 4 x 5\n(4 bytes x 5 elements) = 20 bytes.\nKnowing the memory size of an array is great when you are working with\nlarger programs that require good memory management.\nBut what if you just wanted to know how many elements the array was storing?\n\nGet the Number of Elements\n\nIf you want to find out how many elements an array has, you can use this formula, which divides the total size of the array by the size of one element:\n\nExample\n\nThe sizeof formula works for arrays of any type and any size:\n\nExample\n\nIn the next chapter, you will see how to use this formula to make loops that automatically adapt to the array size.",
-      "code": "int myNumbers[] = {10, 25, 50, 75, 100};\n\nprintf(\"%zu\", sizeof(myNumbers));  // Prints 20\n\n// ─────────────────────────────────────\n\nint myNumbers[] = {10, 25, 50, 75, 100};\nint length = sizeof(myNumbers) / sizeof(myNumbers[0]);\n\nprintf(\"%d\", length);  // Prints 5\n\n// ─────────────────────────────────────\n\ndouble myValues[] = {1.1, 2.2, 3.3};\nint length = sizeof(myValues) / sizeof(myValues[0]);\n\nprintf(\"%d\", length);  // Prints 3"
+      "heading": "Access the Elements of an Array",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "To access an array element, refer to its** index number**."
+        },
+        {
+          "type": "text",
+          "content": "Array indexes start with **0**: [0] is the first element. [1] is the second element, etc."
+        },
+        {
+          "type": "text",
+          "content": "This statement accesses the value of the **first element [0]** in `myNumbers`:"
+        },
+        {
+          "type": "code",
+          "content": "  int myNumbers[] = {25, 50, 75, 100};\n\n  printf(\"%d\", myNumbers[0]);\n\n// Outputs 25"
+        }
+      ]
     },
     {
-      "heading": "Array Loop",
-      "body": "Loop Through an Array\n\nYou can use a for loop to go through the elements of an array by writing the size of the array in the loop condition (in this example the array has 4 elements, so we use i < 4).\nHowever, this is not ideal, since it will only work for arrays of a specified size:\n\nExample\n\nMaking Better Loops\n\nIn the previous chapter, you learned how to calculate the number of elements in an array using the sizeof formula.\nNow we can use that to write loops that work for arrays of any size. This is more flexible and sustainable:\n\nExample\n\nThis loop will automatically work no matter how many elements the array has!\nSummary: Always use the sizeof formula when looping through arrays.\nIt makes your loops adapt to the array size automatically.",
-      "code": "int myNumbers[] = {25, 50, 75, 100};\nint i;\n\nfor (i = 0; i < 4; i++) {\n  printf(\"%d\\n\", myNumbers[i]);\n}\n\n// ─────────────────────────────────────\n\nint myNumbers[] = {25, 50, 75, 100};\n\nint length = sizeof(myNumbers) / sizeof(myNumbers[0]);\nint i;\n\nfor (i = 0; i < length; i++) {\n  printf(\"%d\\n\", myNumbers[i]);\n}"
+      "heading": "Change an Array Element",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "To change the value of a specific element, refer to the index number:"
+        },
+        {
+          "type": "code",
+          "content": "  myNumbers[0] = 33;"
+        },
+        {
+          "type": "code",
+          "content": "  int myNumbers[] = {25, 50, 75, 100};\nmyNumbers[0] = 33;\n\n  printf(\"%d\", myNumbers[0]);\n\n  // Now outputs 33 instead of 25"
+        }
+      ]
     },
     {
-      "heading": "Arrays - Real-Life Examples",
-      "body": "Real-Life Example\n\nTo demonstrate a practical example of using arrays, let's create a program that calculates the average of different ages:\n\nExample\n\nAnd in this example, we create a program that finds the lowest age among different ages:\n\nExample\n\nIn this example, we go through a list of numbers.\nWe skip negative values, but stop the loop completely if we find a zero:\n\nExample",
-      "code": "// An array storing different ages\nint ages[] = {20, 22, 18, 35, 48, 26,\n  87, 70};\n\nfloat avg, sum = 0;\nint i;\n\n// Get the length of the\n  array\nint length = sizeof(ages) / sizeof(ages[0]);\n\n// Loop through\n  the elements of the array\nfor (i = 0; i <\n  length; i++) {\n  sum += ages[i];\n}\n\n// Calculate the average\n  by dividing the sum by the length\navg = sum / length;\n\n// Print the\n  average\nprintf(\"The average age is: %.2f\", avg);\n\n// ─────────────────────────────────────\n\n// An array storing different ages\nint ages[] = {20, 22, 18, 35, 48, 26,\n  87, 70};\n\nint i;\n\n// Get the length of the array\nint length = sizeof(ages) /\n  sizeof(ages[0]);\n\n// Create a variable and assign the first array\n  element of ages to it\nint lowestAge = ages[0];\n\n// Loop through\n  the elements of the ages array to find the lowest age\nfor (i = 0; i <\n  length; i++) {\n  if (lowestAge > ages[i]) {\n\n  lowestAge = ages[i];\n  }\n}\n\n// ─────────────────────────────────────\n\nint myNumbers[] = {3, -1, 7, 0, 9};\nint length = sizeof(myNumbers) / sizeof(myNumbers[0]);\nint i;\n\nfor (i = 0; i < length; i++) {\n  if (myNumbers[i] < 0) {\n    continue; // skip negative numbers\n  }\n  if (myNumbers[i] == 0) {\n    break; // stop loop when zero is found\n  }\n  printf(\"%d\\n\", myNumbers[i]);\n}"
+      "heading": "Set Array Size",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Another common way to create arrays, is to specify the size of the array, and add elements later:"
+        },
+        {
+          "type": "code",
+          "content": "  // Declare an array of four integers:\nint myNumbers[4];\n\n// Add \n  elements\nmyNumbers[0] = 25;\nmyNumbers[1] = 50;\nmyNumbers[2] = 75;\n\n  myNumbers[3] = 100;"
+        },
+        {
+          "type": "text",
+          "content": "Using this method, **you should know the number of array elements in advance,** in order for the program to store enough memory."
+        },
+        {
+          "type": "text",
+          "content": "You are not able to change the size of the array after creation."
+        }
+      ]
     },
     {
-      "heading": "Multidimensional Arrays",
-      "body": "Multidimensional Arrays\n\nIn the previous chapter, you learned about arrays, which is also known as\nsingle dimension arrays. These are great, and something you will use a lot while programming in C. However, if you want to store data as a tabular form, like a table with rows and columns, you need to get familiar with\nmultidimensional arrays.\nA multidimensional array is basically an array of arrays.\nArrays can have any number of dimensions. In this chapter, we will introduce the most common; two-dimensional arrays\n(2D).\n\nTwo-Dimensional Arrays\n\nA 2D array is also known as a matrix (a table of rows and columns).\nTo create a 2D array of integers, take a look at the following example:\nThe first dimension represents the number of rows [2], while the second\ndimension represents the number of columns [3]. The values are placed in\nrow-order, and can be visualized like this:\n\nAccess the Elements of a 2D Array\n\nTo access an element of a two-dimensional array, you must specify the index\nnumber of both the row and column.\nThis statement accesses the value of the element in the first row (0) and third column\n(2) of the matrix array.\n\nExample\n\nRemember that: Array indexes start with 0: [0] is the first element. [1] is the second element, etc.\n\nChange Elements in a 2D Array\n\nTo change the value of an element, refer to the index number of the element in each of the dimensions:\nThe following example will change the value of the element in the\nfirst row (0) and first column (0):\n\nExample\n\nLoop Through a 2D Array\n\nTo loop through a multi-dimensional array, you need one loop for each of the array's dimensions.\nThe following example outputs all elements in the matrix array:\n\nExample\n\nThree-Dimensional Arrays\n\nYou can also declare arrays with more than two dimensions:\n\nExample\n\nThis creates a 3D array with:\n2 blocks (first index)\n  4 rows per block (second index)\n  3 columns per row (third index)\n\nWhen to Use Multidimensional Arrays\n\nMultidimensional arrays are useful when your data is arranged in rows and columns, like a table, grid, or matrix.\nEach extra dimension adds another level of structure:\n2D arrays (like int scores[3][4]) are great for storing things like scores, game boards, or spreadsheets\n  3D arrays (like int cube[2][3][4]) can represent more complex structures like a set of tables or levels in a game",
-      "code": "int matrix[2][3] = { {1, 4, 2}, {3, 6, 8} };\n\n// ─────────────────────────────────────\n\nint matrix[2][3] = { {1, 4, 2}, {3, 6, 8} };\n\nprintf(\"%d\",\n  matrix[0][2]);  // Outputs 2\n\n// ─────────────────────────────────────\n\nint matrix[2][3] = { {1, 4, 2}, {3, 6, 8} };\nmatrix[0][0] = 9;\n\n  printf(\"%d\", matrix[0][0]);  // Now outputs 9 instead of 1\n\n// ─────────────────────────────────────\n\nint matrix[2][3] = { {1, 4, 2}, {3, 6, 8} };\n\nint i, j;\nfor (i = 0;\n  i < 2; i++) {\n  for (j = 0; j < 3; j++) {\n\n  printf(\"%d\\n\", matrix[i][j]);\n  }\n}\n\n// ─────────────────────────────────────\n\n// A 3D array with 2 blocks, each with 4 rows and 3 columns\nint example[2][4][3];"
+      "heading": "Avoid Mixing Data Types",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "It is important to note that all elements in an array **must be of the same data type**."
+        },
+        {
+          "type": "text",
+          "content": "This means you cannot mix different types of values, like **integers** and **floating point** numbers, in the same array:"
+        },
+        {
+          "type": "code",
+          "content": "  int myArray[] = {25, 50, 75, \n  3.15, 5.99};"
+        },
+        {
+          "type": "text",
+          "content": "In the example above, the values `3.15` and `5.99` will be truncated to `3` and `5`. In some cases it might also result in an error, so it is important to always make sure that the elements in the array are of the same type."
+        }
+      ]
     }
   ]
 }

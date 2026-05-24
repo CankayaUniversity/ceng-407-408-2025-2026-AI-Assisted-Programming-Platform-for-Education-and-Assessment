@@ -1,0 +1,37 @@
+{
+  "tag": "booleans-reallife",
+  "language": "c",
+  "title": "C Booleans Real-Life",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "subCategory": "Booleans",
+  "subCategoryOrder": 6,
+  "order": 2,
+  "sections": [
+    {
+      "heading": "Real-Life Example",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Let's think of a *\"real life example\"* where we need to find out if a person is old enough to vote.\n\nIn the example below, we use the `>=` comparison operator to find out if the age (`25`) is greater than OR equal to the voting age limit, which is set to `18`:"
+        },
+        {
+          "type": "code",
+          "content": "int myAge = 25;\nint votingAge = 18;\n\nprintf(\"%d\", myAge >= votingAge); // Returns 1 (true), meaning 25 year olds are allowed to vote!"
+        },
+        {
+          "type": "text",
+          "content": "Cool, right? An even better approach (since we are on a *\"real life example\"* roll) would be to wrap the code above in an `if...else` statement, so we can perform different actions depending on the result:"
+        },
+        {
+          "type": "code",
+          "content": "int myAge = 25;\nint votingAge = 18;\n\nif (myAge >= votingAge) {\n  printf(\"Old enough to vote!\");\n} else {\n  printf(\"Not old enough to vote.\");\n}"
+        },
+        {
+          "type": "goodtoknow",
+          "content": "Booleans form the foundation for all comparisons and conditional statements. You will learn more about `if...else` in the next chapter."
+        }
+      ]
+    }
+  ]
+}

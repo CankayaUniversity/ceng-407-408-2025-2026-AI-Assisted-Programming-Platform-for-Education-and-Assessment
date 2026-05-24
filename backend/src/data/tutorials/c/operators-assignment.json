@@ -1,0 +1,54 @@
+{
+  "tag": "operators-assignment",
+  "language": "c",
+  "title": "C Assignment Operators",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "subCategory": "Operators",
+  "subCategoryOrder": 5,
+  "order": 3,
+  "sections": [
+    {
+      "heading": "Assignment Operators",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Assignment operators are used to assign values to variables."
+        },
+        {
+          "type": "text",
+          "content": "In the example below, we use the **assignment** operator (`=`) to assign the value **10** to a variable called **x**:"
+        },
+        {
+          "type": "code",
+          "content": "int x = 10;"
+        },
+        {
+          "type": "text",
+          "content": "The **addition assignment** operator (`+=`) adds a value to a variable:"
+        },
+        {
+          "type": "code",
+          "content": "int x = 10;\nx += 5;"
+        },
+        {
+          "type": "text",
+          "content": "A list of all assignment operators:"
+        },
+        {
+          "type": "text",
+          "content": "**Note:** Most assignment operators are just shorter ways of writing code. For example, `x += 5` is the same as `x = x + 5`, but shorter and often easier to read."
+        }
+      ]
+    },
+    {
+      "heading": "Real-Life Example: Tracking Savings",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Assignment operators can also be used in real-life scenarios. For example, you can use the `+=` operator to keep track of savings when you add money to an account:"
+        }
+      ]
+    }
+  ]
+}

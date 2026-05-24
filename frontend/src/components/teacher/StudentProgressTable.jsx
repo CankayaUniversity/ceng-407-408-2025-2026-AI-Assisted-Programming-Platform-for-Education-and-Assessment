@@ -19,6 +19,7 @@ import {
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import GroupIcon  from "@mui/icons-material/Group";
+import PersonIcon from "@mui/icons-material/Person";
 
 import SectionCard        from "../common/SectionCard";
 import { YEAR_OPTIONS, yearLabel } from "../../lib/classYear";
@@ -41,7 +42,13 @@ function initials(name = '') {
 // Colour per year so it's easy to scan the table
 const YEAR_COLORS = { 1: "primary", 2: "secondary", 3: "success", 4: "warning", 5: "info" };
 
-export default function StudentProgressTable({ students, loading, onStudentClick, studentGroupMap = {} }) {
+export default function StudentProgressTable({
+  students,
+  loading,
+  onStudentClick,
+  studentGroupMap = {},
+  showTeacherColumn = false,
+}) {
   const [search,      setSearch]      = useState("");
   const [filterYear,  setFilterYear]  = useState(0);   // 0 = all
   const [filterRange, setFilterRange] = useState("all");
@@ -137,6 +144,9 @@ export default function StudentProgressTable({ students, loading, onStudentClick
                 <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>STUDENT</TableCell>
                 <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>EMAIL</TableCell>
                 <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>YEAR</TableCell>
+                {showTeacherColumn && (
+                  <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>TEACHER</TableCell>
+                )}
                 <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>GROUPS</TableCell>
                 <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>COMPLETED</TableCell>
                 <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>PROGRESS</TableCell>
@@ -174,6 +184,24 @@ export default function StudentProgressTable({ students, loading, onStudentClick
                       <Typography variant="caption" color="text.disabled">—</Typography>
                     )}
                   </TableCell>
+
+                  {/* Teacher column (admin only) — read-only chip */}
+                  {showTeacherColumn && (
+                    <TableCell>
+                      {student.assignedTeacher ? (
+                        <Chip
+                          icon={<PersonIcon style={{ fontSize: 13 }} />}
+                          label={student.assignedTeacher.name}
+                          size="small"
+                          variant="outlined"
+                          color="primary"
+                          sx={{ fontWeight: 600, fontSize: 12 }}
+                        />
+                      ) : (
+                        <Typography variant="caption" color="text.disabled">Unassigned</Typography>
+                      )}
+                    </TableCell>
+                  )}
 
                   <TableCell>
                     {(studentGroupMap[student.id] ?? []).length === 0 ? (

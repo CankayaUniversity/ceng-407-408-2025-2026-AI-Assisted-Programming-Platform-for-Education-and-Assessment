@@ -1,0 +1,66 @@
+{
+  "tag": "variable-names",
+  "language": "c",
+  "title": "C Variable Names",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "subCategory": "Variables",
+  "subCategoryOrder": 3,
+  "order": 5,
+  "sections": [
+    {
+      "heading": "C Variable Names",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "All C **variables** must be **identified** with **unique names**."
+        },
+        {
+          "type": "text",
+          "content": "These unique names are called **identifiers**."
+        },
+        {
+          "type": "text",
+          "content": "Identifiers can be short names (like x and y) or more descriptive names (age, sum, totalVolume)."
+        },
+        {
+          "type": "text",
+          "content": "**Note:** It is recommended to use descriptive names in order to create understandable and maintainable code:"
+        },
+        {
+          "type": "code",
+          "content": "  // Good variable name\nint minutesPerHour = 60;\n\n// OK, but not so easy to \n  understand what m actually is\nint  \n  m = 60;"
+        },
+        {
+          "type": "text",
+          "content": "The** general rules **for naming variables are:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "Names can contain letters, digits and underscores",
+            "Names must begin with a letter or an underscore (_)",
+            "Names are case-sensitive (`myVar` and `myvar` are different variables)",
+            "Names cannot contain whitespaces or special characters like !, #, %, etc.",
+            "Reserved words (such as `int`) cannot be used as names"
+          ]
+        },
+        {
+          "type": "text",
+          "content": "Here are some examples to help you remember the rules:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "**Valid:** `age`, `_count`, `totalSum`",
+            "**Invalid:** `1age` (starts with a number), `my-age` (contains `-`), `int` (reserved word)"
+          ]
+        },
+        {
+          "type": "text",
+          "content": "**Naming style:** Many C programmers use *camelCase* (like `totalScore`) or underscores (like `total_score`). Choose one style and use it consistently."
+        }
+      ]
+    }
+  ]
+}

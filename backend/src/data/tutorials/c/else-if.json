@@ -1,0 +1,59 @@
+{
+  "tag": "else-if",
+  "language": "c",
+  "title": "C Else If",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "subCategory": "If...Else",
+  "subCategoryOrder": 7,
+  "order": 3,
+  "sections": [
+    {
+      "heading": "The else if Statement",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Use the **`else if`** statement to specify a new condition to test if the first condition is `false`.\n\nYou can use `else if` to check multiple conditions, one after another."
+        },
+        {
+          "type": "syntax",
+          "content": "if (condition1) {\n  // block of code to be executed if condition1 is true\n} else if (condition2) {\n  // block of code to be executed if condition1 is false and condition2 is true\n} else {\n  // block of code to be executed if both conditions are false\n}"
+        },
+        {
+          "type": "text",
+          "content": "The conditions are checked from top to bottom. As soon as one condition is `true`, its block of code runs, and the rest are skipped."
+        }
+      ]
+    },
+    {
+      "heading": "Example",
+      "blocks": [
+        {
+          "type": "code",
+          "content": "int time = 16;\n\nif (time < 12) {\n  printf(\"Good morning.\");\n} else if (time < 18) {\n  printf(\"Good day.\");\n} else {\n  printf(\"Good evening.\");\n}\n\n// Outputs \"Good day.\""
+        },
+        {
+          "type": "text",
+          "content": "**Example explained** — The value of `time` is `16`. The first condition (`time < 12`) is false, but the second condition (`time < 18`) is true. Because of this, the code inside the `else if` block runs, and *\"Good day.\"* is printed. If the value of `time` was `22`, none of the conditions would be true, and the program would print *\"Good evening.\"* instead."
+        }
+      ]
+    },
+    {
+      "heading": "Using Boolean Variables",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Just like with `if` statements, you can store conditions in boolean variables and use them with `else if`:"
+        },
+        {
+          "type": "code",
+          "content": "int time = 16;\n\nbool isMorning = time < 12;\nbool isDay = time < 18;\n\nif (isMorning) {\n  printf(\"Good morning.\");\n} else if (isDay) {\n  printf(\"Good day.\");\n} else {\n  printf(\"Good evening.\");\n}"
+        },
+        {
+          "type": "goodtoknow",
+          "content": "Boolean variable names like `isMorning` and `isDay` make it easier to understand what each condition means."
+        }
+      ]
+    }
+  ]
+}

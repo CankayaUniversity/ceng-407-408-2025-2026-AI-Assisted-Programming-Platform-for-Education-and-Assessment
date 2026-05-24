@@ -1,0 +1,74 @@
+{
+  "tag": "operators-arithmetic",
+  "language": "c",
+  "title": "C Arithmetic Operators",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "subCategory": "Operators",
+  "subCategoryOrder": 5,
+  "order": 2,
+  "sections": [
+    {
+      "heading": "Arithmetic Operators",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Arithmetic operators are used to perform common mathematical operations."
+        },
+        {
+          "type": "text",
+          "content": "Here is an example using different arithmetic operators in one example:"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        },
+        {
+          "type": "text",
+          "content": "**Note:** When dividing two integers in C, the result will also be an integer. For example, `10 / 3` gives `3`. If you want a decimal result, use `float` or `double` values, like `10.0 / 3`."
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        }
+      ]
+    },
+    {
+      "heading": "Incrementing and Decrementing",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Incrementing and decrementing are very common in programming, especially when working with counters, loops, and arrays (which you will learn more about in later chapters)."
+        },
+        {
+          "type": "text",
+          "content": "The `++` operator increases a value by 1, while the `--` operator decreases a value by 1:"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        },
+        {
+          "type": "text",
+          "content": "Sometimes, you might both increment and decrement the same variable. Remember that if you increase a value and later decrease it, it will go up by one and then back down by one - ending up where it started:"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        },
+        {
+          "type": "text",
+          "content": "Imagine you are building a program to count how many people enter and leave a room. You can use `++` to increase the counter when someone enters, and `--` to decrease it when someone leaves:"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        }
+      ]
+    }
+  ]
+}

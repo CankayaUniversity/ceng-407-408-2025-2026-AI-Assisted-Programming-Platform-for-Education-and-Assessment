@@ -31,8 +31,7 @@ import GradingPage              from "./pages/teacher/GradingPage";
 import TeacherAssignmentsPage   from "./pages/teacher/AssignmentsPage";
 import PendingApprovalsPage     from "./pages/teacher/PendingApprovalsPage";
 
-import { useCallback, useEffect, useState } from "react";
-import { api } from "./lib/api";
+import { useState } from "react";
 
 const DEMO_EMAIL    = import.meta.env.VITE_DEMO_EMAIL    ?? "student1@demo.com";
 const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD ?? "123456";
@@ -199,27 +198,6 @@ export default function App() {
     setAuthError("");
   }
 
-  // ── Pending teacher count (admin only) ─────────────────────────────────────
-
-  const [pendingCount, setPendingCount] = useState(0);
-
-  const loadPendingCount = useCallback(async () => {
-    if (!token || !currentUser?.isAdmin) return;
-    try {
-      const res = await api("/api/admin/pending-teachers", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setPendingCount((res.data ?? []).length);
-    } catch { /* ignore */ }
-  }, [token, currentUser?.isAdmin]);
-
-  useEffect(() => {
-    loadPendingCount();
-    if (!currentUser?.isAdmin) return;
-    const id = setInterval(loadPendingCount, 60_000); // refresh every minute
-    return () => clearInterval(id);
-  }, [loadPendingCount, currentUser?.isAdmin]);
-
   // ── Loading splash ──────────────────────────────────────────────────────────
 
   if (bootstrapping) {
@@ -314,7 +292,7 @@ export default function App() {
       { label: "Grading",       path: "/grading" },
       { label: "Analytics",     path: "/class-analytics" },
       ...(currentUser?.isAdmin
-        ? [{ label: pendingCount > 0 ? `Approvals (${pendingCount})` : "Approvals", path: "/approvals" }]
+        ? [{ label: "Approvals", path: "/approvals" }]
         : []),
     ];
 

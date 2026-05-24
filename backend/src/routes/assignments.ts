@@ -49,11 +49,14 @@ router.get("/", async (req: Request, res: Response) => {
             title:            true,
             description:      true,
             mode:             true,
+            examType:         true,
+            startDate:        true,
             dueDate:          true,
             isPublished:      true,
             allowedLanguages: true,
             lateDeadline:     true,
             lateDeduction:    true,
+            aiEnabled:        true,
             problem: { select: { id: true, title: true, language: true, difficulty: true, description: true, tags: true } },
           },
         },
@@ -68,16 +71,19 @@ router.post("/", async (req: Request, res: Response) => {
   const { userId, role } = req.auth!;
   if (role !== "teacher") { res.status(403).json({ error: "Teachers only" }); return; }
 
-  const { title, description, problemId, dueDate, isPublished, allowedLanguages, lateDeadline, lateDeduction, mode } = req.body as {
+  const { title, description, problemId, dueDate, startDate, examType, isPublished, allowedLanguages, lateDeadline, lateDeduction, mode, aiEnabled } = req.body as {
     title:             string;
     description?:      string;
     problemId:         number;
     dueDate?:          string;
+    startDate?:        string | null;
+    examType?:         string | null;
     isPublished?:      boolean;
     allowedLanguages?: string[];
     lateDeadline?:     string | null;
     lateDeduction?:    number;
     mode?:             string;
+    aiEnabled?:        boolean;
   };
 
   if (!title?.trim() || !problemId) {
@@ -87,6 +93,7 @@ router.post("/", async (req: Request, res: Response) => {
 
   const validModes = ["practice", "homework", "exam"];
   const resolvedMode = validModes.includes(mode ?? "") ? mode! : "homework";
+  const resolvedExamType = resolvedMode === "exam" && examType ? examType : null;
 
   const assignment = await prisma.assignment.create({
     data: {
@@ -95,17 +102,36 @@ router.post("/", async (req: Request, res: Response) => {
       problemId,
       createdById:      userId,
       mode:             resolvedMode,
+      examType:         resolvedExamType,
+      startDate:        resolvedMode === "exam" && startDate ? new Date(startDate) : null,
       dueDate:          dueDate ? new Date(dueDate) : null,
       isPublished:      isPublished ?? false,
       allowedLanguages: allowedLanguages ?? [],
       lateDeadline:     lateDeadline ? new Date(lateDeadline) : null,
       lateDeduction:    lateDeduction ?? 0,
+      aiEnabled:        aiEnabled !== false, // default true; only false when explicitly passed
     },
     include: { problem: { select: { id: true, title: true, language: true } } },
   });
 
-  // Fire-and-forget tutorial generation for each tag when published
+  // ── Auto-enroll all reachable students when published ───────────────────
   if (isPublished) {
+    const { isAdmin } = req.auth!;
+    // Admins reach every student; teachers reach only their assigned students.
+    const studentWhere = isAdmin
+      ? { role: { is: { name: "student" } } }
+      : { role: { is: { name: "student" } }, assignedTeacher: { teacherId: userId } };
+
+    const students = await prisma.user.findMany({ where: studentWhere, select: { id: true } });
+
+    if (students.length > 0) {
+      await prisma.assignmentEnrollment.createMany({
+        data:           students.map((s) => ({ assignmentId: assignment.id, userId: s.id })),
+        skipDuplicates: true,
+      });
+    }
+
+    // Fire-and-forget tutorial generation for each tag
     const prob = await prisma.problem.findUnique({
       where:  { id: problemId },
       select: { tags: true, language: true, difficulty: true, description: true },
@@ -137,21 +163,29 @@ router.get("/:id", async (req: Request, res: Response) => {
 
 // ── PUT /api/assignments/:id ─────────────────────────────────────────────────
 router.put("/:id", async (req: Request, res: Response) => {
-  const { role } = req.auth!;
+  const { userId, role } = req.auth!;
   if (role !== "teacher") { res.status(403).json({ error: "Teachers only" }); return; }
 
   const id = parseId(req.params.id);
   if (!id) { res.status(400).json({ error: "Invalid ID" }); return; }
 
-  const { title, description, dueDate, isPublished, allowedLanguages, lateDeadline, lateDeduction, mode } = req.body as {
+  // Ownership check — a teacher may only edit their own assignments
+  const existing = await prisma.assignment.findUnique({ where: { id }, select: { createdById: true } });
+  if (!existing) { res.status(404).json({ error: "Assignment not found" }); return; }
+  if (existing.createdById !== userId) { res.status(403).json({ error: "Not your assignment" }); return; }
+
+  const { title, description, dueDate, startDate, examType, isPublished, allowedLanguages, lateDeadline, lateDeduction, mode, aiEnabled } = req.body as {
     title?:             string;
     description?:       string;
     dueDate?:           string | null;
+    startDate?:         string | null;
+    examType?:          string | null;
     isPublished?:       boolean;
     allowedLanguages?:  string[];
     lateDeadline?:      string | null;
     lateDeduction?:     number;
     mode?:              string;
+    aiEnabled?:         boolean;
   };
 
   const validModes = ["practice", "homework", "exam"];
@@ -162,16 +196,34 @@ router.put("/:id", async (req: Request, res: Response) => {
       ...(title            !== undefined ? { title: title.trim() }                                                : {}),
       ...(description      !== undefined ? { description }                                                        : {}),
       ...(dueDate          !== undefined ? { dueDate: dueDate ? new Date(dueDate) : null }                       : {}),
+      ...(startDate        !== undefined ? { startDate: startDate ? new Date(startDate) : null }                 : {}),
+      ...(examType         !== undefined ? { examType: examType ?? null }                                         : {}),
       ...(isPublished      !== undefined ? { isPublished }                                                        : {}),
       ...(allowedLanguages !== undefined ? { allowedLanguages }                                                   : {}),
       ...(lateDeadline     !== undefined ? { lateDeadline: lateDeadline ? new Date(lateDeadline) : null }        : {}),
       ...(lateDeduction    !== undefined ? { lateDeduction }                                                      : {}),
       ...(mode !== undefined && validModes.includes(mode) ? { mode }                                             : {}),
+      ...(aiEnabled        !== undefined ? { aiEnabled }                                                          : {}),
     },
   });
 
-  // Fire-and-forget tutorial generation when assignment is being published
+  // ── Auto-enroll when publishing (or re-publishing) ───────────────────────
   if (isPublished === true) {
+    const { isAdmin } = req.auth!;
+    const studentWhere = isAdmin
+      ? { role: { is: { name: "student" } } }
+      : { role: { is: { name: "student" } }, assignedTeacher: { teacherId: userId } };
+
+    const students = await prisma.user.findMany({ where: studentWhere, select: { id: true } });
+
+    if (students.length > 0) {
+      await prisma.assignmentEnrollment.createMany({
+        data:           students.map((s) => ({ assignmentId: id!, userId: s.id })),
+        skipDuplicates: true,   // idempotent — re-publishing never double-enrols
+      });
+    }
+
+    // Fire-and-forget tutorial generation
     const prob = await prisma.problem.findUnique({
       where:  { id: assignment.problemId },
       select: { tags: true, language: true, difficulty: true, description: true },
@@ -186,11 +238,16 @@ router.put("/:id", async (req: Request, res: Response) => {
 
 // ── DELETE /api/assignments/:id ──────────────────────────────────────────────
 router.delete("/:id", async (req: Request, res: Response) => {
-  const { role } = req.auth!;
+  const { userId, role } = req.auth!;
   if (role !== "teacher") { res.status(403).json({ error: "Teachers only" }); return; }
 
   const id = parseId(req.params.id);
   if (!id) { res.status(400).json({ error: "Invalid ID" }); return; }
+
+  // Ownership check
+  const existing = await prisma.assignment.findUnique({ where: { id }, select: { createdById: true } });
+  if (!existing) { res.status(404).json({ error: "Assignment not found" }); return; }
+  if (existing.createdById !== userId) { res.status(403).json({ error: "Not your assignment" }); return; }
 
   await prisma.assignment.delete({ where: { id } });
   res.json({ success: true });
@@ -204,13 +261,19 @@ router.post("/:id/enroll", async (req: Request, res: Response) => {
   const id = parseId(req.params.id);
   if (!id) { res.status(400).json({ error: "Invalid ID" }); return; }
 
+  const { userId: teacherId, isAdmin } = req.auth!;
   const { studentIds, all } = req.body as { studentIds?: number[]; all?: boolean };
 
   let userIds: number[] = [];
 
   if (all) {
+    // Admin sees all students; non-admin teachers see only their assigned students
+    const studentWhere = isAdmin
+      ? { role: { is: { name: "student" } } }
+      : { role: { is: { name: "student" } }, assignedTeacher: { teacherId } };
+
     const students = await prisma.user.findMany({
-      where: { role: { is: { name: "student" } } },
+      where:  studentWhere,
       select: { id: true },
     });
     userIds = students.map((s) => s.id);

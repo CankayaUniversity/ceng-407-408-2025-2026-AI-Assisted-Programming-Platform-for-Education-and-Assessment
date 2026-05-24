@@ -71,6 +71,25 @@ model User {
   createdGroups       StudentGroup[]          @relation("CreatedGroups")
   groupMemberships    StudentGroupMembership[]
   flashcards          Flashcard[]
+  examViolations      ExamViolation[]
+  // Teacher–student assignments
+  assignedStudents    TeacherStudent[]       @relation("TeacherStudents")
+  assignedTeacher     TeacherStudent?        @relation("StudentTeacher")
+}
+
+// ── TeacherStudent ────────────────────────────────────────────────────────────
+// Admin assigns each student to a teacher.  Non-admin teachers see only their
+// own students; the admin (isAdmin=true) sees all students.
+model TeacherStudent {
+  id         Int      @id @default(autoincrement())
+  teacherId  Int
+  studentId  Int      @unique   // each student belongs to exactly one teacher
+  assignedAt DateTime @default(now())
+
+  teacher    User @relation("TeacherStudents", fields: [teacherId], references: [id])
+  student    User @relation("StudentTeacher",  fields: [studentId], references: [id])
+
+  @@index([teacherId])
 }
 
 model Problem {
@@ -260,11 +279,14 @@ model Assignment {
   problemId        Int
   createdById      Int
   mode             String    @default("homework")   // practice | homework | exam
+  examType         String?                          // "scheduled" | "unscheduled" — only set when mode="exam"
+  startDate        DateTime?                        // exam start time (scheduled exams only)
   dueDate          DateTime?
   isPublished      Boolean   @default(false)
   allowedLanguages String[]  @default([])
   lateDeadline     DateTime?
   lateDeduction    Int       @default(0)
+  aiEnabled        Boolean   @default(true)   // when false, AI Mentor is blocked for this assignment
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -412,6 +434,25 @@ model StudentGroupMembership {
 
   @@unique([groupId, userId])
   @@index([userId])
+}
+
+// ── ExamViolation ─────────────────────────────────────────────────────────────
+// Server-side audit log for security violations during exam sessions.
+// The frontend logs each tab-switch / fullscreen-exit / window-blur event here.
+model ExamViolation {
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  assignmentId  Int?
+  problemId     Int?
+  type          String   // "tab_switch" | "fullscreen_exit" | "window_blur"
+  count         Int      @default(1)   // violation number in this session (1, 2, 3)
+  autoSubmitted Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, assignmentId])
+  @@index([createdAt])
 }
 
 // ── Tutorial ──────────────────────────────────────────────────────────────────

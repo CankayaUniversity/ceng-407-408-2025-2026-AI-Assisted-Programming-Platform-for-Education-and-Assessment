@@ -1,0 +1,37 @@
+{
+  "tag": "string-special-chars",
+  "language": "c",
+  "title": "C Special Characters",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "subCategory": "Strings",
+  "subCategoryOrder": 13,
+  "order": 2,
+  "sections": [
+    {
+      "heading": "Strings - Special Characters",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Because strings must be written within quotes, C will misunderstand this string, and generate an error:"
+        },
+        {
+          "type": "code",
+          "content": "  char txt[] = \"We are the so-called \"Vikings\" from the north.\";"
+        },
+        {
+          "type": "text",
+          "content": "The solution to avoid this problem, is to use the **backslash escape character**."
+        },
+        {
+          "type": "text",
+          "content": "The backslash (`\\`) escape character turns special characters into string characters:"
+        },
+        {
+          "type": "text",
+          "content": "The sequence `\\\"` inserts a double quote in a string: Example char txt[] = \"We are the so-called \\\"Vikings\\\" from the north.\"; Try it Yourself » The sequence `\\'` inserts a single quote in a string: Example char txt[] = \"It\\'s alright.\"; Try it Yourself » The sequence `\\\\` inserts a single backslash in a string: Example char txt[] = \"The character \\\\ is called backslash.\"; Try it Yourself » Other popular escape characters in C are:"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "tag": "memory-access",
+  "language": "c",
+  "title": "C Access Memory",
+  "category": "C Memory",
+  "categoryOrder": 6,
+  "subCategory": null,
+  "subCategoryOrder": 0,
+  "order": 3,
+  "sections": [
+    {
+      "heading": "Access Dynamic Memory",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Dynamic memory behaves like an array, with its data type specified by the type of the pointer."
+        },
+        {
+          "type": "text",
+          "content": "As with arrays, to access an element in dynamic memory, refer to its **index number**:"
+        },
+        {
+          "type": "code",
+          "content": "ptr[0] = 12;"
+        },
+        {
+          "type": "text",
+          "content": "You can also dereference the pointer to access the first element:"
+        },
+        {
+          "type": "code",
+          "content": "*ptr = 12;"
+        },
+        {
+          "type": "text",
+          "content": "Read from and write to dynamic memory:"
+        },
+        {
+          "type": "code",
+          "content": "  // Allocate memory\nint *ptr;\nptr = calloc(4, sizeof(*ptr));\n\n// \n  Write to the memory\n*ptr = 2;\nptr[1] = 4;\nptr[2] = 6;\n\n// Read \n  from the memory\nprintf(\"%d\\n\", *ptr);\nprintf(\"%d %d %d\", ptr[1], ptr[2], \n  ptr[3]);"
+        },
+        {
+          "type": "text",
+          "content": "**A note about data types**"
+        },
+        {
+          "type": "text",
+          "content": "Dynamic memory does not have its own data type, it is just a sequence of bytes. The data in the memory can be interpreted as a type based on the data type of the pointer."
+        },
+        {
+          "type": "code",
+          "content": "  int *ptr1 = malloc(4);\nchar *ptr2 = (char*) ptr1;\nptr1[0] = 1684234849;\n\n  printf(\"%d is %c %c %c %c\", *ptr1, ptr2[0], ptr2[1], ptr2[2], ptr2[3]);"
+        }
+      ]
+    }
+  ]
+}

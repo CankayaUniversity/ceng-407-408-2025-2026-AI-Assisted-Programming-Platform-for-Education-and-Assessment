@@ -4,22 +4,77 @@
   "title": "C While Loop",
   "category": "C Tutorial",
   "categoryOrder": 1,
-  "order": 14,
+  "subCategory": "While Loop",
+  "subCategoryOrder": 9,
+  "order": 1,
   "sections": [
     {
+      "heading": "Loops",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Loops can execute a block of code as long as a specified condition is `true`.\n\nLoops are handy because they save time, reduce errors, and they make code more readable."
+        }
+      ]
+    },
+    {
       "heading": "While Loop",
-      "body": "Loops\n\nLoops can execute a block of code as long as a specified condition is true.\nLoops are handy because they save time, reduce errors, and they make code more readable.\n\nWhile Loop\n\nThe while loop repeats a block of code as long as a specified condition is true:\n\nSyntax\n\nIn the example below, the code in the loop will run, over and over again, as long as\na variable (i) is less than 5:\n\nExample\n\nNote: Do not forget to increase the variable used in the condition\n(i++), otherwise\nthe loop will never end!\nDo you wonder why we use the letter i as a variable name? It's a counter variable and a common choice in simple loops because it's short, traditional, and stands for 'index' or 'iterator'.\n\nCountdown Example\n\nYou can also use a while loop to count down.\nThis example counts from 3 to 1, and then prints \"Happy New Year!!\" at the end:\n\nExample\n\nWhile Loop With False Condition\n\nIn the previous examples, the condition was true at the start,\nso the loop ran one or more times.\nBut if the condition is false at the beginning, the code inside the loop will never run:\n\nExample\n\nNote: A while loop may never run if the condition is false from the start.\n  In the next chapter, you will learn about the do while loop, which always runs the code at least once before checking the condition.",
-      "code": "while (condition) {\n\n      // code block to be executed\n\n }\n\n// ─────────────────────────────────────\n\nint i = 0;\n\nwhile (i < 5) {\n\n    printf(\"%d\\n\", i);\n\n  i++;\n}\n\n// ─────────────────────────────────────\n\nint countdown = 3;\n\n  while (countdown > 0) {\n\n    printf(\"%d\\n\", countdown);\n\n    countdown--;\n\n  }\n\n  printf(\"Happy New Year!!\\n\");\n\n// ─────────────────────────────────────\n\nint i = 10;\n\nwhile (i < 5) {\n  printf(\"This will never be printed\\n\");\n  i++;\n}"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "The `while` loop repeats a block of code as long as a specified condition is `true`:"
+        },
+        {
+          "type": "syntax",
+          "content": "while (condition) {\n  // code block to be executed\n}"
+        },
+        {
+          "type": "text",
+          "content": "In the example below, the code in the loop will run, over and over again, as long as a variable (`i`) is less than `5`:"
+        },
+        {
+          "type": "code",
+          "content": "int i = 0;\n\nwhile (i < 5) {\n  printf(\"%d\\n\", i);\n  i++;\n}"
+        },
+        {
+          "type": "note",
+          "content": "Do not forget to increase the variable used in the condition (`i++`), otherwise the loop will never end!"
+        },
+        {
+          "type": "text",
+          "content": "Do you wonder why we use the letter `i` as a variable name? It's a *counter variable* and a common choice in simple loops because it's short, traditional, and stands for *\"index\"* or *\"iterator\"*."
+        }
+      ]
     },
     {
-      "heading": "Do/While Loop",
-      "body": "The Do/While Loop\n\nThe do/while loop is a variant of the while loop. This loop will\nexecute the code block once, before checking if the condition is true, then it will\nrepeat the loop as long as the condition is true.\n\nSyntax\n\nThe example below uses a do/while loop. The loop will always be\nexecuted at least once, even if the condition is false, because the code block\nis executed before the condition is tested:\n\nExample\n\nDo not forget to increase the variable used in the condition, otherwise\nthe loop will never end!\n\nCondition is False from the Start\n\nIn the example above, the condition i < 5 was true at the beginning,\n  so the loop executed multiple times. But what if the condition is false right from the start?\nIn the example below, the variable i starts at 10,\n  so the condition i < 5 is false immediately\n  - yet the do/while loop still runs once:\n\nExample\n\nSummary\n\nThe do/while loop always runs at least once, even if the condition is already false.\n  This is different from a regular while loop, which would skip the loop entirely if the condition is false at the start.\nThis behavior makes do/while useful when you want to ensure something happens at least once,\n  like showing a message or asking for user input.\n\nPractical Example: User Input\n\nThis example keeps asking the user to enter a positive number.\n  The loop stops when the user enters 0 or a negative number:\n\nExample\n\nNote: You will learn more about the scanf() function and user input in a later chapter.",
-      "code": "do {\n\n      // code block to be executed\n\n}\n\nwhile (condition);\n\n// ─────────────────────────────────────\n\nint i = 0;\n\ndo {\n\n    printf(\"%d\\n\", i);\n\n  i++;\n}\nwhile (i < 5);\n\n// ─────────────────────────────────────\n\nint i = 10;\n\n  do {\n\n    printf(\"i is %d\\n\", i);\n\n    i++;\n\n  } while (i < 5);\n\n// ─────────────────────────────────────\n\nint number;\n\n  do {\n\n    printf(\"Enter a positive number: \");\n\n    scanf(\"%d\", &number);\n\n  } while (number > 0);"
+      "heading": "Countdown Example",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "You can also use a `while` loop to count down. This example counts from `3` to `1`, and then prints *\"Happy New Year!!\"* at the end:"
+        },
+        {
+          "type": "code",
+          "content": "int countdown = 3;\n\nwhile (countdown > 0) {\n  printf(\"%d\\n\", countdown);\n  countdown--;\n}\nprintf(\"Happy New Year!!\\n\");"
+        }
+      ]
     },
     {
-      "heading": "While Loop Examples",
-      "body": "Real-Life Examples\n\nTo demonstrate a practical example of the while loop, we have\ncreated a simple \"countdown\" program:\n\nExample\n\nIn this example, we create a program that only print even numbers between 0 and 10 (inclusive):\n\nExample\n\nIn this example we use a while loop to reverse some numbers:\n\nExample\n\nTo demonstrate a practical example of the while loop combined with an\nif else\nstatement, let's say we play a game of Yatzy:\n\nExample\n\nIf the loop passes the values ranging from 1 to 5, it prints \"No Yatzy\". Whenever it passes the value 6, it prints \"Yatzy!\".",
-      "code": "int countdown = 3;\n\nwhile (countdown > 0) {\n  printf(\"%d\\n\",\n  countdown);\n  countdown--;\n}\n\nprintf(\"Happy New Year!!\\n\");\n\n// ─────────────────────────────────────\n\nint i = 0;\n\nwhile (i <= 10) {\n  printf(\"%d\\n\", i);\n  i += 2;\n\n  }\n\n// ─────────────────────────────────────\n\n// A variable with some specific numbers\nint numbers = 12345;\n\n// A\n  variable to store the reversed number\nint revNumbers = 0;\n\n// Reverse\n  and reorder the numbers\nwhile (numbers) {\n  // Get the last number\n  of 'numbers' and add it to 'revNumber'\n  revNumbers = revNumbers * 10\n  + numbers % 10;\n  // Remove the last number of 'numbers'\n\n  numbers /= 10;\n}\n\n// ─────────────────────────────────────\n\nint dice = 1;\n\nwhile (dice <= 6) {\n  if (dice < 6) {\n\n  printf(\"No Yatzy\\n\");\n  } else {\n\n  printf(\"Yatzy!\\n\");\n  }\n  dice = dice + 1;\n}"
+      "heading": "While Loop With False Condition",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "In the previous examples, the condition was **true** at the start, so the loop ran one or more times. But if the condition is **false** at the beginning, the code inside the loop will never run:"
+        },
+        {
+          "type": "code",
+          "content": "int i = 10;\n\nwhile (i < 5) {\n  printf(\"This will never be printed\\n\");\n  i++;\n}"
+        },
+        {
+          "type": "goodtoknow",
+          "content": "A `while` loop may never run if the condition is `false` from the start. In the next chapter, you will learn about the `do while` loop, which always runs the code at least once before checking the condition."
+        }
+      ]
     }
   ]
 }

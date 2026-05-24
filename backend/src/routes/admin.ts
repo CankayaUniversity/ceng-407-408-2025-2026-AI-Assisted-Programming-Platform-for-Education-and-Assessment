@@ -172,4 +172,126 @@ router.post("/reject/:userId", requireAdmin, async (req, res) => {
   res.json({ success: true, user: { id: updated.id, email: updated.email, status: updated.status } });
 });
 
+// ── Teacher-Student assignment endpoints (admin only) ─────────────────────────
+
+/**
+ * GET /api/admin/teachers
+ * List all active teacher accounts (for admin assignment UI).
+ */
+router.get("/teachers", requireAdmin, async (req, res) => {
+  const teachers = await prisma.user.findMany({
+    where:   { role: { name: "teacher" }, status: "active" },
+    select:  { id: true, name: true, email: true },
+    orderBy: { name: "asc" },
+  });
+  res.json({ data: teachers });
+});
+
+/**
+ * POST /api/admin/teacher-students
+ * Assign (or re-assign) a student to a teacher.
+ * Body: { teacherId: number, studentId: number }
+ */
+router.post("/teacher-students", requireAdmin, async (req, res) => {
+  const { teacherId, studentId } = req.body as { teacherId?: number; studentId?: number };
+
+  if (!teacherId || !studentId) {
+    res.status(400).json({ error: "teacherId and studentId are required" });
+    return;
+  }
+
+  // Verify teacher exists and is actually a teacher
+  const teacher = await prisma.user.findFirst({
+    where: { id: teacherId, role: { name: "teacher" } },
+  });
+  if (!teacher) {
+    res.status(404).json({ error: "Teacher not found" });
+    return;
+  }
+
+  // Verify student exists and is actually a student
+  const student = await prisma.user.findFirst({
+    where: { id: studentId, role: { name: "student" } },
+  });
+  if (!student) {
+    res.status(404).json({ error: "Student not found" });
+    return;
+  }
+
+  // Upsert: if student already has an assignment, update it; otherwise create
+  const assignment = await prisma.teacherStudent.upsert({
+    where:  { studentId },
+    update: { teacherId },
+    create: { teacherId, studentId },
+    include: { teacher: { select: { id: true, name: true, email: true } } },
+  });
+
+  res.json({ success: true, data: assignment });
+});
+
+/**
+ * DELETE /api/admin/teacher-students/:studentId
+ * Remove the teacher assignment for a student (student becomes unassigned).
+ */
+router.delete("/teacher-students/:studentId", requireAdmin, async (req, res) => {
+  const studentId = parseInt(req.params.studentId, 10);
+  if (isNaN(studentId)) {
+    res.status(400).json({ error: "Invalid studentId" });
+    return;
+  }
+
+  await prisma.teacherStudent.deleteMany({ where: { studentId } });
+  res.json({ success: true });
+});
+
+/**
+ * POST /api/admin/teacher-students/bulk
+ * Assign multiple students to a teacher in one request.
+ * Body: { teacherId: number, studentIds: number[] }
+ * Students already assigned to another teacher are re-assigned (upsert).
+ */
+router.post("/teacher-students/bulk", requireAdmin, async (req, res) => {
+  const { teacherId, studentIds } = req.body as { teacherId?: unknown; studentIds?: unknown };
+
+  if (!teacherId || !Array.isArray(studentIds) || studentIds.length === 0) {
+    res.status(400).json({ error: "teacherId and a non-empty studentIds[] are required" });
+    return;
+  }
+
+  const tid = Number(teacherId);
+  if (!Number.isInteger(tid) || tid <= 0) {
+    res.status(400).json({ error: "teacherId must be a positive integer" });
+    return;
+  }
+
+  const teacher = await prisma.user.findFirst({
+    where: { id: tid, role: { name: "teacher" } },
+  });
+  if (!teacher) {
+    res.status(404).json({ error: "Teacher not found" });
+    return;
+  }
+
+  const ids = (studentIds as unknown[])
+    .map(Number)
+    .filter((n) => Number.isInteger(n) && n > 0);
+
+  if (ids.length === 0) {
+    res.status(400).json({ error: "No valid student IDs provided" });
+    return;
+  }
+
+  await prisma.$transaction(
+    ids.map((sid) =>
+      prisma.teacherStudent.upsert({
+        where:  { studentId: sid },
+        update: { teacherId: tid },
+        create: { teacherId: tid, studentId: sid },
+      }),
+    ),
+  );
+
+  res.json({ success: true, assigned: ids.length });
+});
+
 export { router as adminRouter };

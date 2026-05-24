@@ -1,0 +1,92 @@
+{
+  "tag": "conditions-logical",
+  "language": "c",
+  "title": "C Conditions & Logical",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "subCategory": "If...Else",
+  "subCategoryOrder": 7,
+  "order": 6,
+  "sections": [
+    {
+      "heading": "Logical Operators in Conditions",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "You can combine or reverse conditions using **logical operators**. These work together with `if`, `else`, and `else if` to build more complex decisions."
+        },
+        {
+          "type": "list",
+          "items": [
+            "`&&` (AND) — all conditions must be true",
+            "`||` (OR) — at least one condition must be true",
+            "`!` (NOT) — reverses a condition (`true` → `false`, `false` → `true`)"
+          ]
+        }
+      ]
+    },
+    {
+      "heading": "AND (&&)",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Use AND (`&&`) when **both** conditions must be true:"
+        },
+        {
+          "type": "code",
+          "content": "int a = 200;\nint b = 33;\nint c = 500;\n\nif (a > b && c > a) {\n  printf(\"Both conditions are true\\n\");\n}"
+        }
+      ]
+    },
+    {
+      "heading": "OR (||)",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Use OR (`||`) when **at least one** of the conditions can be true:"
+        },
+        {
+          "type": "code",
+          "content": "int a = 200;\nint b = 33;\nint c = 500;\n\nif (a > b || a > c) {\n  printf(\"At least one condition is true\\n\");\n}"
+        }
+      ]
+    },
+    {
+      "heading": "NOT (!)",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "The NOT operator (`!`) **reverses** a condition:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "If a condition is `true`, `!` makes it `false`.",
+            "If a condition is `false`, `!` makes it `true`."
+          ]
+        },
+        {
+          "type": "text",
+          "content": "This is useful when you want to check that something *is not* the case:"
+        },
+        {
+          "type": "code",
+          "content": "int a = 33;\nint b = 200;\n\nif (!(a > b)) {\n  printf(\"a is NOT greater than b\\n\");\n}"
+        }
+      ]
+    },
+    {
+      "heading": "Real-Life Example",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "In real programs, logical operators are often used for **access control**. For example, to get access to a system, there are specific requirements:\n\nYou must be logged in, and then you either need to be an admin, or have a high security clearance (level 1 or 2):"
+        },
+        {
+          "type": "code",
+          "content": "bool isLoggedIn = true;\nbool isAdmin = false;\nint securityLevel = 3; // 1 = highest\n\nif (isLoggedIn && (isAdmin || securityLevel <= 2)) {\n  printf(\"Access granted\\n\");\n} else {\n  printf(\"Access denied\\n\");\n}\n\n// Try changing securityLevel and isAdmin to test different outcomes:\n// securityLevel 1 = Access granted\n// securityLevel 2 = Access granted\n// securityLevel 3 = Access denied\n// securityLevel 4 = Access denied\n// If isAdmin = true, access is granted."
+        }
+      ]
+    }
+  ]
+}

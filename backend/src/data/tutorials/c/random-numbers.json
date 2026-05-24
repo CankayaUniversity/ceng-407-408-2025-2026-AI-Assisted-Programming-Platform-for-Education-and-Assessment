@@ -4,12 +4,90 @@
   "title": "C Random Numbers",
   "category": "C More",
   "categoryOrder": 8,
+  "subCategory": null,
+  "subCategoryOrder": 0,
   "order": 2,
   "sections": [
     {
       "heading": "Random Numbers",
-      "body": "Random Numbers\n\nIn C, you can make random numbers with the rand() function, which is found in the <stdlib.h> library.\nBy default, rand() gives the same sequence of numbers each time you run the program.\nTo get different results on every run, you can also use srand() to set a \"starting point\" (called a seed).\nSince you just learned about date and time, you can now use the current time as the seed (because it is always changing).\nFor this, you include <time.h> in your program.\n\nBasic Random Number\n\nThe function rand() returns a random integer.\n\nExample\n\nNote: If you run this program several times, you will see the same numbers each time. This is because we have not set a seed yet.\n\nSeeding the Random Generator\n\nTo get different numbers every time you run the program, you must give rand() a starting point (seed).\nYou do this with srand(). A common trick is to use the\ncurrent time as the seed, because the time is always changing:\n\nExample\n\nTip: Call srand() only once, at the start of main. Do not call it again inside a loop.\n\nRandom Number in a Range\n\nOften you want numbers in a smaller range, like 0 to 9.\nYou can do this by using the modulo operator %:\n\nExample\n\nReal-Life Example: Rolling Dice\n\nA common real-life use of random numbers is rolling a six-sided dice.\nWe can simulate this by using rand() % 6 to get numbers from 0 to 5, and then add 1 to make the range 1 to 6:\n\nExample\n\nEach time you run the program, you will get two random numbers between 1 and 6, just like rolling two dice in real life.",
-      "code": "#include <stdio.h>\n#include <stdlib.h>\n\nint main() {\n  int r = rand();\n  printf(\"%d\\n\", r);\n  return 0;\n}\n\n// ─────────────────────────────────────\n\n#include <stdio.h>\n#include <stdlib.h>\n#include <time.h>\n\nint main() {\n  srand(time(NULL));  // seed with current time\n\n  printf(\"%d\\n\", rand());\n  printf(\"%d\\n\", rand());\n  printf(\"%d\\n\", rand());\n  return 0;\n}\n\n// ─────────────────────────────────────\n\n#include <stdio.h>\n#include <stdlib.h>\n#include <time.h>\n\nint main() {\n  srand(time(NULL));\n\n  int x = rand() % 10;  // 0..9\n  printf(\"%d\\n\", x);\n  return 0;\n}\n\n// ─────────────────────────────────────\n\n#include <stdio.h>\n#include <stdlib.h>\n#include <time.h>\n\nint main() {\n  srand(time(NULL));\n\n  int dice1 = (rand() % 6) + 1;\n  int dice2 = (rand() % 6) + 1;\n  printf(\"You rolled %d and %d (total = %d)\\n\", dice1, dice2, dice1 + dice2);\n\n  return 0;\n}"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "In C, you can make random numbers with the `rand()` function, which is found in the `<stdlib.h>` library."
+        },
+        {
+          "type": "text",
+          "content": "By default, `rand()` gives the same sequence of numbers each time you run the program. To get different results on every run, you can also use `srand()` to set a \"starting point\" (called a *seed*). Since you just learned about date and time, you can now use the *current time* as the seed (because it is always changing). For this, you include `<time.h>` in your program."
+        }
+      ]
+    },
+    {
+      "heading": "Basic Random Number",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "The function `rand()` returns a random integer."
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        },
+        {
+          "type": "text",
+          "content": "**Note:** If you run this program several times, you will see the *same* numbers each time. This is because we have not set a seed yet."
+        }
+      ]
+    },
+    {
+      "heading": "Seeding the Random Generator",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "To get different numbers every time you run the program, you must give `rand()` a *starting point* (seed)."
+        },
+        {
+          "type": "text",
+          "content": "You do this with `srand()`. A common trick is to use the **current time** as the seed, because the time is always changing:"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        },
+        {
+          "type": "text",
+          "content": "**Tip:** Call `srand()` only once, at the start of `main`. Do not call it again inside a loop."
+        }
+      ]
+    },
+    {
+      "heading": "Random Number in a Range",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Often you want numbers in a smaller range, like 0 to 9. You can do this by using the modulo operator `%`:"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        }
+      ]
+    },
+    {
+      "heading": "Real-Life Example: Rolling Dice",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "A common real-life use of random numbers is rolling a six-sided dice. We can simulate this by using `rand() % 6` to get numbers from 0 to 5, and then add 1 to make the range 1 to 6:"
+        },
+        {
+          "type": "text",
+          "content": "Try it Yourself »"
+        },
+        {
+          "type": "text",
+          "content": "Each time you run the program, you will get two random numbers between 1 and 6, just like rolling two dice in real life."
+        }
+      ]
     }
   ]
 }

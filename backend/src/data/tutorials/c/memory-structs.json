@@ -1,0 +1,93 @@
+{
+  "tag": "memory-structs",
+  "language": "c",
+  "title": "C Structs and Memory",
+  "category": "C Memory",
+  "categoryOrder": 6,
+  "subCategory": null,
+  "subCategoryOrder": 0,
+  "order": 6,
+  "sections": [
+    {
+      "heading": "Structures and Dynamic Memory",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "You can also use **dynamic memory** with structures."
+        },
+        {
+          "type": "text",
+          "content": "This is useful when you don't know how many structs you'll need in advance, or want to save memory by only allocating what's necessary (e.g., in a car dealership program where the number of cars is not fixed)."
+        }
+      ]
+    },
+    {
+      "heading": "Allocating Memory for a Struct",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "You can use the `malloc()` function to allocate memory for a struct pointer:"
+        },
+        {
+          "type": "text",
+          "content": "**Try it Yourself »**"
+        },
+        {
+          "type": "text",
+          "content": "**Example Explained**"
+        },
+        {
+          "type": "list",
+          "items": [
+            "`malloc()` allocates memory for one struct",
+            "`strcpy()` is used to copy a string into the `brand` field",
+            "We use `->` to access members through the pointer",
+            "`free()` is used at the end to release the memory"
+          ]
+        },
+        {
+          "type": "text",
+          "content": "**Note:** `malloc()` allocates uninitialized memory. The content will be undefined until you assign values. If you want memory initialized to zero, you can use `calloc()`."
+        }
+      ]
+    },
+    {
+      "heading": "Using Arrays of Structs",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "You can also allocate memory for multiple structs at once, like an array:"
+        },
+        {
+          "type": "text",
+          "content": "**Example: Allocate memory for 3 cars**"
+        },
+        {
+          "type": "text",
+          "content": "**Try it Yourself »**"
+        }
+      ]
+    },
+    {
+      "heading": "Growing Arrays Later with realloc()",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "If you need more elements later, you can resize your dynamic array with `realloc()`. This may move the block to a new location and returns a new pointer. Always store the result in a temporary pointer first to avoid losing the original memory if reallocation fails."
+        },
+        {
+          "type": "text",
+          "content": "**Example: Expand an array of structs**"
+        },
+        {
+          "type": "text",
+          "content": "**Try it Yourself »**"
+        },
+        {
+          "type": "text",
+          "content": "**Note:** New space added by `realloc()` is *uninitialized*. Be sure to initialize newly added elements (e.g. `strcpy(cars[2].brand, \"Kia\"); cars[2].year = 2022;`) before using them."
+        }
+      ]
+    }
+  ]
+}

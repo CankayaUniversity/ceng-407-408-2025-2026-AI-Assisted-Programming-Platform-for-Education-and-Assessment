@@ -18,7 +18,10 @@ router.use(requireAuth);
 // __dirname is available in CommonJS without import.meta
 const DATA_DIR = path.join(__dirname, "..", "data", "tutorials");
 
-// GET /api/tutorials/index/:language — list all available topics grouped by category
+// GET /api/tutorials/index/:language — list all available topics grouped by
+// category → sub-category → topic. Sub-category is null for topics that sit
+// directly under a main category (e.g. "C Files" has 3 topics with no
+// further grouping). Index responses mirror the manifest structure.
 router.get("/index/:language", (req: Request, res: Response) => {
   const { language } = req.params;
   const langDir = path.join(DATA_DIR, language.toLowerCase());
@@ -29,35 +32,82 @@ router.get("/index/:language", (req: Request, res: Response) => {
   }
 
   try {
-    const files = fs.readdirSync(langDir).filter((f) => f.endsWith(".json") && f !== ".gitkeep");
+    const files = fs.readdirSync(langDir)
+      .filter((f) => f.endsWith(".json") && f !== ".gitkeep" && !f.startsWith("_"));
 
-    // Build flat list with category info
-    const topics = files.map((f) => {
+    // Build flat list with full categorisation info from each JSON file.
+    type FlatTopic = {
+      tag:              string;
+      title:            string;
+      order:            number;
+      category:         string;
+      categoryOrder:    number;
+      subCategory:      string | null;
+      subCategoryOrder: number;
+    };
+
+    const topics: FlatTopic[] = files.map((f) => {
       const raw     = fs.readFileSync(path.join(langDir, f), "utf-8");
       const content = JSON.parse(raw);
       return {
-        tag:           content.tag,
-        title:         content.title,
-        order:         content.order         ?? 999,
-        category:      content.category      ?? "General",
-        categoryOrder: content.categoryOrder ?? 999,
+        tag:              content.tag,
+        title:            content.title,
+        order:            content.order            ?? 999,
+        category:         content.category         ?? "General",
+        categoryOrder:    content.categoryOrder    ?? 999,
+        subCategory:      content.subCategory      ?? null,
+        subCategoryOrder: content.subCategoryOrder ?? 0,
       };
     });
 
-    // Group by category, sorted by categoryOrder then order within category
-    const grouped: Record<string, { category: string; categoryOrder: number; topics: typeof topics }> = {};
+    // Group by category → sub-category → topics.
+    // `subCategory: null` means "directly under the main category".
+    type SubGroup = {
+      subCategory:      string | null;
+      subCategoryOrder: number;
+      topics:           FlatTopic[];
+    };
+    type CatGroup = {
+      category:         string;
+      categoryOrder:    number;
+      subCategories:    SubGroup[];
+    };
+    const byCategory: Record<string, CatGroup> = {};
+
     for (const t of topics) {
-      if (!grouped[t.category]) {
-        grouped[t.category] = { category: t.category, categoryOrder: t.categoryOrder, topics: [] };
+      if (!byCategory[t.category]) {
+        byCategory[t.category] = {
+          category:      t.category,
+          categoryOrder: t.categoryOrder,
+          subCategories: [],
+        };
       }
-      grouped[t.category].topics.push(t);
+      const cat = byCategory[t.category];
+      const subKey = t.subCategory ?? "__none__";
+      let sub = cat.subCategories.find((s) => (s.subCategory ?? "__none__") === subKey);
+      if (!sub) {
+        sub = {
+          subCategory:      t.subCategory,
+          subCategoryOrder: t.subCategoryOrder,
+          topics:           [],
+        };
+        cat.subCategories.push(sub);
+      }
+      sub.topics.push(t);
     }
 
-    const result = Object.values(grouped)
+    // Sort: categories by categoryOrder, sub-categories by subCategoryOrder,
+    // topics within each sub-category by order.
+    const result = Object.values(byCategory)
       .sort((a, b) => a.categoryOrder - b.categoryOrder)
-      .map((g) => ({
-        ...g,
-        topics: g.topics.sort((a, b) => a.order - b.order),
+      .map((cat) => ({
+        ...cat,
+        subCategories: cat.subCategories
+          .sort((a, b) => a.subCategoryOrder - b.subCategoryOrder)
+          .map((sub) => ({
+            ...sub,
+            topics: sub.topics.sort((a, b) => a.order - b.order),
+          })),
       }));
 
     res.json({ success: true, data: result });

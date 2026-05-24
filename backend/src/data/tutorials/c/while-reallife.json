@@ -1,0 +1,53 @@
+{
+  "tag": "while-reallife",
+  "language": "c",
+  "title": "C While Loop Real-Life",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "subCategory": "While Loop",
+  "subCategoryOrder": 9,
+  "order": 3,
+  "sections": [
+    {
+      "heading": "Real-Life Examples",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "To demonstrate a practical example of the **`while` loop**, we have created a simple *\"countdown\"* program:"
+        },
+        {
+          "type": "code",
+          "content": "int countdown = 3;\n\nwhile (countdown > 0) {\n  printf(\"%d\\n\", countdown);\n  countdown--;\n}\n\nprintf(\"Happy New Year!!\\n\");"
+        },
+        {
+          "type": "text",
+          "content": "In this example, we create a program that only prints **even numbers** between `0` and `10` (inclusive):"
+        },
+        {
+          "type": "code",
+          "content": "int i = 0;\n\nwhile (i <= 10) {\n  printf(\"%d\\n\", i);\n  i += 2;\n}"
+        },
+        {
+          "type": "text",
+          "content": "In this example we use a `while` loop to **reverse** some numbers:"
+        },
+        {
+          "type": "code",
+          "content": "int numbers = 12345;\nint revNumbers = 0;\n\nwhile (numbers) {\n  revNumbers = revNumbers * 10 + numbers % 10;\n  numbers /= 10;\n}"
+        },
+        {
+          "type": "text",
+          "content": "To demonstrate a practical example of the `while` loop combined with an **`if else` statement**, let's say we play a game of Yatzy:"
+        },
+        {
+          "type": "code",
+          "content": "int dice = 1;\n\nwhile (dice <= 6) {\n  if (dice < 6) {\n    printf(\"No Yatzy\\n\");\n  } else {\n    printf(\"Yatzy!\\n\");\n  }\n  dice = dice + 1;\n}"
+        },
+        {
+          "type": "text",
+          "content": "If the loop passes the values ranging from `1` to `5`, it prints *\"No Yatzy\"*. Whenever it passes the value `6`, it prints *\"Yatzy!\"*."
+        }
+      ]
+    }
+  ]
+}

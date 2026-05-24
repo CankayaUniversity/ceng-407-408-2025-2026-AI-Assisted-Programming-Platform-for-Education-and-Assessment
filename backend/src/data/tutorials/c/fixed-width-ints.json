@@ -1,0 +1,80 @@
+{
+  "tag": "fixed-width-ints",
+  "language": "c",
+  "title": "C Fixed-Width Integers",
+  "category": "C More",
+  "categoryOrder": 8,
+  "subCategory": null,
+  "subCategoryOrder": 0,
+  "order": 7,
+  "sections": [
+    {
+      "heading": "Fixed-Width Integers",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "In C, the size of `int`, `short`, and `long` types can vary depending on your computer and system. For example, an `int` might take up 2 bytes on one system, and 4 bytes on another."
+        },
+        {
+          "type": "text",
+          "content": "To make programs behave the same everywhere, C provides **fixed-width integer types** in the `<stdint.h>` header. These types always have the same size (number of bits), no matter which computer you are on."
+        },
+        {
+          "type": "text",
+          "content": "The most common fixed-width types are:"
+        },
+        {
+          "type": "text",
+          "content": "The letter `u` stands for **unsigned**, which means the type can only store **non-negative values** (0 and up). This doubles the maximum positive value compared to the signed version, but you lose the ability to store negative numbers."
+        }
+      ]
+    },
+    {
+      "heading": "Using Fixed-Width Integers",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "**Try it Yourself »**"
+        }
+      ]
+    },
+    {
+      "heading": "When to Use Fixed-Width Integers?",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "For most everyday programs, you don't need these types - a normal `int` is usually fine."
+        },
+        {
+          "type": "text",
+          "content": "But fixed-width integers are **essential** when:"
+        },
+        {
+          "type": "list",
+          "items": [
+            "You are writing **embedded systems** (programs for small devices, like microcontrollers).",
+            "You are working with **file formats** where exact sizes matter.",
+            "You are sending data across **networks** and need consistent results on different machines."
+          ]
+        }
+      ]
+    },
+    {
+      "heading": "Real Life Example",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "Imagine you are building a program that shows the battery level of a device. Since the battery percentage will always be between 0 and 100, you don't need a large type like `int`. Instead, you can use `uint8_t`, which is exactly 1 byte (8 bits) and can store values from 0 to 255:"
+        },
+        {
+          "type": "text",
+          "content": "**Try it Yourself »**"
+        },
+        {
+          "type": "text",
+          "content": "Here we save memory by using a `uint8_t`, which is perfect for storing values in a small, well-defined range like a battery percentage."
+        }
+      ]
+    }
+  ]
+}

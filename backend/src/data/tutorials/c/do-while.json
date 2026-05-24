@@ -1,0 +1,71 @@
+{
+  "tag": "do-while",
+  "language": "c",
+  "title": "C Do/While Loop",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "subCategory": "While Loop",
+  "subCategoryOrder": 9,
+  "order": 2,
+  "sections": [
+    {
+      "heading": "The Do/While Loop",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "The `do/while` loop is a variant of the `while` loop. This loop will execute the code block *once*, before checking if the condition is true. Then it will repeat the loop as long as the condition is true."
+        },
+        {
+          "type": "syntax",
+          "content": "do {\n  // code block to be executed\n}\nwhile (condition);"
+        },
+        {
+          "type": "text",
+          "content": "The example below uses a `do/while` loop. The loop will always be executed at least once, even if the condition is false, because the code block is executed before the condition is tested:"
+        },
+        {
+          "type": "code",
+          "content": "int i = 0;\n\ndo {\n  printf(\"%d\\n\", i);\n  i++;\n}\nwhile (i < 5);"
+        },
+        {
+          "type": "note",
+          "content": "Do not forget to increase the variable used in the condition, otherwise the loop will never end!"
+        }
+      ]
+    },
+    {
+      "heading": "Condition is False from the Start",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "If the condition is **false** right from the start, the loop still runs **once** — because the body is executed *before* the condition is checked:"
+        },
+        {
+          "type": "code",
+          "content": "int i = 10;\n\ndo {\n  printf(\"i is %d\\n\", i);\n  i++;\n} while (i < 5);"
+        },
+        {
+          "type": "goodtoknow",
+          "content": "The `do/while` loop always runs at least once, even if the condition is already false. This makes `do/while` useful when you want to ensure something happens at least once."
+        }
+      ]
+    },
+    {
+      "heading": "Practical Example: User Input",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "The `do/while` loop is often used when reading user input — you want to ask at least once, then keep asking until the user gives valid input:"
+        },
+        {
+          "type": "code",
+          "content": "int number;\n\ndo {\n  printf(\"Enter a positive number: \");\n  scanf(\"%d\", &number);\n} while (number > 0);"
+        },
+        {
+          "type": "goodtoknow",
+          "content": "You will learn more about the `scanf()` function and user input in a later chapter."
+        }
+      ]
+    }
+  ]
+}

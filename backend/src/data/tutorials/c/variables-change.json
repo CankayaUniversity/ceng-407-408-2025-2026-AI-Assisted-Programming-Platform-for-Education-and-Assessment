@@ -1,0 +1,78 @@
+{
+  "tag": "variables-change",
+  "language": "c",
+  "title": "C Change Variable Values",
+  "category": "C Tutorial",
+  "categoryOrder": 1,
+  "subCategory": "Variables",
+  "subCategoryOrder": 3,
+  "order": 3,
+  "sections": [
+    {
+      "heading": "Change Variable Values",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "If you assign a new value to an existing variable, the new value will **replace** the old one:"
+        },
+        {
+          "type": "code",
+          "content": "  int myNum = 15;  // myNum is 15\n\n  myNum = 10;  // Now myNum is 10"
+        },
+        {
+          "type": "text",
+          "content": "**Note:** This is normal and expected. Variables are meant to change while a program runs."
+        },
+        {
+          "type": "text",
+          "content": "You can also assign the value of one variable to another:"
+        },
+        {
+          "type": "code",
+          "content": "  int myNum = 15;\n\n  int myOtherNum = 23;\n\n  // Assign the value of myOtherNum (23) to myNum\n\n  myNum = myOtherNum;\n\n  // myNum is now 23 (was 15)\n\n  printf(\"%d\", myNum);"
+        },
+        {
+          "type": "text",
+          "content": "You can even copy values into variables that were declared earlier without a value:"
+        },
+        {
+          "type": "code",
+          "content": "  // Create a variable and assign a value\n\n  int myNum = 15;\n\n  // Declare a variable without assigning a value\n\n  int myOtherNum;\n\n  // Copy the value from myNum\n\n  myOtherNum = myNum;\n\n  // myOtherNum is now 15\n\n  printf(\"%d\", myOtherNum);"
+        }
+      ]
+    },
+    {
+      "heading": "Add Variables Together",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "You can use mathematical operators to work with variables."
+        },
+        {
+          "type": "text",
+          "content": "For example, to add one variable to another, use the `+` operator:"
+        },
+        {
+          "type": "code",
+          "content": "  int x = 5;\n\n  int y = 6;\n\n  int sum = x + y;\n\n  printf(\"%d\", sum);"
+        },
+        {
+          "type": "text",
+          "content": "You can also update a variable using its current value:"
+        },
+        {
+          "type": "code",
+          "content": "  int x = 5;\n\n  x = x + 1;\n\n  printf(\"%d\", x);"
+        },
+        {
+          "type": "text",
+          "content": "**Tip:** Writing `x = x + 1` means \"take the current value of x and add 1 to it\"."
+        },
+        {
+          "type": "text",
+          "content": "**Note:** You will learn much more about operators in a later chapter."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,105 @@
+{
+  "tag": "memory-reallocate",
+  "language": "c",
+  "title": "C Reallocate Memory",
+  "category": "C Memory",
+  "categoryOrder": 6,
+  "subCategory": null,
+  "subCategoryOrder": 0,
+  "order": 4,
+  "sections": [
+    {
+      "heading": "Reallocate Memory",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "If the amount of memory you reserved is not enough, you can *reallocate *it to make it larger."
+        },
+        {
+          "type": "text",
+          "content": "Reallocating reserves a different (usually larger) amount of memory while keeping the data that was stored in it."
+        },
+        {
+          "type": "text",
+          "content": "You can change the size of allocated memory with the `realloc()` function."
+        },
+        {
+          "type": "text",
+          "content": "The `realloc()` function takes two parameters:"
+        },
+        {
+          "type": "code",
+          "content": "int *ptr2 = realloc(ptr1, size);"
+        },
+        {
+          "type": "list",
+          "items": [
+            "The first parameter is a pointer to the memory that is being resized.",
+            "The second parameter specifies the new size of allocated memory, measured in bytes."
+          ]
+        },
+        {
+          "type": "text",
+          "content": "The `realloc()` function tries to resize the memory at *ptr1* and return the same memory address. If it cannot resize the memory at the current address then it will allocate memory at a different address and return the new address instead."
+        },
+        {
+          "type": "text",
+          "content": "**Note:** When `realloc()` returns a different memory address, the memory at the original address is no longer reserved and it is not safe to use. When the reallocation is done it is good to assign the new pointer to the previous variable so that the old pointer cannot be used accidentally."
+        },
+        {
+          "type": "text",
+          "content": "Increase the size of allocated memory:"
+        },
+        {
+          "type": "code",
+          "content": "  int *ptr1, *ptr2, size;\n\n// Allocate memory for four integers\nsize = \n  4 * sizeof(*ptr1);\nptr1 = malloc(size);\n\nprintf(\"%d bytes allocated \n  at address %p \\n\", size, ptr1);\n\n// Resize the memory to hold six \n  integers\nsize = 6 * sizeof(*ptr1);\nptr2 = realloc(ptr1, size);\n\n  printf(\"%d bytes reallocated at address %p \\n\", size, ptr2);"
+        }
+      ]
+    },
+    {
+      "heading": "NULL Pointer & Error Checking",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "The `realloc()` function returns a `NULL` pointer if it is not able to allocate more memory. This is very unlikely, but it is worth keeping in mind when you need your code to be failproof."
+        },
+        {
+          "type": "text",
+          "content": "The following example checks whether `realloc()` is able to resize the memory or not, by checking for a `NULL` pointer:"
+        },
+        {
+          "type": "text",
+          "content": "Check for a NULL pointer:"
+        },
+        {
+          "type": "code",
+          "content": "  int *ptr1, *ptr2;\n\n// Allocate memory\nptr1 = malloc(4);\n\n// \n  Attempt to resize the memory\nptr2 = realloc(ptr1, 8);\n\n// Check \n  whether realloc is able to resize the memory or not\nif (ptr2 == \n  NULL) {\n  // If reallocation fails\n  printf(\"Failed. Unable to resize memory\");\n} else {\n  \n  // If reallocation is successful\n  \n  printf(\"Success. 8 bytes reallocated at address %p \\n\", ptr2);\n  ptr1 = ptr2;  \n  // Update ptr1 to point to the newly allocated memory\n\n  }"
+        },
+        {
+          "type": "text",
+          "content": "**Note:** You should always include error checking (if *pointer* == NULL) when allocating memory."
+        },
+        {
+          "type": "text",
+          "content": "**Note:** You should also always **free**, or release, allocated memory when you are done using it. This is important to make sure that your program behaves as expected, but it will also make it more maintainable and efficient."
+        },
+        {
+          "type": "text",
+          "content": "To free memory, simply use the `free()` function:"
+        },
+        {
+          "type": "text",
+          "content": "Free allocated memory:"
+        },
+        {
+          "type": "code",
+          "content": "  // Free allocated memory \n\n  free(ptr1);"
+        },
+        {
+          "type": "text",
+          "content": "You will learn more about how to free allocated memory and why this is important in the next chapter."
+        }
+      ]
+    }
+  ]
+}

@@ -173,15 +173,18 @@ router.put("/:id", requireRole("teacher"), async (req, res) => {
   });
 
   if (Array.isArray(body.testCases)) {
-    await prisma.testCase.deleteMany({ where: { problemId: id } });
-    await prisma.testCase.createMany({
-      data: (body.testCases as TestCaseInput[]).map((tc) => ({
-        problemId: id,
-        input: String(tc.input ?? ""),
-        expectedOutput: String(tc.expectedOutput ?? ""),
-        isHidden: Boolean(tc.isHidden),
-      })),
-    });
+    // Wrap delete + create in a transaction so a crash between the two
+    // operations never leaves the problem with zero test cases.
+    const newTestCases = (body.testCases as TestCaseInput[]).map((tc) => ({
+      problemId: id,
+      input: String(tc.input ?? ""),
+      expectedOutput: String(tc.expectedOutput ?? ""),
+      isHidden: Boolean(tc.isHidden),
+    }));
+    await prisma.$transaction([
+      prisma.testCase.deleteMany({ where: { problemId: id } }),
+      prisma.testCase.createMany({ data: newTestCases }),
+    ]);
   }
 
   const updated = await prisma.problem.findUnique({

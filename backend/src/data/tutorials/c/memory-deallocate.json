@@ -1,0 +1,152 @@
+{
+  "tag": "memory-deallocate",
+  "language": "c",
+  "title": "C Deallocate Memory",
+  "category": "C Memory",
+  "categoryOrder": 6,
+  "subCategory": null,
+  "subCategoryOrder": 0,
+  "order": 5,
+  "sections": [
+    {
+      "heading": "Deallocate (free) Memory",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "When you no longer need a block of memory you should deallocate it. Deallocation is also referred to as \"freeing\" the memory."
+        },
+        {
+          "type": "text",
+          "content": "Dynamic memory stays reserved until it is deallocated or until the program ends."
+        },
+        {
+          "type": "text",
+          "content": "Once the memory is deallocated it can be used by other programs or it may even be allocated to another part of your program."
+        }
+      ]
+    },
+    {
+      "heading": "Free Memory",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "To deallocate memory, use the `free()` function:"
+        },
+        {
+          "type": "code",
+          "content": "free(pointer);"
+        },
+        {
+          "type": "text",
+          "content": "The *pointer* parameter is a pointer to the address of the memory to be deallocated:"
+        },
+        {
+          "type": "code",
+          "content": "  int *ptr;\nptr = malloc(sizeof(*ptr));\n\nfree(ptr);\nptr = NULL;"
+        },
+        {
+          "type": "text",
+          "content": "It is considered a good practice to set a pointer to `NULL` after freeing memory so that you cannot accidentally continue using it."
+        },
+        {
+          "type": "text",
+          "content": "If you continue using memory after it has been freed you may corrupt data from other programs or even another part of your own program."
+        },
+        {
+          "type": "text",
+          "content": "A working example including error checking and freeing:"
+        },
+        {
+          "type": "code",
+          "content": "  int *ptr;\nptr = malloc(sizeof(*ptr)); // Allocate memory for one integer\n\n// If memory cannot be allocated, print a message and end the main() \n  function\nif (ptr == NULL) {\n\n  printf(\"Unable to allocate memory\");\n  return 1;  // \n  Exit the program with an error code\n}\n\n  // Set the value of the integer\n*ptr = 20;\n\n// Print the \n  integer value\nprintf(\"Integer value: %d\\n\", *ptr);\n\n// Free allocated memory\nfree(ptr);\n\n// Set the pointer to \n  NULL to prevent it from being accidentally used\nptr = NULL;"
+        }
+      ]
+    },
+    {
+      "heading": "Memory Leaks",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "A **memory leak** happens when dynamic memory is allocated but never freed."
+        },
+        {
+          "type": "text",
+          "content": "If a memory leak happens in a loop or in a function that is called frequently it could take up too much memory and cause the computer to slow down."
+        },
+        {
+          "type": "text",
+          "content": "There is a risk of a memory leak if a pointer to dynamic memory is lost before the memory can be freed. This can happen accidentally, so it is important to be careful and keep track of pointers to dynamic memory."
+        },
+        {
+          "type": "text",
+          "content": "Here are some examples of how a pointer to dynamic memory may be lost."
+        },
+        {
+          "type": "text",
+          "content": "**Example 1**"
+        },
+        {
+          "type": "text",
+          "content": "The pointer is overwritten:"
+        },
+        {
+          "type": "code",
+          "content": "  int x = 5;\nint *ptr;\nptr = calloc(2, sizeof(*ptr));\nptr = &x;"
+        },
+        {
+          "type": "text",
+          "content": "In this example, after the pointer is changed to point at `x`, the memory allocated by `calloc()` can no longer be accessed."
+        },
+        {
+          "type": "text",
+          "content": "**Example 2**"
+        },
+        {
+          "type": "text",
+          "content": "The pointer exists only inside a function:"
+        },
+        {
+          "type": "code",
+          "content": "  void myFunction() {\n  int *ptr;\n  ptr = malloc(sizeof(*ptr));\n\n  }\n\n  int main() {\n  myFunction();\n  printf(\"The function has \n  ended\");\n  return 0;\n}"
+        },
+        {
+          "type": "text",
+          "content": "In this example, the memory that was allocated inside of the function remains allocated after the function ends but it cannot be accessed anymore. One way to prevent this problem is to free the memory before the function ends."
+        },
+        {
+          "type": "text",
+          "content": "**Example 3**"
+        },
+        {
+          "type": "text",
+          "content": "The pointer gets lost when reallocation fails:"
+        },
+        {
+          "type": "code",
+          "content": "  int* ptr;\nptr = malloc(sizeof(*ptr));\nptr = realloc(ptr, \n  2*sizeof(*ptr));"
+        },
+        {
+          "type": "text",
+          "content": "If `realloc()` is unable to reallocate memory it will return a pointer to `NULL` and the original memory will remain reserved."
+        },
+        {
+          "type": "text",
+          "content": "In this example, if `realloc()` fails then the `NULL` pointer is assigned to the `ptr` variable, overwriting the original memory address so that it cannot be accessed anymore."
+        }
+      ]
+    },
+    {
+      "heading": "Summary",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "In summary, when managing memory in C, use best practices: Remember to check for errors (`NULL` return values) to find out if memory allocation was sucessful or not Prevent memory leaks - always remember to free memory that is no longer used, or else the program might underperform or even worse, crash if it runs out of memory Set the pointer to `NULL` after freeing memory so that you cannot accidentally continue using it"
+        },
+        {
+          "type": "text",
+          "content": "**Tip:** You will learn more about `NULL` in our NULL chapter."
+        }
+      ]
+    }
+  ]
+}

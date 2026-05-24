@@ -91,9 +91,21 @@ function extractJson(raw: string, criteria: RubricCriterion[]): ScoreSuggestion 
     const breakdown: CriterionScore[] = rawBreakdown
       .filter((b): b is Record<string, unknown> => typeof b === "object" && b !== null)
       .map((b, idx) => {
-        const matched  = criteria[idx] ?? criteria.find((c) => c.name === b.name);
+        // Prefer name-based matching so reordered AI output still maps correctly.
+        // Fall back to positional index only when the name doesn't match anything.
+        const bNameStr = typeof b.name === "string" ? b.name.toLowerCase().trim() : null;
+        const byName = bNameStr
+          ? criteria.find((c) => c.name.toLowerCase() === bNameStr)
+          : undefined;
+        const matched  = byName ?? criteria[idx];
         const maxScore = matched?.maxScore ?? 10;
-        const suggested = Math.max(0, Math.min(maxScore, Math.round(Number(b.suggested) || 0)));
+        // Guard non-numeric values so "N/A" or null don't silently become NaN → 0
+        const rawScore = typeof b.suggested === "number"
+          ? b.suggested
+          : typeof b.suggested === "string"
+            ? Number.parseFloat(b.suggested)
+            : 0;
+        const suggested = Math.max(0, Math.min(maxScore, Math.round(Number.isFinite(rawScore) ? rawScore : 0)));
         return {
           name:      typeof b.name    === "string" ? b.name.trim() : matched?.name ?? `Criterion ${idx + 1}`,
           maxScore,
@@ -103,6 +115,22 @@ function extractJson(raw: string, criteria: RubricCriterion[]): ScoreSuggestion 
       });
 
     if (breakdown.length === 0) return null;
+
+    // Pad any rubric criteria that the AI omitted with a 0-score entry so the
+    // grading table is always complete and the teacher notices what's missing.
+    for (const criterion of criteria) {
+      const alreadyPresent = breakdown.some(
+        (b) => b.name.toLowerCase() === criterion.name.toLowerCase(),
+      );
+      if (!alreadyPresent) {
+        breakdown.push({
+          name:      criterion.name,
+          maxScore:  criterion.maxScore,
+          suggested: 0,
+          comment:   "Not assessed — criterion was absent from AI response.",
+        });
+      }
+    }
 
     const totalScore   = breakdown.reduce((s, c) => s + c.suggested, 0);
     const maxTotal     = breakdown.reduce((s, c) => s + c.maxScore, 0);
@@ -132,9 +160,9 @@ function buildExecutionBlock(exec: ExecutionContext): string {
   }
 
   if (exec.allPassed === true) {
-    lines.push("All test cases : PASSED ✓");
+    lines.push("All test cases : PASSED [OK]");
   } else if (exec.allPassed === false) {
-    lines.push("All test cases : FAILED ✗");
+    lines.push("All test cases : FAILED [FAIL]");
   }
 
   // ── Compile error ──
@@ -219,18 +247,29 @@ ${criteriaJson}
 
 INSTRUCTIONS
 ============
-Score the student's code on EACH rubric criterion.
+Score the student's code on EACH rubric criterion. Be an honest, rigorous grader — not a generous one.
 
-IMPORTANT — use the execution results as primary evidence:
-- If test results show "FAILED" or wrong output, the Correctness score must reflect that — do NOT award full marks based on code appearance alone.
-- If the code compiled successfully but produced wrong answers, award partial correctness credit based on how many tests passed.
-- If there is a compile error, correctness and code-quality scores should be low.
-- Performance/efficiency scores should reference actual execution time and memory where available.
+CALIBRATION — what scores mean:
+- 90-100% of maxScore : Excellent. Nearly identical to the reference solution. Very rare.
+- 70-89%              : Good. Minor issues only — small inefficiency, one edge case missed.
+- 50-69%              : Adequate. Core logic works but has clear weaknesses.
+- 30-49%              : Poor. Significant problems — wrong output on several tests, bad structure.
+- 10-29%              : Very poor. Mostly wrong, major logic errors, barely compiles.
+- 0-9%                : Nothing of value. Compile error, empty, or completely off-topic.
+
+CRITICAL RULES — you MUST follow these:
+- Execution results are ground truth. If tests FAILED, Correctness CANNOT be above 60% of its maxScore.
+- If ALL tests passed (allPassed = true), Correctness may be high, but other criteria must still be graded critically on their own merits.
+- If there is a compile error, Correctness = 0. Code Quality must also be very low (≤ 20% of its maxScore).
+- If the code has no comments, hardcoded values, poor variable names, or is a single unstructured block, Code Quality must reflect that.
+- If the solution uses an inefficient algorithm when the reference uses a clearly better one, Algorithm score must be reduced.
+- Do NOT give full marks unless the student's solution is genuinely excellent for that criterion.
+- Do NOT be influenced by the student submitting — the score must reflect actual quality, not effort.
 
 For each criterion:
 - Assign "suggested" as an integer between 0 and maxScore (inclusive).
-- Award partial credit fairly — a student who passes 3/5 tests should not get 0 for Correctness.
-- Write a concise 1-2 sentence "comment" that cites specific evidence (test counts, errors, code structure).
+- Award partial credit proportionally: passing k out of n tests → approximately k/n × maxScore for Correctness.
+- Write a concise 1-2 sentence "comment" citing specific evidence (test counts, actual errors, specific code patterns).
 - Do NOT reveal the reference solution.
 
 RESPONSE FORMAT
@@ -294,7 +333,7 @@ export async function suggestScore(
         prompt,
         stream:  false,
         keep_alive: -1,
-        options: { temperature: 0.2, top_p: 0.9, num_ctx: 8192 },
+        options: { temperature: 0.1, top_p: 0.85, num_ctx: 8192 },
       }),
       signal: controller.signal,
     });

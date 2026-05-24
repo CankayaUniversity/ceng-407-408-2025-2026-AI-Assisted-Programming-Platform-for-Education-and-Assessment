@@ -4,12 +4,74 @@
   "title": "C Math Functions",
   "category": "C Functions",
   "categoryOrder": 2,
+  "subCategory": null,
+  "subCategoryOrder": 0,
   "order": 5,
   "sections": [
     {
       "heading": "Math Functions",
-      "body": "Math Functions\n\nThere is also a list of math functions available, that allows you to perform mathematical tasks on numbers.\nTo use them, you must include the math.h\nheader file in your program:\n\nSquare Root\n\nTo find the square root of a number, use the sqrt()\nfunction:\n\nExample\n\nRound a Number\n\nThe ceil() function rounds a number upwards to its nearest integer, and the floor()  method rounds a number downwards to its nearest integer, and returns the result:\n\nExample\n\nPower\n\nThe pow() function returns the value of x to the power of\ny (xy):\n\nExample\n\nComplete Math Reference\n\nFor a complete reference of math functions, go to our C\n<math.h> Library Reference.",
-      "code": "#include <math.h>\n\n// ─────────────────────────────────────\n\nprintf(\"%f\", sqrt(16));\n\n// ─────────────────────────────────────\n\nprintf(\"%f\", ceil(1.4));\nprintf(\"%f\",\n  floor(1.4));\n\n// ─────────────────────────────────────\n\nprintf(\"%f\", pow(4, 3));"
+      "blocks": [
+        {
+          "type": "text",
+          "content": "There is also a list of math functions available, that allows you to perform mathematical tasks on numbers."
+        },
+        {
+          "type": "text",
+          "content": "To use them, you must include the `math.h` **header file** in your program:"
+        },
+        {
+          "type": "code",
+          "content": "  #include <math.h>"
+        }
+      ]
+    },
+    {
+      "heading": "Square Root",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "To find the square root of a number, use the `sqrt()` function:"
+        },
+        {
+          "type": "code",
+          "content": "  printf(\"%f\", sqrt(16));"
+        }
+      ]
+    },
+    {
+      "heading": "Round a Number",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "The `ceil()` function rounds a number upwards to its nearest integer, and the `floor()` method rounds a number downwards to its nearest integer, and returns the result:"
+        },
+        {
+          "type": "code",
+          "content": "  printf(\"%f\", ceil(1.4));\nprintf(\"%f\", \n  floor(1.4));"
+        }
+      ]
+    },
+    {
+      "heading": "Power",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "The `pow()` function returns the value of *x* to the power of *y* (*xy*):"
+        },
+        {
+          "type": "code",
+          "content": "  printf(\"%f\", pow(4, 3));"
+        }
+      ]
+    },
+    {
+      "heading": "Complete Math Reference",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "For a complete reference of math functions, go to our C <math.h> Library Reference."
+        }
+      ]
     }
   ]
 }

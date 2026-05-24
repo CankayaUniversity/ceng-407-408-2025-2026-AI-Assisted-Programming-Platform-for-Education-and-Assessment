@@ -1,15 +1,82 @@
 {
   "tag": "typedef",
   "language": "c",
-  "title": "C typedef",
+  "title": "C Typedef",
   "category": "C Structures",
   "categoryOrder": 4,
+  "subCategory": null,
+  "subCategoryOrder": 0,
   "order": 5,
   "sections": [
     {
-      "heading": "typedef",
-      "body": "C typedef\n\nThe typedef keyword lets you create a new name (an alias) for an existing type.\nThis can make complex declarations easier to read, and your code easier to maintain.\nFor example, instead of always writing float, we can create a new type called Temperature to make the code clearer:\n\nExample\n\nHere, Temperature is just another name for float. However, the code is more expressive: it tells us that these numbers are temperatures, not just any floating-point numbers.\n\nWhy Use typedef?\n\nSimplifies code: Shorter, easier-to-read type names.\n  Improves clarity: Expresses intent better (for example, AGE instead of just int). Also helps avoid confusion when many variables share the same base type (like float or double).\nGood To Know: In modern C, typedef is often used together with struct, enum, and function pointers to keep code clean and easier to read.\n\ntypedef with struct\n\ntypedef can be useful with struct, because it lets you avoid writing struct every time:\n\nExample\n\nThis example shows how typedef makes it easier to work with multiple struct variables, like different car models:\n\nExample\n\nHere you can see how typedef keeps the code clean when structs are nested inside other structs:\n\nExample\n\nIt is up to you whether you want to use typedef or not.\nYour code will work the same without it. However, in modern C it is often used to make code shorter, clearer, and easier to maintain.",
-      "code": "#include <stdio.h>\n\ntypedef float Temperature;\n\nint main() {\n\n  Temperature today = 25.5;\n\n  Temperature tomorrow = 18.6;\n\n  printf(\"Today: %.1f C\\n\", today);\n\n  printf(\"Tomorrow: %.1f C\\n\", tomorrow);\n\n  return 0;\n\n}\n\n// ─────────────────────────────────────\n\n#include <stdio.h>\n\n// Without typedef:\n\nstruct Car {\n\n  char brand[30];\n\n  int year;\n\n};\n\n// With typedef:\n\ntypedef struct {\n\n  char brand[30];\n\n  int year;\n\n} Car;\n\nint main() {\n\n  struct Car car1 = {\"BMW\", 1999}; // needs \"struct\"\n\n  Car car2 = {\"Ford\", 1969};          // shorter with typedef\n\n  printf(\"%s %d\\n\", car1.brand, car1.year);\n\n  printf(\"%s %d\\n\", car2.brand, car2.year);\n\n  return 0;\n\n}\n\n// ─────────────────────────────────────\n\n#include <stdio.h>\n\n// With typedef\n\ntypedef struct {\n\n  char brand[30];\n\n  char model[30];\n\n  int year;\n\n} Car;\n\nint main() {\n\n  Car car1 = {\"BMW\", \"X5\", 1999};\n\n  Car car2 = {\"Ford\", \"Mustang\", 1969};\n\n  Car car3 = {\"Toyota\", \"Corolla\", 2011};\n\n  printf(\"%s %s %d\\n\", car1.brand, car1.model, car1.year);\n\n  printf(\"%s %s %d\\n\", car2.brand, car2.model, car2.year);\n\n  printf(\"%s %s %d\\n\", car3.brand, car3.model, car3.year);\n\n  return 0;\n\n}\n\n// ─────────────────────────────────────\n\n#include <stdio.h>\n\n// Define three structs with typedef\n\ntypedef struct {\n\n  char firstName[20];\n\n  char lastName[20];\n\n} Owner;\n\ntypedef struct {\n\n  char brand[20];\n\n  int year;\n\n  Owner owner;\n\n} Car;\n\ntypedef struct {\n\n  char name[30];\n\n  Car featuredCar;\n\n} Dealership;\n\nint main() {\n\n  Owner person = {\"John\", \"Doe\"};\n\n  Car car1 = {\"Toyota\", 2010, person};\n\n  Dealership d = {\"City Motors\", car1};\n\n  printf(\"Dealership: %s\\n\", d.name);\n\n  printf(\"Featured Car: %s (%d), owned by %s %s\\n\",\n\n    d.featuredCar.brand,\n\n    d.featuredCar.year,\n\n    d.featuredCar.owner.firstName,\n\n    d.featuredCar.owner.lastName);\n\n  return 0;\n\n}"
+      "heading": "C typedef",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "The `typedef` keyword lets you create a new name (an **alias**) for an existing type. This can make complex declarations easier to read, and your code easier to maintain."
+        },
+        {
+          "type": "text",
+          "content": "For example, instead of always writing `float`, we can create a new type called `Temperature` to make the code clearer:"
+        },
+        {
+          "type": "code",
+          "content": "#include <stdio.h>\n\ntypedef float Temperature;\n\nint main() {\n\n  Temperature today = 25.5;\n\n  Temperature tomorrow = 18.6;\n\n  printf(\"Today: %.1f C\\n\", today);\n\n  printf(\"Tomorrow: %.1f C\\n\", tomorrow);\n\n  return 0;\n\n}"
+        },
+        {
+          "type": "text",
+          "content": "Here, `Temperature` is just another name for `float`. However, the code is more expressive: it tells us that these numbers are **temperatures**, not just any floating-point numbers."
+        }
+      ]
+    },
+    {
+      "heading": "Why Use typedef?",
+      "blocks": [
+        {
+          "type": "list",
+          "items": [
+            "**Simplifies code**: Shorter, easier-to-read type names.",
+            "**Improves clarity**: Expresses intent better (for example, `AGE` instead of just `int`). Also helps avoid confusion when many variables share the same base type (like `float` or `double`)."
+          ]
+        },
+        {
+          "type": "text",
+          "content": "**Good To Know:** In modern C, `typedef` is often used together with `struct`, `enum`, and function pointers to keep code clean and easier to read."
+        }
+      ]
+    },
+    {
+      "heading": "typedef with struct",
+      "blocks": [
+        {
+          "type": "text",
+          "content": "`typedef` can be useful with `struct`, because it lets you avoid writing `struct` every time:"
+        },
+        {
+          "type": "code",
+          "content": "#include <stdio.h>\n\n// Without typedef:\n\nstruct Car {\n\n  char brand[30];\n\n  int year;\n\n};\n\n// With typedef:\n\ntypedef struct {\n\n  char brand[30];\n\n  int year;\n\n} Car;\n\nint main() {\n\n  struct Car car1 = {\"BMW\", 1999}; // needs \"struct\"\n\n  Car car2 = {\"Ford\", 1969};          // shorter with typedef\n\n  printf(\"%s %d\\n\", car1.brand, car1.year);\n\n  printf(\"%s %d\\n\", car2.brand, car2.year);\n\n  return 0;\n\n}"
+        },
+        {
+          "type": "text",
+          "content": "This example shows how `typedef` makes it easier to work with multiple struct variables, like different car models:"
+        },
+        {
+          "type": "code",
+          "content": "#include <stdio.h>\n\n// With typedef\n\ntypedef struct {\n\n  char brand[30];\n\n  char model[30];\n\n  int year;\n\n} Car;\n\nint main() {\n\n  Car car1 = {\"BMW\", \"X5\", 1999};\n\n  Car car2 = {\"Ford\", \"Mustang\", 1969};\n\n  Car car3 = {\"Toyota\", \"Corolla\", 2011};\n\n  printf(\"%s %s %d\\n\", car1.brand, car1.model, car1.year);\n\n  printf(\"%s %s %d\\n\", car2.brand, car2.model, car2.year);\n\n  printf(\"%s %s %d\\n\", car3.brand, car3.model, car3.year);\n\n  return 0;\n\n}"
+        },
+        {
+          "type": "text",
+          "content": "Here you can see how `typedef` keeps the code clean when structs are nested inside other structs:"
+        },
+        {
+          "type": "code",
+          "content": "#include <stdio.h>\n\n// Define three structs with typedef\n\ntypedef struct {\n\n  char firstName[20];\n\n  char lastName[20];\n\n} Owner;\n\ntypedef struct {\n\n  char brand[20];\n\n  int year;\n\n  Owner owner;\n\n} Car;\n\ntypedef struct {\n\n  char name[30];\n\n  Car featuredCar;\n\n} Dealership;\n\nint main() {\n\n  Owner person = {\"John\", \"Doe\"};\n\n  Car car1 = {\"Toyota\", 2010, person};\n\n  Dealership d = {\"City Motors\", car1};\n\n  printf(\"Dealership: %s\\n\", d.name);\n\n  printf(\"Featured Car: %s (%d), owned by %s %s\\n\",\n\n    d.featuredCar.brand,\n\n    d.featuredCar.year,\n\n    d.featuredCar.owner.firstName,\n\n    d.featuredCar.owner.lastName);\n\n  return 0;\n\n}"
+        },
+        {
+          "type": "text",
+          "content": "It is up to you whether you want to use `typedef` or not. Your code will work the same without it. However, in modern C it is often used to make code shorter, clearer, and easier to maintain."
+        }
+      ]
     }
   ]
 }

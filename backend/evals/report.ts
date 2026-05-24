@@ -289,21 +289,86 @@ function renderLatency(scored: ScoredFixture[]): string {
   return lines.join("\n");
 }
 
+/**
+ * Per-fixture full judgment trace — for every fixture, show each judge's
+ * 5-axis scores + one-sentence justification. Optional but very useful for
+ * audits: every "why" the LLM gave is visible without having to grep the JSON.
+ */
+function renderPerFixtureNotes(scored: ScoredFixture[]): string {
+  const lines: string[] = [];
+  lines.push("## Per-fixture judge notes (full audit trail)");
+  lines.push("");
+  lines.push("Every judged fixture, with each judge's verdict and one-sentence reasoning. Use this section to audit specific scores or to find the rationale behind any aggregate metric above.");
+  lines.push("");
+
+  // Group by category so the audit is navigable
+  const byCat = new Map<string, ScoredFixture[]>();
+  for (const s of scored) {
+    if (s.judges.length === 0) continue;
+    if (!byCat.has(s.category)) byCat.set(s.category, []);
+    byCat.get(s.category)!.push(s);
+  }
+  const sortedCats = Array.from(byCat.keys()).sort();
+
+  for (const cat of sortedCats) {
+    lines.push(`### Category: \`${cat}\``);
+    lines.push("");
+    for (const f of byCat.get(cat)!) {
+      const question = (f.input.studentQuestion ?? "").replace(/\s+/g, " ").slice(0, 140);
+      const reply = (f.mentorReply ?? "").replace(/\s+/g, " ").slice(0, 220);
+      const agreeMark = f.agree?.overall ? "✓ all agree" : "⚠ disagreement";
+
+      lines.push(`#### \`${f.id}\` (${f.language}) — ${agreeMark}`);
+      lines.push("");
+      if (question) {
+        lines.push(`*Student:* ${escapeMd(question)}${f.input.studentQuestion!.length > 140 ? "…" : ""}`);
+      }
+      if (reply) {
+        lines.push(`*Mentor reply:* ${escapeMd(reply)}${(f.mentorReply ?? "").length > 220 ? "…" : ""}`);
+      }
+      lines.push("");
+      lines.push("| Judge | Correctness | Pedagogy | Policy | Locale | Leak | Notes |");
+      lines.push("|---|:---:|:---:|:---:|:---:|:---:|---|");
+      for (const j of f.judges) {
+        if (j.error) {
+          lines.push(`| \`${j.judge}\` | — | — | — | — | — | ⚠ error: ${escapeMd(j.error).slice(0, 80)} |`);
+          continue;
+        }
+        const note = escapeMd((j.notes ?? "").replace(/\s+/g, " ")).slice(0, 200);
+        lines.push(
+          `| \`${j.judge}\` | ${j.correctness} | ${j.pedagogy} | ${j.policyPass ? "✓" : "✗"} | ${j.localePass ? "✓" : "✗"} | ${j.leaksCode ? "leak" : "ok"} | ${note} |`,
+        );
+      }
+      lines.push("");
+    }
+  }
+  return lines.join("\n");
+}
+
+/**
+ * Escape characters that would break markdown table cells / formatting.
+ */
+function escapeMd(text: string): string {
+  return text.replace(/\|/g, "\\|").replace(/`/g, "ʼ").replace(/\n/g, " ");
+}
+
 function renderDisagreements(scored: ScoredFixture[]): string {
   const queue = disagreementQueue(scored);
   const lines: string[] = [];
   lines.push("## Judge disagreement queue (manual review)");
   lines.push("");
-  lines.push(`${queue.length} of ${scored.length} fixtures had at least one axis where the two judges disagreed.`);
+  lines.push(`${queue.length} of ${scored.length} fixtures had at least one axis where the panel of judges lacked a majority.`);
   lines.push("");
   if (queue.length === 0) {
     lines.push("(No disagreements.)");
     lines.push("");
     return lines.join("\n");
   }
-  lines.push("| Fixture | Category | Disagreement axes | Judge A notes | Judge B notes |");
+  // With 3 judges, render one row per judge per fixture so the report shows
+  // who scored what on the disputed axes.
+  lines.push("| Fixture | Category | Disagreement axes | Judge | Notes |");
   lines.push("|---|---|---|---|---|");
-  for (const q of queue.slice(0, 80)) {
+  for (const q of queue.slice(0, 60)) {
     if (!q.agree) continue;
     const axes: string[] = [];
     if (!q.agree.correctness) axes.push("correctness");
@@ -311,13 +376,18 @@ function renderDisagreements(scored: ScoredFixture[]): string {
     if (!q.agree.policyPass) axes.push("policyPass");
     if (!q.agree.localePass) axes.push("localePass");
     if (!q.agree.leaksCode) axes.push("leaksCode");
-    const [a, b] = q.judges;
-    const an = (a?.notes ?? "").replace(/\|/g, "\\|").slice(0, 120);
-    const bn = (b?.notes ?? "").replace(/\|/g, "\\|").slice(0, 120);
-    lines.push(`| \`${q.id}\` | ${q.category} | ${axes.join(", ")} | ${an} | ${bn} |`);
+    const axesText = axes.join(", ");
+    for (let i = 0; i < q.judges.length; i++) {
+      const judge = q.judges[i];
+      const note = (judge.notes ?? "").replace(/\|/g, "\\|").slice(0, 100);
+      const first = i === 0;
+      lines.push(
+        `| ${first ? "`" + q.id + "`" : ""} | ${first ? q.category : ""} | ${first ? axesText : ""} | \`${judge.judge}\` | ${note} |`,
+      );
+    }
   }
-  if (queue.length > 80) {
-    lines.push(`| ... | ... | ... | ... | (${queue.length - 80} more, see scored JSON) |`);
+  if (queue.length > 60) {
+    lines.push(`| ... | ... | ... | ... | (${queue.length - 60} more, see scored JSON) |`);
   }
   lines.push("");
   return lines.join("\n");
@@ -384,6 +454,7 @@ function renderReport(newest: ScoredFile, baseline: ScoredFile | null): string {
     lines.push(renderDiff(newest, baseline, judgeNames));
   }
   lines.push(renderDisagreements(scored));
+  lines.push(renderPerFixtureNotes(scored));
 
   lines.push("---");
   lines.push("");

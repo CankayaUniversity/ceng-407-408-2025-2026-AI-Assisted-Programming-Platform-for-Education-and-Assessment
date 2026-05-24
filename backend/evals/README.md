@@ -4,8 +4,9 @@ Three-stage pipeline for evaluating the AI mentor at scale:
 
 1. **`mentor-smoke.ts`** — runs ~235 fixtures through the live `/api/ai/chat`
    endpoint and captures every reply + validator metadata.
-2. **`scorer.ts`** — sends each reply to **two independent LLM judges** in
-   parallel (GPT-4o-mini and Claude Haiku 4.5) and writes per-axis scores.
+2. **`scorer.ts`** — sends each reply to **three independent LLM judges** in
+   parallel (GPT-4o-mini, Claude Haiku 4.5, DeepSeek Chat) and writes per-axis
+   scores. Agreement is computed as 2-of-3 majority per axis.
 3. **`report.ts`** — produces a presentation-ready Markdown report from the
    scored JSON, with optional baseline diff.
 
@@ -83,29 +84,31 @@ Optional flags for `mentor-smoke.ts`:
 
 ---
 
-## Stage 2 — Dual-judge scoring (`scorer.ts`)
+## Stage 2 — Tri-judge scoring (`scorer.ts`)
 
-Sends each `(student question, code, mentor reply)` triple to two LLM judges in
-parallel and records per-axis scores. Both judges score independently; the
-script flags fixtures where they disagreed so you only need to spot-check
-those.
+Sends each `(student question, code, mentor reply)` triple to three LLM judges
+in parallel and records per-axis scores. Each judge scores independently; the
+script applies a **2-of-3 majority vote** per axis to compute agreement, and
+flags fixtures where no majority forms.
 
 ### Prerequisites
 
-You need API keys for both providers (5 min each):
+You need API keys for all three providers:
 
-- **OpenAI**: https://platform.openai.com/api-keys — load $5+ of credit.
-- **Anthropic**: https://console.anthropic.com/settings/keys — load $5+ of credit.
+- **OpenAI**: https://platform.openai.com/api-keys — $5+ credit recommended
+- **Anthropic**: https://console.anthropic.com/settings/keys — $5+ credit recommended
+- **DeepSeek**: https://platform.deepseek.com/api_keys — $2+ credit (cheapest of the three)
 
 ### Cost
 
-For 235 fixtures × 2 judges per fixture = 470 LLM calls per run.
+For 235 fixtures × 3 judges per fixture = 705 LLM calls per run.
 
 | Judge | Per run | Per 10 rounds |
 |---|---:|---:|
-| GPT-4o-mini | ~$0.08 | ~$0.80 |
+| GPT-4o-mini | ~$0.10 | ~$1.00 |
 | Claude Haiku 4.5 | ~$0.55 | ~$5.50 |
-| **Both** | **~$0.65** | **~$6.50** |
+| DeepSeek Chat | ~$0.13 | ~$1.30 |
+| **All three** | **~$0.78** | **~$7.80** |
 
 ### Run it
 
@@ -117,6 +120,7 @@ cd ~/ceng-407-408-2025-2026-AI-Assisted-Programming-Platform-for-Education-and-A
 
 export OPENAI_API_KEY=sk-...
 export ANTHROPIC_API_KEY=sk-ant-...
+export DEEPSEEK_API_KEY=sk-...
 
 npx tsx evals/scorer.ts evals/results/mentor-eval-<timestamp>.json
 ```
@@ -156,11 +160,13 @@ npx tsx evals/scorer.ts evals/results/mentor-eval-<timestamp>.json
 Optional flags:
 
 ```
---skip-openai          run only Claude
---skip-anthropic       run only GPT-4o-mini
---concurrency N        parallel fixtures (default 4; raise if you have headroom)
+--skip-openai          run without GPT-4o-mini
+--skip-anthropic       run without Claude
+--skip-deepseek        run without DeepSeek
+--concurrency N        parallel fixtures (default 2; raise if you have headroom)
 --gpt-model M          override (default: gpt-4o-mini)
 --claude-model M       override (default: claude-haiku-4-5)
+--deepseek-model M     override (default: deepseek-chat)
 ```
 
 ### Scoring rubric (what each axis means)

@@ -64,17 +64,43 @@ function parseArgs(): Args {
 
 // ── Fixture + result types ───────────────────────────────────────────────────
 
-type Fixture = {
-  id: string;
-  category: string;
-  language: string;
+/**
+ * A fixture is either a single-turn case (the top-level `studentQuestion`
+ * field is used) or a multi-turn conversation (the `turns[]` array is used).
+ * For multi-turn, each turn can optionally override studentCode / stderr /
+ * stdout / activeLineNumber / selectedCodeContext / mode — simulating what
+ * happens when the student edits code, hits Run, highlights a line, etc.
+ * between chat messages.
+ *
+ * The scorer always scores the FINAL mentor reply.
+ */
+type FixtureTurn = {
   studentQuestion: string;
   studentCode?: string;
   stderr?: string;
   stdout?: string;
+  activeLineNumber?: number;
+  selectedCodeContext?: string;
+  mode?: string;          // e.g. "mentor" | "hint"
+};
+
+type Fixture = {
+  id: string;
+  category: string;
+  language: string;
+  // Single-turn fields (used when `turns` is absent)
+  studentQuestion?: string;
+  studentCode?: string;
+  stderr?: string;
+  stdout?: string;
+  activeLineNumber?: number;
+  selectedCodeContext?: string;
+  mode?: string;
+  // Multi-turn fields (overrides the single-turn fields when present)
+  turns?: FixtureTurn[];
+  // Common to both
   problemDescription?: string;
   activeFileName?: string;
-  activeLineNumber?: number;
 };
 
 type FixtureResult = {
@@ -82,16 +108,26 @@ type FixtureResult = {
   category: string;
   language: string;
   input: {
+    // For single-turn fixtures: the only message. For multi-turn: the FINAL
+    // user message in the conversation (what the mentor was asked to reply
+    // to last).
     studentQuestion: string;
     studentCode: string | null;
     stderr: string | null;
     stdout: string | null;
     problemDescription: string | null;
+    // Set only for multi-turn fixtures. Records every (role, content) pair
+    // the runner sent, so the judge can review the full conversation.
+    conversation: Array<{ role: "user" | "assistant"; content: string }> | null;
+    turnCount: number;
   };
   ok: boolean;
   httpStatus: number;
   error: string | null;
+  // For multi-turn: latency of the FINAL turn (what was scored).
   latencyMs: number;
+  // For multi-turn: cumulative latency across all turns.
+  totalLatencyMs: number;
   mentorReply: string | null;
   replyLength: number | null;
   replyLanguageGuess: "tr" | "en" | "other" | null;
@@ -144,24 +180,13 @@ async function login(base: string, email: string, password: string): Promise<str
   return token;
 }
 
-async function callMentor(
+type HistoryMessage = { role: "user" | "assistant"; content: string };
+
+async function sendOneMessage(
   base: string,
   token: string,
-  fixture: Fixture,
-): Promise<{ httpStatus: number; body: Record<string, unknown> | null; raw: string; latencyMs: number }> {
-  const payload = {
-    studentQuestion: fixture.studentQuestion,
-    studentCode: fixture.studentCode ?? "",
-    stderr: fixture.stderr ?? "",
-    stdout: fixture.stdout ?? "",
-    problemDescription: fixture.problemDescription ?? "",
-    language: fixture.language,
-    activeFileName: fixture.activeFileName ?? `solution.${fixture.language}`,
-    activeLineNumber: fixture.activeLineNumber ?? null,
-    conversationHistory: [],
-    mode: "mentor",
-  };
-
+  body: Record<string, unknown>,
+): Promise<{ httpStatus: number; data: Record<string, unknown> | null; raw: string; latencyMs: number }> {
   const start = Date.now();
   const res = await fetch(`${base}/api/ai/chat`, {
     method: "POST",
@@ -169,17 +194,100 @@ async function callMentor(
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   });
   const raw = await res.text();
   const latencyMs = Date.now() - start;
-  let body: Record<string, unknown> | null = null;
+  let data: Record<string, unknown> | null = null;
   try {
-    body = JSON.parse(raw);
+    data = JSON.parse(raw);
   } catch {
-    body = null;
+    data = null;
   }
-  return { httpStatus: res.status, body, raw, latencyMs };
+  return { httpStatus: res.status, data, raw, latencyMs };
+}
+
+/**
+ * Call the mentor for either a single-turn fixture or a multi-turn fixture.
+ *
+ * Multi-turn fixtures replay each turn in sequence, accumulating
+ * conversationHistory. The function returns the *final* turn's result —
+ * this is what gets scored. The intermediate turns are not scored because
+ * the "final answer quality" is the only judgement that matters for the
+ * end-to-end test; intermediate replies are stored in the conversation
+ * history so the judge can see them if it wants.
+ */
+async function callMentor(
+  base: string,
+  token: string,
+  fixture: Fixture,
+): Promise<{
+  httpStatus: number;
+  body: Record<string, unknown> | null;
+  raw: string;
+  latencyMs: number;
+  turnCount: number;
+  totalLatencyMs: number;
+}> {
+  // Normalise: either use the explicit turns array, or wrap the single-turn
+  // fields in a one-turn array.
+  const turns: FixtureTurn[] = fixture.turns && fixture.turns.length > 0
+    ? fixture.turns
+    : [{
+        studentQuestion: fixture.studentQuestion ?? "",
+        studentCode: fixture.studentCode,
+        stderr: fixture.stderr,
+        stdout: fixture.stdout,
+        activeLineNumber: fixture.activeLineNumber,
+        selectedCodeContext: fixture.selectedCodeContext,
+        mode: fixture.mode,
+      }];
+
+  const history: HistoryMessage[] = [];
+  let lastResult: Awaited<ReturnType<typeof sendOneMessage>> | null = null;
+  let totalLatencyMs = 0;
+
+  for (let i = 0; i < turns.length; i++) {
+    const t = turns[i];
+    const payload: Record<string, unknown> = {
+      studentQuestion: t.studentQuestion,
+      studentCode: t.studentCode ?? fixture.studentCode ?? "",
+      stderr: t.stderr ?? fixture.stderr ?? "",
+      stdout: t.stdout ?? fixture.stdout ?? "",
+      problemDescription: fixture.problemDescription ?? "",
+      language: fixture.language,
+      activeFileName: fixture.activeFileName ?? `solution.${fixture.language}`,
+      activeLineNumber: t.activeLineNumber ?? fixture.activeLineNumber ?? null,
+      selectedCodeContext: t.selectedCodeContext ?? fixture.selectedCodeContext ?? null,
+      conversationHistory: [...history],
+      mode: t.mode ?? fixture.mode ?? "mentor",
+    };
+
+    lastResult = await sendOneMessage(base, token, payload);
+    totalLatencyMs += lastResult.latencyMs;
+
+    // Append this turn to history regardless of HTTP status (for the next
+    // turn's context) — if the call errored, we abort the conversation.
+    history.push({ role: "user", content: t.studentQuestion });
+    const reply = typeof lastResult.data?.mentorReply === "string"
+      ? (lastResult.data.mentorReply as string)
+      : "";
+    if (reply) history.push({ role: "assistant", content: reply });
+
+    if (lastResult.httpStatus < 200 || lastResult.httpStatus >= 300) {
+      // Don't continue replaying turns after a failure.
+      break;
+    }
+  }
+
+  return {
+    httpStatus: lastResult!.httpStatus,
+    body: lastResult!.data,
+    raw: lastResult!.raw,
+    latencyMs: lastResult!.latencyMs,
+    turnCount: turns.length,
+    totalLatencyMs,
+  };
 }
 
 // ── Markdown mirror ──────────────────────────────────────────────────────────
@@ -298,30 +406,64 @@ async function main(): Promise<void> {
       }
     }
 
-    process.stdout.write(`[${i + 1}/${fixtures.length}] ${f.id} (${f.category}) ... `);
+    // Determine the final user message and per-fixture turn count for logging
+    // and result construction.
+    const fixtureTurns = f.turns && f.turns.length > 0 ? f.turns : null;
+    const turnCount = fixtureTurns ? fixtureTurns.length : 1;
+    const finalUserMessage = fixtureTurns
+      ? fixtureTurns[fixtureTurns.length - 1].studentQuestion
+      : (f.studentQuestion ?? "");
+    const finalStudentCode = fixtureTurns
+      ? (fixtureTurns[fixtureTurns.length - 1].studentCode ?? f.studentCode ?? null)
+      : (f.studentCode ?? null);
+    const finalStderr = fixtureTurns
+      ? (fixtureTurns[fixtureTurns.length - 1].stderr ?? f.stderr ?? null)
+      : (f.stderr ?? null);
+    const finalStdout = fixtureTurns
+      ? (fixtureTurns[fixtureTurns.length - 1].stdout ?? f.stdout ?? null)
+      : (f.stdout ?? null);
+
+    process.stdout.write(`[${i + 1}/${fixtures.length}] ${f.id} (${f.category}${turnCount > 1 ? `, ${turnCount} turns` : ""}) ... `);
     let result: FixtureResult;
     try {
       lastRequestStart = Date.now();
-      let { httpStatus, body, raw, latencyMs } = await callMentor(args.base, token, f);
+      let { httpStatus, body, raw, latencyMs, totalLatencyMs } = await callMentor(args.base, token, f);
 
       // If the rate limiter still trips us, back off for the full window and retry once.
       if (httpStatus === 429) {
         process.stdout.write("rate-limited, backing off 65s ... ");
         await sleep(65_000);
         lastRequestStart = Date.now();
-        ({ httpStatus, body, raw, latencyMs } = await callMentor(args.base, token, f));
+        ({ httpStatus, body, raw, latencyMs, totalLatencyMs } = await callMentor(args.base, token, f));
       }
       const mentorReply = typeof body?.mentorReply === "string" ? body.mentorReply : null;
+
+      // Build the conversation transcript for multi-turn fixtures so the
+      // scored output and judge can see what was actually exchanged.
+      let conversation: FixtureResult["input"]["conversation"] = null;
+      if (fixtureTurns) {
+        conversation = [];
+        for (const t of fixtureTurns) {
+          conversation.push({ role: "user", content: t.studentQuestion });
+        }
+        // We don't store intermediate mentor replies on the fixture result
+        // here — only the FINAL one (stored separately as `mentorReply`).
+        // The judge sees the user-only history plus the final reply, which
+        // is the right thing for grading "did the mentor land the close".
+      }
+
       result = {
         id: f.id,
         category: f.category,
         language: f.language,
         input: {
-          studentQuestion: f.studentQuestion,
-          studentCode: f.studentCode ?? null,
-          stderr: f.stderr ?? null,
-          stdout: f.stdout ?? null,
+          studentQuestion: finalUserMessage,
+          studentCode: finalStudentCode,
+          stderr: finalStderr,
+          stdout: finalStdout,
           problemDescription: f.problemDescription ?? null,
+          conversation,
+          turnCount,
         },
         ok: httpStatus >= 200 && httpStatus < 300 && mentorReply !== null,
         httpStatus,
@@ -332,6 +474,7 @@ async function main(): Promise<void> {
               : null
             : `HTTP ${httpStatus}: ${raw.slice(0, 300)}`,
         latencyMs,
+        totalLatencyMs,
         mentorReply,
         replyLength: mentorReply ? mentorReply.length : null,
         replyLanguageGuess: mentorReply ? guessLanguage(mentorReply) : null,
@@ -342,8 +485,11 @@ async function main(): Promise<void> {
         fallbackUsed: typeof body?.fallbackUsed === "boolean" ? body.fallbackUsed : null,
         requestFlags: body?.requestFlags ?? null,
       };
+      const latencyLabel = turnCount > 1
+        ? `${totalLatencyMs} ms total, last ${latencyMs} ms`
+        : `${latencyMs} ms`;
       process.stdout.write(
-        `${result.ok ? "OK" : "FAIL"} (${latencyMs} ms, ${result.replyLength ?? 0} chars, lang=${result.replyLanguageGuess ?? "?"})\n`,
+        `${result.ok ? "OK" : "FAIL"} (${latencyLabel}, ${result.replyLength ?? 0} chars, lang=${result.replyLanguageGuess ?? "?"})\n`,
       );
     } catch (e) {
       const err = e instanceof Error ? e.message : String(e);
@@ -352,16 +498,21 @@ async function main(): Promise<void> {
         category: f.category,
         language: f.language,
         input: {
-          studentQuestion: f.studentQuestion,
-          studentCode: f.studentCode ?? null,
-          stderr: f.stderr ?? null,
-          stdout: f.stdout ?? null,
+          studentQuestion: finalUserMessage,
+          studentCode: finalStudentCode,
+          stderr: finalStderr,
+          stdout: finalStdout,
           problemDescription: f.problemDescription ?? null,
+          conversation: fixtureTurns
+            ? fixtureTurns.map((t) => ({ role: "user" as const, content: t.studentQuestion }))
+            : null,
+          turnCount,
         },
         ok: false,
         httpStatus: 0,
         error: err,
         latencyMs: 0,
+        totalLatencyMs: 0,
         mentorReply: null,
         replyLength: null,
         replyLanguageGuess: null,

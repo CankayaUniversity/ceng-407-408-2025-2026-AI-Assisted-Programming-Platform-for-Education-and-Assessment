@@ -48,11 +48,15 @@ type FixtureResult = {
     stderr: string | null;
     stdout: string | null;
     problemDescription: string | null;
+    // Present (non-null) only for multi-turn fixtures.
+    conversation?: Array<{ role: "user" | "assistant"; content: string }> | null;
+    turnCount?: number;
   };
   ok: boolean;
   httpStatus: number;
   error: string | null;
   latencyMs: number;
+  totalLatencyMs?: number;
   mentorReply: string | null;
   replyLength: number | null;
   replyLanguageGuess: "tr" | "en" | "other" | null;
@@ -153,16 +157,38 @@ function parseArgs(): Args {
 // ── Judge rubric prompt ─────────────────────────────────────────────────────
 
 function buildRubricPrompt(f: FixtureResult): string {
+  const isMultiTurn = Array.isArray(f.input.conversation) && (f.input.turnCount ?? 1) > 1;
+
+  // For multi-turn fixtures, format the prior conversation so the judge can
+  // assess memory/consistency. Only user messages are stored here; the
+  // mentor's intermediate replies were not captured (only the FINAL reply
+  // is being scored).
+  const conversationBlock = isMultiTurn && f.input.conversation
+    ? [
+        "",
+        "PRIOR CONVERSATION (this is a multi-turn case; the mentor's FINAL reply is what you are scoring)",
+        "=================================================================================================",
+        ...f.input.conversation.slice(0, -1).map((m, i) =>
+          `Turn ${i + 1} — ${m.role}: ${m.content}`
+        ),
+        `Turn ${f.input.conversation.length} (LATEST, user): ${f.input.conversation[f.input.conversation.length - 1].content}`,
+        "",
+      ].join("\n")
+    : "";
+
   return [
     "You are evaluating a programming mentor's reply to a student.",
+    isMultiTurn
+      ? "This is a MULTI-TURN conversation. Score the FINAL mentor reply, but consider whether it respects the prior context (does it remember what the student already said? does it avoid repeating earlier suggestions?)."
+      : "This is a single-turn case.",
     "",
     "CONTEXT",
     "=======",
-    `Student question : ${f.input.studentQuestion || "(no question — only code was sent)"}`,
+    `Student's final question : ${f.input.studentQuestion || "(no question — only code was sent)"}`,
     `Programming lang : ${f.language}`,
     `Problem statement: ${f.input.problemDescription ?? "(none)"}`,
-    "",
-    "Student code:",
+    conversationBlock,
+    "Student code (state at the time of the final reply):",
     "```",
     f.input.studentCode ?? "(none)",
     "```",
@@ -177,8 +203,8 @@ function buildRubricPrompt(f: FixtureResult): string {
     f.input.stdout ?? "(none)",
     "```",
     "",
-    "MENTOR REPLY",
-    "============",
+    "MENTOR FINAL REPLY (to be scored)",
+    "==================================",
     "```",
     f.mentorReply ?? "(no reply produced)",
     "```",

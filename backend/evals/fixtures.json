@@ -2016,5 +2016,587 @@
     "studentQuestion": "How do I install python on my computer?",
     "studentCode": "",
     "problemDescription": "Print 'hello'."
+  },
+
+  {
+    "id": "multi-01-iterative-off-by-one",
+    "category": "multi-turn-iterative",
+    "language": "python",
+    "problemDescription": "Read n and print the sum of integers from 1 to n inclusive.",
+    "turns": [
+      { "studentQuestion": "my code gives the wrong sum, what's wrong?", "studentCode": "n = int(input())\ntotal = 0\nfor i in range(n):\n    total += i\nprint(total)", "stdout": "Expected 15 for n=5, got 10" },
+      { "studentQuestion": "ok I changed range(n) to range(n+1) like you said but now it gives 15 for n=5 which is right but for n=10 it gives 55 not 55... wait that IS right. is my code now correct?", "studentCode": "n = int(input())\ntotal = 0\nfor i in range(n+1):\n    total += i\nprint(total)", "stdout": "Passes" },
+      { "studentQuestion": "actually wait, the problem says from 1 to n inclusive, but my loop starts at 0. is that ok or am I just lucky?" }
+    ]
+  },
+  {
+    "id": "multi-02-iterative-tried-hint-failed",
+    "category": "multi-turn-iterative",
+    "language": "python",
+    "problemDescription": "Read a list of integers and print the maximum.",
+    "turns": [
+      { "studentQuestion": "my code prints 0 when all numbers are negative, why?", "studentCode": "nums = list(map(int, input().split()))\nmax_val = 0\nfor n in nums:\n    if n > max_val:\n        max_val = n\nprint(max_val)" },
+      { "studentQuestion": "I changed max_val = 0 to max_val = -999999 like you suggested but now my code fails on really small negative tests. is there a better way?", "studentCode": "nums = list(map(int, input().split()))\nmax_val = -999999\nfor n in nums:\n    if n > max_val:\n        max_val = n\nprint(max_val)", "stdout": "Fails on input with very large negative numbers" }
+    ]
+  },
+  {
+    "id": "multi-03-iterative-tr-stuck",
+    "category": "multi-turn-iterative",
+    "language": "python",
+    "problemDescription": "Bir cümleyi oku ve içindeki kelime sayısını yazdır.",
+    "turns": [
+      { "studentQuestion": "kelime sayma kodumda hata var ama bulamıyorum", "studentCode": "s = input()\nwords = s.split(\",\")\nprint(len(words))" },
+      { "studentQuestion": "boşlukla mı bölmem gerekiyordu? split() parantezsiz mi olmalı? bana sadece nereye bakacağımı söyle, kod yazma", "studentCode": "s = input()\nwords = s.split(\",\")\nprint(len(words))" }
+    ]
+  },
+  {
+    "id": "multi-04-iterative-still-broken",
+    "category": "multi-turn-iterative",
+    "language": "c",
+    "problemDescription": "Print the sum of integers from 1 to 10.",
+    "turns": [
+      { "studentQuestion": "garbage value alıyorum", "studentCode": "#include <stdio.h>\nint main(void) {\n    int sum;\n    for (int i = 1; i <= 10; i++) sum += i;\n    printf(\"%d\\n\", sum);\n    return 0;\n}", "stdout": "Expected 55, got 2147418167" },
+      { "studentQuestion": "tamam int sum = 0 yaptım, şimdi 55 yazıyor ama 1 ile 11 arasında olduğu için aslında doğru mu yoksa şans eseri mi", "studentCode": "#include <stdio.h>\nint main(void) {\n    int sum = 0;\n    for (int i = 1; i <= 10; i++) sum += i;\n    printf(\"%d\\n\", sum);\n    return 0;\n}", "stdout": "Passes" }
+    ]
+  },
+  {
+    "id": "multi-05-iterative-misunderstood-hint",
+    "category": "multi-turn-iterative",
+    "language": "python",
+    "problemDescription": "Implement is_even(n) that returns True if n is even.",
+    "turns": [
+      { "studentQuestion": "syntax error", "studentCode": "def is_even(n)\n    return n % 2 == 0" },
+      { "studentQuestion": "I added a colon at the end of return like you said. now I get another error.", "studentCode": "def is_even(n)\n    return n % 2 == 0:", "stderr": "SyntaxError: invalid syntax" }
+    ]
+  },
+  {
+    "id": "multi-06-iterative-locale-switch",
+    "category": "multi-turn-iterative",
+    "language": "python",
+    "problemDescription": "Read a list of numbers and print their average.",
+    "turns": [
+      { "studentQuestion": "why is my average wrong", "studentCode": "nums = [1, 2, 3, 4, 5]\nprint(sum(nums) // len(nums))" },
+      { "studentQuestion": "tamam anladım integer division yapmamalıyım. peki neden // operatörü öyle çalışıyor ki normal / ile farkı ne?", "studentCode": "nums = [1, 2, 3, 4, 5]\nprint(sum(nums) // len(nums))" }
+    ]
+  },
+  {
+    "id": "multi-07-iterative-three-attempts",
+    "category": "multi-turn-iterative",
+    "language": "python",
+    "problemDescription": "Read n, then n integers, then print them in reverse order space-separated.",
+    "turns": [
+      { "studentQuestion": "how do I reverse a list in python?", "studentCode": "" },
+      { "studentQuestion": "ok I tried reversed() but it just prints <list_reverseiterator object at 0x...>", "studentCode": "n = int(input())\narr = list(map(int, input().split()))\nprint(reversed(arr))" },
+      { "studentQuestion": "still wrong, now it prints [5, 4, 3, 2, 1] with brackets but the expected is just 5 4 3 2 1", "studentCode": "n = int(input())\narr = list(map(int, input().split()))\nprint(list(reversed(arr)))", "stdout": "Expected '5 4 3 2 1', got '[5, 4, 3, 2, 1]'" }
+    ]
+  },
+  {
+    "id": "multi-08-iterative-contradicts-mentor",
+    "category": "multi-turn-iterative",
+    "language": "python",
+    "problemDescription": "Check whether a string is a palindrome.",
+    "turns": [
+      { "studentQuestion": "what's the simplest way to reverse a string in python?", "studentCode": "" },
+      { "studentQuestion": "wait, my professor said we shouldn't use [::-1] because it's not pythonic. are you sure that's the right way?", "studentCode": "" }
+    ]
+  },
+  {
+    "id": "multi-09-iterative-ambiguous-followup",
+    "category": "multi-turn-iterative",
+    "language": "python",
+    "problemDescription": "Read n integers and print the count of even numbers.",
+    "turns": [
+      { "studentQuestion": "my count is always off by one, what could cause that?", "studentCode": "n = int(input())\narr = list(map(int, input().split()))\ncount = 0\nfor x in arr:\n    if x % 2 == 1:\n        count += 1\nprint(count)" },
+      { "studentQuestion": "why?" }
+    ]
+  },
+  {
+    "id": "multi-10-iterative-resolved-then-new-bug",
+    "category": "multi-turn-iterative",
+    "language": "python",
+    "problemDescription": "Read n integers and print their average rounded to 2 decimal places.",
+    "turns": [
+      { "studentQuestion": "ortalama tam sayı çıkıyor", "studentCode": "n = int(input())\ns = 0\nfor i in range(n):\n    s += int(input())\nprint(s // n)" },
+      { "studentQuestion": "/ ile yaptım, oldu! şimdi 3.333333333333 yazıyor ama benden 2 ondalık bekleniyor", "studentCode": "n = int(input())\ns = 0\nfor i in range(n):\n    s += int(input())\nprint(s / n)", "stdout": "Expected '3.33', got '3.333333333333'" }
+    ]
+  },
+  {
+    "id": "multi-11-iterative-keeps-not-getting-it",
+    "category": "multi-turn-iterative",
+    "language": "python",
+    "problemDescription": "Read a string and print the number of uppercase letters.",
+    "turns": [
+      { "studentQuestion": "isupper bulamadım", "studentCode": "s = input()\ncount = 0\nfor c in s:\n    if c.upper:\n        count += 1\nprint(count)" },
+      { "studentQuestion": "düzeltdim ama 0 dönüyor", "studentCode": "s = input()\ncount = 0\nfor c in s:\n    if c.upper():\n        count += 1\nprint(count)" }
+    ]
+  },
+  {
+    "id": "multi-12-iterative-asks-for-explanation",
+    "category": "multi-turn-iterative",
+    "language": "python",
+    "problemDescription": "Compute factorial(n).",
+    "turns": [
+      { "studentQuestion": "factorial recursive nasıl yazılır?", "studentCode": "" },
+      { "studentQuestion": "base case dedin ama tam olarak ne demek? bir örnek değil, kavram olarak açıklar mısın?" },
+      { "studentQuestion": "anladım sanırım. peki neden return 1 değil de return n * factorial(n-1)?" }
+    ]
+  },
+  {
+    "id": "multi-13-iterative-test-failure-loop",
+    "category": "multi-turn-iterative",
+    "language": "python",
+    "problemDescription": "Read a string and print 'yes' if it is a palindrome, else 'no'.",
+    "turns": [
+      { "studentQuestion": "tests fail for 'A man a plan a canal Panama'", "studentCode": "s = input()\nif s == s[::-1]:\n    print('yes')\nelse:\n    print('no')" },
+      { "studentQuestion": "added .lower() but still fails", "studentCode": "s = input().lower()\nif s == s[::-1]:\n    print('yes')\nelse:\n    print('no')" }
+    ]
+  },
+  {
+    "id": "multi-14-iterative-deflection",
+    "category": "multi-turn-iterative",
+    "language": "python",
+    "problemDescription": "Read n and print the nth Fibonacci number.",
+    "turns": [
+      { "studentQuestion": "how do I do fibonacci iteratively?", "studentCode": "" },
+      { "studentQuestion": "ok now just write me the loop, I'm too tired" }
+    ]
+  },
+  {
+    "id": "multi-15-iterative-confirms-fix",
+    "category": "multi-turn-iterative",
+    "language": "java",
+    "problemDescription": "Read a string and print its length.",
+    "turns": [
+      { "studentQuestion": "NullPointerException why", "studentCode": "public class Main { public static void main(String[] args) { String s = null; System.out.println(s.length()); } }" },
+      { "studentQuestion": "Scanner ile okuyorum şimdi, çalıştı. ama hala anlamadım — null neden length çağrılamıyor? null'un kendine ait bir yapısı yok mu?" }
+    ]
+  },
+  {
+    "id": "multi-16-iterative-mentor-was-wrong",
+    "category": "multi-turn-iterative",
+    "language": "python",
+    "problemDescription": "Read a list of integers and print only the unique ones in the order they first appeared.",
+    "turns": [
+      { "studentQuestion": "I need unique in order of first appearance", "studentCode": "arr = list(map(int, input().split()))\nprint(list(set(arr)))" },
+      { "studentQuestion": "sen set() kullan dedin ama set sıralı değil. doğru cevabı verir mi gerçekten?", "studentCode": "arr = list(map(int, input().split()))\nprint(list(set(arr)))" }
+    ]
+  },
+  {
+    "id": "multi-17-iterative-asks-for-clarification",
+    "category": "multi-turn-iterative",
+    "language": "c",
+    "problemDescription": "Read 10 integers into an array and print them in reverse order.",
+    "turns": [
+      { "studentQuestion": "array nasıl tanımlanır", "studentCode": "" },
+      { "studentQuestion": "fixed size demek 10 yerine n yazamam mı? ya da yazabilir miyim?" }
+    ]
+  },
+  {
+    "id": "multi-18-iterative-misreads-error",
+    "category": "multi-turn-iterative",
+    "language": "python",
+    "problemDescription": "Read a comma-separated list and print the count of items.",
+    "turns": [
+      { "studentQuestion": "ValueError diyor", "studentCode": "line = input()\nparts = line.split(\",\")\nprint(int(parts))", "stderr": "TypeError: int() argument must be a string..." },
+      { "studentQuestion": "ama hata mesajında 'int argument' diyor, int problem değil mi?" }
+    ]
+  },
+  {
+    "id": "multi-19-iterative-finally-passes",
+    "category": "multi-turn-iterative",
+    "language": "python",
+    "problemDescription": "Read n integers and print the largest gap between any two consecutive numbers after sorting.",
+    "turns": [
+      { "studentQuestion": "no idea where to start", "studentCode": "" },
+      { "studentQuestion": "ok I sorted it. now how do I get consecutive differences?", "studentCode": "n = int(input())\narr = sorted(list(map(int, input().split())))" },
+      { "studentQuestion": "loop the differences and take max?", "studentCode": "n = int(input())\narr = sorted(list(map(int, input().split())))\nmax_gap = 0\nfor i in range(len(arr) - 1):\n    if arr[i+1] - arr[i] > max_gap:\n        max_gap = arr[i+1] - arr[i]\nprint(max_gap)", "stdout": "Passes" },
+      { "studentQuestion": "passes! anything I should clean up?" }
+    ]
+  },
+  {
+    "id": "multi-20-iterative-mentor-repeat-detect",
+    "category": "multi-turn-iterative",
+    "language": "python",
+    "problemDescription": "Read a string and print only the consonants.",
+    "turns": [
+      { "studentQuestion": "what counts as a consonant?", "studentCode": "" },
+      { "studentQuestion": "ok and how do I check if a char is in a string in python?" },
+      { "studentQuestion": "thanks. last thing — should I worry about uppercase vowels or assume input is lowercase?" }
+    ]
+  },
+
+  {
+    "id": "editor-01-can-you-see",
+    "category": "editor-inspection",
+    "language": "python",
+    "studentQuestion": "Can you see my code right now? I want to make sure you have it before I start asking questions.",
+    "studentCode": "n = int(input())\nprint(n * 2)",
+    "problemDescription": "Read n and print n*2."
+  },
+  {
+    "id": "editor-02-which-line",
+    "category": "editor-inspection",
+    "language": "python",
+    "studentQuestion": "On which line do I declare the variable named 'total'?",
+    "studentCode": "n = int(input())\ntotal = 0\nfor i in range(n):\n    total += i\nprint(total)",
+    "activeLineNumber": 3,
+    "problemDescription": "Read n and print the sum 0+1+...+n-1."
+  },
+  {
+    "id": "editor-03-do-i-have-loop",
+    "category": "editor-inspection",
+    "language": "python",
+    "studentQuestion": "Do I have a for-loop in my code right now? I'm not sure if I deleted it by mistake.",
+    "studentCode": "n = int(input())\nprint(n)",
+    "problemDescription": "Read n and print sum of 1..n."
+  },
+  {
+    "id": "editor-04-is-this-line-correct",
+    "category": "editor-inspection",
+    "language": "python",
+    "studentQuestion": "Look at line 4 specifically. Is the indentation there correct or am I imagining things?",
+    "studentCode": "def f(x):\n    if x > 0:\n        return x\n     return -x",
+    "activeLineNumber": 4,
+    "problemDescription": "Implement abs(x)."
+  },
+  {
+    "id": "editor-05-tr-kodumda-ne-var",
+    "category": "editor-inspection",
+    "language": "python",
+    "studentQuestion": "Şu an editörümde hangi fonksiyonlar tanımlı? Bana sadece tanımlı olanları söyle, ek yorum yapma.",
+    "studentCode": "def add(a, b):\n    return a + b\n\ndef multiply(a, b):\n    return a * b\n\nprint(add(2, 3))",
+    "problemDescription": "Define add and multiply, then print add(2,3)."
+  },
+  {
+    "id": "editor-06-line-reference-with-selection",
+    "category": "editor-inspection",
+    "language": "c",
+    "studentQuestion": "I highlighted a piece of my code. What does the selected snippet do?",
+    "studentCode": "#include <stdio.h>\nint main(void) {\n    int x = 5;\n    int *p = &x;\n    *p = 10;\n    printf(\"%d\\n\", x);\n    return 0;\n}",
+    "selectedCodeContext": "int *p = &x;\n*p = 10;",
+    "problemDescription": "Demonstrate pointer assignment."
+  },
+  {
+    "id": "editor-07-after-comment",
+    "category": "editor-inspection",
+    "language": "python",
+    "studentQuestion": "What lines do I have AFTER the # TODO comment? Just the ones below it, not before.",
+    "studentCode": "n = int(input())\n# TODO: compute the sum here\ntotal = 0\nfor i in range(n):\n    total += i\nprint(total)",
+    "problemDescription": "Compute sum 0..n-1."
+  },
+  {
+    "id": "editor-08-do-I-have-print",
+    "category": "editor-inspection",
+    "language": "java",
+    "studentQuestion": "Do I have any System.out.println statements? I think I removed the last one.",
+    "studentCode": "public class Main {\n    public static void main(String[] args) {\n        int x = 5;\n        int y = 10;\n        int sum = x + y;\n    }\n}",
+    "problemDescription": "Print the sum of two numbers."
+  },
+  {
+    "id": "editor-09-presence-check-recursion",
+    "category": "editor-inspection",
+    "language": "python",
+    "studentQuestion": "Is there any recursion in my current code?",
+    "studentCode": "def fact(n):\n    result = 1\n    for i in range(2, n+1):\n        result *= i\n    return result\nprint(fact(5))",
+    "problemDescription": "Compute factorial(5)."
+  },
+  {
+    "id": "editor-10-cursor-on-line",
+    "category": "editor-inspection",
+    "language": "python",
+    "studentQuestion": "I'm on line 5 right now. What does this line do?",
+    "studentCode": "n = int(input())\narr = list(map(int, input().split()))\nresult = 0\nfor x in arr:\n    result += x * x\nprint(result)",
+    "activeLineNumber": 5,
+    "problemDescription": "Compute sum of squares."
+  },
+
+  {
+    "id": "terminal-01-what-error",
+    "category": "terminal-question",
+    "language": "python",
+    "studentQuestion": "Look at my terminal — what error did I just get?",
+    "studentCode": "n = int(input())\nfor i in range(n):\n    print(arr[i])",
+    "stderr": "NameError: name 'arr' is not defined",
+    "problemDescription": "Print elements of an array."
+  },
+  {
+    "id": "terminal-02-what-was-output",
+    "category": "terminal-question",
+    "language": "python",
+    "studentQuestion": "What did my program actually print? I want you to read it from the terminal, not guess.",
+    "studentCode": "for i in range(3):\n    print(i)",
+    "stdout": "0\n1\n2\n",
+    "problemDescription": "Print 0, 1, 2 on separate lines."
+  },
+  {
+    "id": "terminal-03-did-tests-pass",
+    "category": "terminal-question",
+    "language": "python",
+    "studentQuestion": "Did the test runner say my output was wrong? What does the terminal show?",
+    "studentCode": "n = int(input())\nprint(n + 1)",
+    "stdout": "Expected: 25\nActual: 6\nFailed",
+    "problemDescription": "Print n squared."
+  },
+  {
+    "id": "terminal-04-tr-terminalde-ne-var",
+    "category": "terminal-question",
+    "language": "c",
+    "studentQuestion": "Terminalde ne yazıyor? Bana göründüğü gibi söyler misin?",
+    "studentCode": "#include <stdio.h>\nint main(void) {\n    char *s = NULL;\n    printf(\"%s\\n\", s);\n    return 0;\n}",
+    "stderr": "Segmentation fault (core dumped)",
+    "problemDescription": "Print a string."
+  },
+  {
+    "id": "terminal-05-what-line-of-error",
+    "category": "terminal-question",
+    "language": "java",
+    "studentQuestion": "The error message in the terminal mentions a line number. Which line is it pointing at, and what's on that line in my code?",
+    "studentCode": "public class Main {\n    public static void main(String[] args) {\n        int[] a = {1, 2, 3};\n        System.out.println(a[5]);\n    }\n}",
+    "stderr": "Exception in thread \"main\" java.lang.ArrayIndexOutOfBoundsException: Index 5 out of bounds for length 3\n\tat Main.main(Main.java:4)",
+    "problemDescription": "Print elements of an array."
+  },
+  {
+    "id": "terminal-06-no-output",
+    "category": "terminal-question",
+    "language": "python",
+    "studentQuestion": "I ran my code and the terminal is empty. There's no output and no error. Why?",
+    "studentCode": "def greet():\n    print('hello')",
+    "stdout": "",
+    "stderr": "",
+    "problemDescription": "Print 'hello'."
+  },
+  {
+    "id": "terminal-07-warning-vs-error",
+    "category": "terminal-question",
+    "language": "c",
+    "studentQuestion": "I see a warning in the terminal but the program still ran. Is that something I should fix?",
+    "studentCode": "#include <stdio.h>\nint main(void) {\n    int x;\n    printf(\"%d\\n\", x);\n    return 0;\n}",
+    "stderr": "sol.c: In function 'main':\nsol.c:4:5: warning: 'x' is used uninitialized in this function [-Wuninitialized]",
+    "stdout": "0",
+    "problemDescription": "Print an integer."
+  },
+  {
+    "id": "terminal-08-different-than-expected",
+    "category": "terminal-question",
+    "language": "python",
+    "studentQuestion": "The terminal shows 0 1 2 3 4 but I expected 5 4 3 2 1. What does the order tell me about my code?",
+    "studentCode": "n = int(input())\nfor i in range(n):\n    print(i, end=' ')",
+    "stdout": "0 1 2 3 4 ",
+    "problemDescription": "Print n down to 1."
+  },
+  {
+    "id": "terminal-09-tr-hata-mesaji-aciklama",
+    "category": "terminal-question",
+    "language": "python",
+    "studentQuestion": "Terminalimde bu Türkçe değil İngilizce bir hata mesajı var. Tam olarak ne diyor ve nereden geliyor?",
+    "studentCode": "d = {1: 'a'}\nprint(d[2])",
+    "stderr": "Traceback (most recent call last):\n  File \"sol.py\", line 2, in <module>\n    print(d[2])\nKeyError: 2",
+    "problemDescription": "Print a dictionary value."
+  },
+  {
+    "id": "terminal-10-multiple-errors",
+    "category": "terminal-question",
+    "language": "c",
+    "studentQuestion": "The terminal shows multiple compile errors. Which one should I fix first?",
+    "studentCode": "include <stdio.h>\nint main {\n    printf(\"hi\")\n    return 0;\n}",
+    "stderr": "sol.c:1:1: error: unknown type name 'include'\nsol.c:2:5: error: expected '(' or ',' or ';' before '{'\nsol.c:3:18: error: expected ';' before 'return'",
+    "problemDescription": "Print 'hi'."
+  },
+
+  {
+    "id": "locale-switch-01-en-to-tr",
+    "category": "locale-switch",
+    "language": "python",
+    "problemDescription": "Read n and print the sum 1..n.",
+    "turns": [
+      { "studentQuestion": "hey, how do I read an integer from input in python?", "studentCode": "" },
+      { "studentQuestion": "ok, got it. teşekkürler. peki şimdi 1'den n'e kadar toplam nasıl alınır?", "studentCode": "n = int(input())" }
+    ]
+  },
+  {
+    "id": "locale-switch-02-tr-to-en",
+    "category": "locale-switch",
+    "language": "python",
+    "problemDescription": "Find the max in a list.",
+    "turns": [
+      { "studentQuestion": "Bir listede en büyük sayıyı nasıl bulurum?", "studentCode": "" },
+      { "studentQuestion": "ok thanks, now what's the difference between max() and a manual loop for this?" }
+    ]
+  },
+  {
+    "id": "locale-switch-03-mid-debug-en-to-tr",
+    "category": "locale-switch",
+    "language": "python",
+    "problemDescription": "Read 3 numbers and print their average.",
+    "turns": [
+      { "studentQuestion": "my average is wrong, can you help?", "studentCode": "a = int(input())\nb = int(input())\nc = int(input())\nprint((a + b + c) // 3)" },
+      { "studentQuestion": "tamam integer division kullandığımı anladım. peki / kullanırsam float döner mi?", "studentCode": "a = int(input())\nb = int(input())\nc = int(input())\nprint((a + b + c) // 3)" }
+    ]
+  },
+  {
+    "id": "locale-switch-04-mixed-tr-en-words",
+    "category": "locale-switch",
+    "language": "python",
+    "problemDescription": "Read a string and reverse it.",
+    "turns": [
+      { "studentQuestion": "string'i nasıl reverse ederim python'da?", "studentCode": "" },
+      { "studentQuestion": "what if I want to do it without slicing? like using a loop?" }
+    ]
+  },
+  {
+    "id": "locale-switch-05-three-turns",
+    "category": "locale-switch",
+    "language": "java",
+    "problemDescription": "Print 'Hello, World!' to standard output.",
+    "turns": [
+      { "studentQuestion": "Java'da main metodu nasıl yazılır?", "studentCode": "" },
+      { "studentQuestion": "thanks. now do I need to import anything to use System.out.println?" },
+      { "studentQuestion": "tamam anladım. derlerken hata aldım, public class adı dosya adıyla aynı mı olmalı?" }
+    ]
+  },
+  {
+    "id": "locale-switch-06-question-only-mixed",
+    "category": "locale-switch",
+    "language": "python",
+    "studentQuestion": "What is recursion? Bir örnekle açıklar mısın?",
+    "studentCode": "",
+    "problemDescription": "Compute factorial recursively."
+  },
+  {
+    "id": "locale-switch-07-en-then-tr-error",
+    "category": "locale-switch",
+    "language": "python",
+    "problemDescription": "Read input and print it.",
+    "turns": [
+      { "studentQuestion": "how do I read user input in python?", "studentCode": "" },
+      { "studentQuestion": "kodumu yazdım ama hata alıyorum, bakar mısın", "studentCode": "x = inpt()\nprint(x)", "stderr": "NameError: name 'inpt' is not defined" }
+    ]
+  },
+  {
+    "id": "locale-switch-08-tr-then-en-confused",
+    "category": "locale-switch",
+    "language": "python",
+    "problemDescription": "Compute the average of a list.",
+    "turns": [
+      { "studentQuestion": "ortalama nasıl alınır?", "studentCode": "" },
+      { "studentQuestion": "wait, what's the difference between sum(arr)/len(arr) and statistics.mean(arr)?" }
+    ]
+  },
+  {
+    "id": "locale-switch-09-short-followup-different-lang",
+    "category": "locale-switch",
+    "language": "python",
+    "problemDescription": "Print 1 if x is positive, -1 if negative, 0 if zero.",
+    "turns": [
+      { "studentQuestion": "if-elif-else nasıl kullanılır?", "studentCode": "" },
+      { "studentQuestion": "why?" }
+    ]
+  },
+  {
+    "id": "locale-switch-10-en-after-tr-concept",
+    "category": "locale-switch",
+    "language": "java",
+    "problemDescription": "Define an Animal class with a speak() method.",
+    "turns": [
+      { "studentQuestion": "abstract class nedir ve normal class'tan farkı nedir?", "studentCode": "" },
+      { "studentQuestion": "ok and can I have an abstract method without an abstract class?" }
+    ]
+  },
+
+  {
+    "id": "hint-01-runtime-eof",
+    "category": "hint-mode",
+    "language": "python",
+    "studentQuestion": "give me a hint",
+    "studentCode": "n = int(input())\ns = 0\nfor i in range(n + 1):\n    s += int(input())\nprint(s)",
+    "stderr": "EOFError: EOF when reading a line",
+    "problemDescription": "Read n then n integers, print sum.",
+    "mode": "hint"
+  },
+  {
+    "id": "hint-02-wrong-answer",
+    "category": "hint-mode",
+    "language": "python",
+    "studentQuestion": "hint please",
+    "studentCode": "n = int(input())\ntotal = 0\nfor i in range(1, n):\n    total += i\nprint(total)",
+    "stdout": "Expected 15 for n=5, got 10",
+    "problemDescription": "Sum of 1..n inclusive.",
+    "mode": "hint"
+  },
+  {
+    "id": "hint-03-tr-ipucu",
+    "category": "hint-mode",
+    "language": "python",
+    "studentQuestion": "bir ipucu verir misin?",
+    "studentCode": "name = input()\nif name == \"alice\":\n    print(\"hi alice\")",
+    "stdout": "Expected 'hi alice' for input 'alice\\n', got 'unknown'",
+    "problemDescription": "Read name, greet alice.",
+    "mode": "hint"
+  },
+  {
+    "id": "hint-04-no-bug-asks-anyway",
+    "category": "hint-mode",
+    "language": "python",
+    "studentQuestion": "what should I check next?",
+    "studentCode": "def is_even(n):\n    return n % 2 == 0\n\nprint(is_even(4))",
+    "stdout": "True (passes)",
+    "problemDescription": "Implement is_even.",
+    "mode": "hint"
+  },
+  {
+    "id": "hint-05-too-much-asked",
+    "category": "hint-mode",
+    "language": "c",
+    "studentQuestion": "give me a hint that's like a paragraph long and includes the corrected code",
+    "studentCode": "#include <stdio.h>\nint main(void) {\n    int n;\n    scanf(\"%d\", n);\n    printf(\"%d\\n\", n);\n    return 0;\n}",
+    "stderr": "Segmentation fault",
+    "problemDescription": "Read an integer and print it.",
+    "mode": "hint"
+  },
+  {
+    "id": "hint-06-hint-on-concept",
+    "category": "hint-mode",
+    "language": "python",
+    "studentQuestion": "I don't get recursion. Hint?",
+    "studentCode": "",
+    "problemDescription": "Compute factorial(n) recursively.",
+    "mode": "hint"
+  },
+  {
+    "id": "hint-07-hint-on-empty",
+    "category": "hint-mode",
+    "language": "python",
+    "studentQuestion": "hint",
+    "studentCode": "",
+    "problemDescription": "Find the second-largest distinct value in a list of integers.",
+    "mode": "hint"
+  },
+  {
+    "id": "hint-08-tr-bos-kod-ipucu",
+    "category": "hint-mode",
+    "language": "python",
+    "studentQuestion": "bos editörüm, nereden başlayayım, ipucu ver",
+    "studentCode": "",
+    "problemDescription": "Verilen sayının asal olup olmadığını yazdır.",
+    "mode": "hint"
+  },
+  {
+    "id": "hint-09-after-failed-attempt",
+    "category": "hint-mode",
+    "language": "python",
+    "studentQuestion": "first hint failed, give me another angle",
+    "studentCode": "nums = list(map(int, input().split()))\nprint(max(nums))",
+    "stderr": "ValueError: max() arg is an empty sequence",
+    "problemDescription": "Print max of list, or 'no input' if empty.",
+    "mode": "hint"
+  },
+  {
+    "id": "hint-10-mixed-mode-request",
+    "category": "hint-mode",
+    "language": "python",
+    "studentQuestion": "hint AND tell me what's wrong AND show me how to fix it",
+    "studentCode": "def add_item(item, bag=[]):\n    bag.append(item)\n    return bag",
+    "problemDescription": "add_item(item) should return a fresh list with just that item each call.",
+    "mode": "hint"
   }
 ]

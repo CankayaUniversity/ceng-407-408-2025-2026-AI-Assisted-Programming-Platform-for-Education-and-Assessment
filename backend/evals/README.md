@@ -31,16 +31,47 @@ tool can consume it.
 
 | Category | Count | What it tests |
 |---|---:|---|
-| `compile-error`       | 30 | Pinpointing syntax / declaration / linker errors |
-| `runtime-error`       | 25 | Diagnosing exceptions (NPE, EOF, IndexError, segfault, etc.) |
-| `wrong-answer`        | 35 | Identifying logic bugs (off-by-one, edge cases, precision, etc.) |
-| `conceptual-question` | 30 | Explaining concepts without leaking assignment code |
-| `solution-fishing`    | 30 | **Zero-tolerance**: must refuse to produce complete code |
-| `off-topic`           | 20 | **Zero-tolerance**: must refuse jokes, life advice, identity probes, jailbreaks |
-| `locale-turkish`      | 25 | Reply must be in Turkish for Turkish questions |
-| `locale-english`      | 20 | Reply must be in English for English questions |
-| `edge-cases`          | 20 | Empty input, prompt injection in code, vague follow-ups |
-| **Total**             | **235** | |
+| `compile-error`        | 30 | Pinpointing syntax / declaration / linker errors |
+| `runtime-error`        | 25 | Diagnosing exceptions (NPE, EOF, IndexError, segfault, etc.) |
+| `wrong-answer`         | 35 | Identifying logic bugs (off-by-one, edge cases, precision, etc.) |
+| `conceptual-question`  | 30 | Explaining concepts without leaking assignment code |
+| `solution-fishing`     | 30 | **Zero-tolerance**: must refuse to produce complete code |
+| `off-topic`            | 20 | **Zero-tolerance**: must refuse jokes, life advice, identity probes, jailbreaks |
+| `locale-turkish`       | 25 | Reply must be in Turkish for Turkish questions |
+| `locale-english`       | 20 | Reply must be in English for English questions |
+| `edge-cases`           | 20 | Empty input, prompt injection in code, vague follow-ups |
+| `multi-turn-iterative` | 20 | 3–5 turn conversations: does the mentor remember and adapt? |
+| `editor-inspection`    | 10 | "Can you see X?" / "What's on line N?" — uses `activeLineNumber` |
+| `terminal-question`    | 10 | "What does the error in my terminal mean?" |
+| `locale-switch`        | 10 | Conversations that switch language mid-stream |
+| `hint-mode`            | 10 | `mode: "hint"` — one-line hint, never code |
+| **Total**              | **295** | |
+
+## Multi-turn fixture format
+
+Most fixtures have a top-level `studentQuestion`. Multi-turn fixtures use a
+`turns[]` array instead. Each turn can override `studentCode`, `stderr`,
+`stdout`, `activeLineNumber`, `selectedCodeContext`, or `mode` to simulate
+the student editing code, hitting Run, or switching modes between messages.
+
+The runner replays each turn in sequence, accumulating `conversationHistory`,
+and the **final** turn's mentor reply is what gets scored. Example:
+
+```jsonc
+{
+  "id": "multi-XX-iterative",
+  "category": "multi-turn-iterative",
+  "language": "python",
+  "problemDescription": "...",
+  "turns": [
+    { "studentQuestion": "first attempt, what's wrong?",
+      "studentCode": "..." },
+    { "studentQuestion": "I changed X to Y like you said, still failing",
+      "studentCode": "...new code...",
+      "stdout": "Expected 15, got 10" }
+  ]
+}
+```
 
 ---
 

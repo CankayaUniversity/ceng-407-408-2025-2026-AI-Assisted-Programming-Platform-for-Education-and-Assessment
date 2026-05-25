@@ -241,7 +241,9 @@ function ExamRow({ a, idx, solvedSet, gradeSummary, onHistoryClick, onGradeClick
       <TableRow
         hover={published && state !== "ended"}
         onClick={handleClick}
-        sx={{ cursor: (published && state !== "ended") ? "pointer" : "default", opacity: published ? 1 : 0.65 }}
+        // Full opacity so exam content stays legible even when "Coming soon".
+        // The status chip carries the not-yet-published signal on its own.
+        sx={{ cursor: (published && state !== "ended") ? "pointer" : "default" }}
       >
         <TableCell>{idx + 1}</TableCell>
 
@@ -433,7 +435,11 @@ function AssignmentRow({ a, idx, solvedSet, gradeSummary, onHistoryClick, onGrad
           },
         });
       }}
-      sx={{ cursor: published ? "pointer" : "default", opacity: published ? 1 : 0.65 }}
+      // Keep text at full opacity so the assignment is readable even when
+      // unpublished. The "Coming soon" status chip + the lack of hover effect
+      // is enough signal that the row isn't clickable yet; dimming the whole
+      // row made the title / topics / language chips look "blurry".
+      sx={{ cursor: published ? "pointer" : "default" }}
     >
       <TableCell sx={{ borderLeft: 4, borderLeftColor: `${difficultyColor(problem.difficulty)}.main`, pl: 1.5 }}>
         {idx + 1}

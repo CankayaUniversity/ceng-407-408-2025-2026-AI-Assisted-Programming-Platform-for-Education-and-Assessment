@@ -30,12 +30,32 @@ export type GeneratedVariation = {
   starterCode: string;
 };
 
+/**
+ * A test case generated for a variation: input came from the AI's
+ * `testCaseInputs` list; `expectedOutput` came from running the AI's
+ * `referenceSolution` against that input. Grading uses these.
+ */
+export type GeneratedTestCase = {
+  input:          string;
+  expectedOutput: string;
+  isHidden:       boolean;
+};
+
+export type TestCaseGenerationReport = {
+  requested: number;   // how many inputs the AI offered
+  generated: number;   // how many we successfully captured outputs for
+  skipped:   boolean;
+  skipReason?: string;
+};
+
 export type VariationResult =
   | {
-      success:      true;
-      variation:    GeneratedVariation;
-      model:        string;
-      verification: ExampleVerificationReport;
+      success:           true;
+      variation:         GeneratedVariation;
+      model:             string;
+      verification:      ExampleVerificationReport;
+      generatedTestCases: GeneratedTestCase[];
+      testCaseReport:    TestCaseGenerationReport;
     }
   | { success: false; error: string };
 
@@ -226,8 +246,32 @@ The JSON must have exactly these fields:
   "difficulty": "${targetDifficulty}",
   "language": "${input.language}",
   "starterCode": "<string — SKELETON only, never a working solution; see Rule 1>",
-  "referenceSolution": "<string — a COMPLETE working ${input.language} program that correctly solves your problem; this code WILL be executed against every example's Input to verify your claimed Output>"
+  "referenceSolution": "<string — a COMPLETE working ${input.language} program that correctly solves your problem; this code WILL be executed against every example's Input to verify your claimed Output>",
+  "testCaseInputs": ["<string>", "<string>", "<string>"]
 }
+
+TEST CASE INPUTS — VERY IMPORTANT
+==================================
+Provide EXACTLY 3 strings in "testCaseInputs". These will be used as stdin for grading the student's submission:
+
+- Index 0: a SIMPLE typical input that exercises the main logic.
+- Index 1: a SECOND typical input, distinct from index 0.
+- Index 2: a TRICKY edge case (empty input, boundary value, all-same values, max-size input, special characters, etc.).
+
+Constraints:
+- Each string is the EXACT stdin the program should receive — preserve whitespace and newlines as needed.
+- Do NOT include "Input:" / "Output:" labels.
+- Do NOT include expected outputs (we will compute them by running your referenceSolution).
+- The inputs MUST satisfy the problem's input format. If your problem reads a single integer, every input is a single integer.
+- The inputs MUST be different from the Input examples you put in the description (those teach; these grade).
+
+Example for a "count words in a line" problem:
+"testCaseInputs": [
+  "hello world",
+  "the quick brown fox",
+  ""
+]
+(index 2 = empty string = edge case)
 
 EXAMPLE FORMAT INSIDE THE DESCRIPTION
 =====================================
@@ -615,7 +659,20 @@ function rewriteDescriptionWithVerifiedExamples(
   verified:            ParsedExample[],
   report:              ExampleVerificationReport,
 ): string {
-  if (allParsed.length === 0) return originalDescription;
+  // Case: AI produced ZERO examples. The prompt asks for 1-3, so this is
+  // a violation. We can't auto-fix it (the AI would need to be re-prompted),
+  // but we can surface the gap so the teacher knows to add one before
+  // publishing — otherwise the student gets a problem with no anchor.
+  if (allParsed.length === 0) {
+    const trimmed = originalDescription.replace(/\s+$/, "");
+    return (
+      trimmed +
+      "\n\n" +
+      "_⚠ Warning: the AI did not provide any Input/Output examples for this variation. " +
+      "Students will see only the problem statement above. Please add at least one example " +
+      "before publishing — examples are critical for students to verify their understanding._\n"
+    );
+  }
   // Did anything change?
   if (!report.skipped && verified.length === allParsed.length) {
     return originalDescription;
@@ -656,6 +713,85 @@ function rewriteDescriptionWithVerifiedExamples(
   return lines.join("\n").trim() + "\n";
 }
 
+// ── Test case generation from AI-supplied inputs ─────────────────────────────
+//
+// The AI proposes 3 inputs; we execute the reference solution against each one
+// and capture its stdout as the canonical expectedOutput. The AI's hypothetical
+// outputs never enter the database — only outputs produced by real execution
+// do. This makes grading immune to AI arithmetic hallucinations.
+//
+// First two inputs become VISIBLE test cases (isHidden: false), the third
+// becomes HIDDEN (isHidden: true) — matches the typical "2 public + 1 hidden"
+// pattern teachers expect.
+
+async function generateTestCasesFromInputs(
+  referenceSolution: string,
+  language:          string,
+  inputs:            string[],
+): Promise<{ cases: GeneratedTestCase[]; report: TestCaseGenerationReport }> {
+  const report: TestCaseGenerationReport = {
+    requested: inputs.length,
+    generated: 0,
+    skipped:   false,
+  };
+
+  if (process.env.SKIP_VARIATION_VERIFICATION === "true") {
+    return { cases: [], report: { ...report, skipped: true, skipReason: "disabled via env" } };
+  }
+  if (!referenceSolution || referenceSolution.trim().length < 10) {
+    return { cases: [], report: { ...report, skipped: true, skipReason: "no reference solution" } };
+  }
+  if (inputs.length === 0) {
+    // Issue 1 fix: mark as skipped with a clear reason so the log line is
+    // "skipped: AI did not provide testCaseInputs" instead of "0/0 succeeded".
+    return {
+      cases:  [],
+      report: { ...report, skipped: true, skipReason: "AI did not provide testCaseInputs" },
+    };
+  }
+
+  let session;
+  try {
+    session = await createDockerSession(referenceSolution, language);
+  } catch (e) {
+    const reason = e instanceof Error ? e.message : String(e);
+    return { cases: [], report: { ...report, skipped: true, skipReason: `session create failed: ${reason}` } };
+  }
+
+  try {
+    const cases: GeneratedTestCase[] = [];
+    for (let i = 0; i < inputs.length; i++) {
+      const input = inputs[i];
+      const result = await session.run(input, 8_000);
+      if (result.statusId === 6) {
+        // Compile error: the reference itself is broken. Abort entirely.
+        return {
+          cases:  [],
+          report: { ...report, skipped: true, skipReason: "reference solution did not compile" },
+        };
+      }
+      if (result.statusId !== 3) {
+        // Runtime error or timeout on this specific input — likely the AI
+        // suggested an edge case the reference doesn't handle well. Drop
+        // the test case rather than persisting a wrong expected output.
+        continue;
+      }
+      const expectedOutput = result.stdout.replace(/\r\n/g, "\n");
+      cases.push({
+        input,
+        expectedOutput,
+        // First 2 visible, anything beyond hidden. With 3 AI inputs this
+        // gives the conventional "2 public + 1 hidden" layout.
+        isHidden: i >= 2,
+      });
+      report.generated++;
+    }
+    return { cases, report };
+  } finally {
+    session.cleanup();
+  }
+}
+
 // ── JSON extractor ────────────────────────────────────────────────────────────
 
 function extractJson(
@@ -665,6 +801,7 @@ function extractJson(
 ): {
   variation:                GeneratedVariation;
   referenceSolution:        string;
+  testCaseInputs:           string[];
   starterLeakDetected:      boolean;
   descriptionLeakDetected:  boolean;
 } | null {
@@ -687,6 +824,18 @@ function extractJson(
     const rawDifficulty   = typeof obj.difficulty         === "string" ? obj.difficulty         : "";
     const rawStarter      = typeof obj.starterCode        === "string" ? obj.starterCode        : "";
     const referenceSolution = typeof obj.referenceSolution === "string" ? obj.referenceSolution : "";
+
+    // Sanitize AI-supplied test inputs: must be an array of strings; each
+    // string capped at 4 KB to keep stdin payloads sane. Also cap the COUNT
+    // at 5 — the prompt asks for 3, but the model occasionally returns more
+    // and we don't want runaway storage or grading-time bloat.
+    const MAX_TEST_INPUTS = 5;
+    const testCaseInputs: string[] = Array.isArray(obj.testCaseInputs)
+      ? (obj.testCaseInputs as unknown[])
+          .filter((x): x is string => typeof x === "string")
+          .map((s) => s.length > 4_000 ? s.slice(0, 4_000) : s)
+          .slice(0, MAX_TEST_INPUTS)
+      : [];
 
     if (!title || !description) return null;
 
@@ -716,6 +865,7 @@ function extractJson(
     return {
       variation: { title, description, difficulty, language, starterCode: sanitized },
       referenceSolution,
+      testCaseInputs,
       starterLeakDetected:    wasLeak,
       descriptionLeakDetected: descCheck.structuralLeak,
     };
@@ -734,8 +884,14 @@ export async function generateVariation(
   const model = getModelName();
   const prompt = buildVariationPrompt(input, type);
 
+  // Total budget for the whole variation flow:
+  //   Ollama generation: typically 15-90s, can spike to 3-4 min under load
+  //   Runtime verification (compile + 1-3 examples): 5-15s extra
+  // Old 240s (4 min) was tight for "Harder" variations with verification
+  // running on a busy Ollama. Bumped to 600s (10 min) so the request rarely
+  // aborts mid-flight; user can still cancel from the UI if they need to.
   const controller = new AbortController();
-  const timeout    = setTimeout(() => controller.abort(), 240_000);
+  const timeout    = setTimeout(() => controller.abort(), 600_000);
 
   try {
     console.log(`[variation] type=${type} model=${model} problem="${input.title}"`);
@@ -814,7 +970,11 @@ export async function generateVariation(
 
     // Log a compact summary so the demo / report can show how often
     // verification catches problems.
-    if (report.skipped) {
+    if (parsedExamples.length === 0) {
+      console.warn(
+        `[variation] AI produced NO examples on "${input.title}" (${type}) — teacher will see a warning note`,
+      );
+    } else if (report.skipped) {
       console.warn(
         `[variation] example verification SKIPPED on "${input.title}" (${type}): ${report.skipReason}`,
       );
@@ -829,7 +989,51 @@ export async function generateVariation(
       }
     }
 
-    return { success: true, variation: finalVariation, model, verification: report };
+    // ── Test case generation from AI inputs + reference execution ──
+    // Reuses the same trust model as example verification: the AI proposes
+    // inputs (cheap, it's good at this), the reference solution produces
+    // canonical outputs (which is what actually goes into TestCase rows).
+    //
+    // Issue 2 fix: if example verification already determined the reference
+    // doesn't compile, skip immediately — we'd just waste ~5-10s reaching
+    // the same conclusion. Pass through the same skipReason so the response
+    // shape is consistent.
+    const referenceDidNotCompile =
+      report.skipped && report.skipReason === "reference solution did not compile";
+
+    const { cases: generatedTestCases, report: testCaseReport } = referenceDidNotCompile
+      ? {
+          cases:  [] as GeneratedTestCase[],
+          report: {
+            requested:  parsed.testCaseInputs.length,
+            generated:  0,
+            skipped:    true,
+            skipReason: "reference solution did not compile (skipped after example verification)",
+          } as TestCaseGenerationReport,
+        }
+      : await generateTestCasesFromInputs(
+          parsed.referenceSolution,
+          parsed.variation.language,
+          parsed.testCaseInputs,
+        );
+    if (testCaseReport.skipped) {
+      console.warn(
+        `[variation] test case generation SKIPPED on "${input.title}" (${type}): ${testCaseReport.skipReason}`,
+      );
+    } else {
+      console.log(
+        `[variation] test cases generated on "${input.title}" (${type}): ${testCaseReport.generated}/${testCaseReport.requested} succeeded`,
+      );
+    }
+
+    return {
+      success:           true,
+      variation:         finalVariation,
+      model,
+      verification:      report,
+      generatedTestCases,
+      testCaseReport,
+    };
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
     const message = raw.toLowerCase().includes("abort")

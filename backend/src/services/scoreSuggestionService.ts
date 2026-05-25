@@ -251,27 +251,39 @@ function extractJson(
       }
     }
 
-    // ── Cross-criterion bound enforcement (Fix A) ──
-    // If Correctness lands below 50% of its maxScore, no other criterion
-    // may exceed 70% of its own maxScore. The prompt asks the AI to honor
-    // this; we structurally enforce it here so a generous LLM cannot
-    // award high Code Quality / Style / Algorithm credit for a program
-    // that doesn't actually work. We only clamp when we can identify a
-    // Correctness entry — if the rubric uses a non-"correct*" name, the
-    // rule silently no-ops (same trade-off as the proportional band).
+    // ── Cross-criterion bound enforcement (Fix A + A.2) ──
+    // Two tiers, both designed to prevent the LLM from awarding
+    // near-perfect non-Correctness scores when a real bug exists:
+    //   • Fix A   — Correctness < 50% of max → other criteria ≤ 70% of max.
+    //               "Doesn't really work" — strong clamp.
+    //   • Fix A.2 — Correctness 50–80% of max → other criteria ≤ 85% of max.
+    //               "Has a real bug but mostly works" — softer clamp.
+    //               At ≥ 80%, no cross-criterion constraint (close to perfect).
+    // We only clamp when we can identify a Correctness entry — if the rubric
+    // uses a non-"correct*" name, the rule silently no-ops (same trade-off
+    // as the proportional band).
     const correctnessEntry = breakdown.find((b) => isCorrectnessCriterion(b.name));
     if (correctnessEntry && correctnessEntry.maxScore > 0) {
       const correctnessRatio = correctnessEntry.suggested / correctnessEntry.maxScore;
+      let ceilingFraction: number | null = null;
+      let tierLabel = "";
       if (correctnessRatio < 0.5) {
+        ceilingFraction = 0.7;
+        tierLabel = "< 50% of max forces other criteria ≤ 70%";
+      } else if (correctnessRatio < 0.8) {
+        ceilingFraction = 0.85;
+        tierLabel = "in 50–80% band forces other criteria ≤ 85%";
+      }
+      if (ceilingFraction !== null) {
         const correctnessPctStr = `${Math.round(correctnessRatio * 100)}%`;
         for (const entry of breakdown) {
           if (entry === correctnessEntry) continue;
           if (entry.maxScore <= 0) continue;
-          const ceiling = Math.floor(0.7 * entry.maxScore);
+          const ceiling = Math.floor(ceilingFraction * entry.maxScore);
           if (entry.suggested > ceiling) {
             const original = entry.suggested;
             entry.suggested = ceiling;
-            entry.comment = `${entry.comment} [auto-adjusted from ${original} → ${ceiling}: cross-criterion bound — Correctness ${correctnessEntry.suggested}/${correctnessEntry.maxScore} (${correctnessPctStr}) < 50% of max forces other criteria ≤ 70% of their maxScore]`.trim();
+            entry.comment = `${entry.comment} [auto-adjusted from ${original} → ${ceiling}: cross-criterion bound — Correctness ${correctnessEntry.suggested}/${correctnessEntry.maxScore} (${correctnessPctStr}) ${tierLabel} of their maxScore]`.trim();
           }
         }
       }
@@ -406,6 +418,7 @@ CRITICAL RULES — you MUST follow these:
 - Execution results are ground truth. If tests FAILED, Correctness CANNOT be above 60% of its maxScore.
 - PROPORTIONAL CORRECTNESS RULE: If k of n tests passed and the result is not a compile error, the Correctness score MUST be within ±10% of (k / n) × maxScore. Example: 7 of 10 public tests passed and Correctness maxScore is 40 → suggested Correctness must be between 25 and 31 (≈ 28 ± 10%). If hidden tests are also reported, count both: use (publicPassed + hiddenPassed) / (publicTotal + hiddenTotal).
 - CROSS-CRITERION BOUND RULE: If Correctness lands below 50% of its maxScore, NO OTHER criterion (Code Quality, Edge Cases, Algorithm, Memory Safety, Code Style, Case Handling, or any other) may exceed 70% of its maxScore. A program that doesn't actually work cannot be 'high quality' regardless of style. The bug IS itself a quality problem; it constrains credit across the rubric. Example: if Correctness = 8/40 (20% of max), Code Quality's maxScore is 20 → Code Quality must be ≤ 14, and Edge Cases (max 20) must be ≤ 14, etc. This rule does NOT apply when Correctness ≥ 50% of max.
+- MID-BAND CROSS-CRITERION RULE: If Correctness lands between 50% and 80% of its maxScore (i.e. a real bug exists but most tests still pass), NO OTHER criterion may exceed 85% of its maxScore. A program with a known defect cannot be 'nearly perfect' on quality, edge cases, or style — the defect is itself evidence of incomplete reasoning. Example: if Correctness = 30/50 (60% of max), Code Style's maxScore is 30 → Code Style must be ≤ 25 (=floor(0.85 × 30)), Case Handling (max 20) must be ≤ 17, etc. This rule does NOT apply when Correctness ≥ 80% of max OR when Correctness < 50% of max (in which case the stricter 70% rule above applies instead).
 - If ALL tests passed (allPassed = true), Correctness may be high, AND other criteria are unconstrained by the cross-criterion rule — but they must still be graded critically on their own merits.
 - If there is a compile error, Correctness = 0. Code Quality must also be very low (≤ 20% of its maxScore). The cross-criterion rule reinforces this — every non-Correctness criterion must be ≤ 70% of max.
 - If the code has no comments, hardcoded values, poor variable names, or is a single unstructured block, Code Quality must reflect that.

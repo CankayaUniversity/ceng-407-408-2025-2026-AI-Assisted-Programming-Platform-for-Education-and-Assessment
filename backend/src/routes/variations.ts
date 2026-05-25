@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { Prisma, VariationStatus } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireRole } from "../middleware/requireRole";
@@ -62,15 +63,30 @@ router.post("/generate", async (req, res) => {
   res.status(201).json({ data: variation });
 });
 
-// ── GET /api/variations?problemId=X ──────────────────────────────────────────
-// List all pending variations for a problem (or all problems if no filter).
+// ── GET /api/variations?problemId=X&status=Y ─────────────────────────────────
+// List variations for a problem (or all problems if no filter).
+// Defaults to status=pending so teachers don't see rejected/approved items
+// mixed into their review queue. Pass status=all to retrieve everything.
 
 router.get("/", async (req, res) => {
   const problemId = req.query.problemId ? Number(req.query.problemId) : undefined;
+  const status    = typeof req.query.status === "string" ? req.query.status : "pending";
+
+  const ALLOWED_STATUSES: VariationStatus[] = [
+    VariationStatus.pending,
+    VariationStatus.approved,
+    VariationStatus.rejected,
+  ];
+  const requestedStatus = (ALLOWED_STATUSES as string[]).includes(status)
+    ? (status as VariationStatus)
+    : VariationStatus.pending;
+  const statusFilter: Prisma.ProblemVariationWhereInput =
+    status === "all" ? {} : { status: requestedStatus };
 
   const variations = await prisma.problemVariation.findMany({
     where: {
       ...(problemId !== undefined ? { sourceProblemId: problemId } : {}),
+      ...statusFilter,
     },
     orderBy: { createdAt: "desc" },
     include: {
@@ -92,7 +108,10 @@ router.patch("/:id/approve", async (req, res) => {
     return;
   }
 
-  const variation = await prisma.problemVariation.findUnique({ where: { id } });
+  const variation = await prisma.problemVariation.findUnique({
+    where: { id },
+    include: { sourceProblem: { select: { tags: true } } },
+  });
   if (!variation) {
     res.status(404).json({ error: "Variation not found" });
     return;
@@ -102,29 +121,53 @@ router.patch("/:id/approve", async (req, res) => {
     return;
   }
 
-  // Promote to a real Problem, then mark approved — both in a transaction
-  const [newProblem] = await prisma.$transaction([
-    prisma.problem.create({
-      data: {
-        title:           variation.title,
-        description:     variation.description,
-        difficulty:      variation.difficulty,
-        language:        variation.language,
-        starterCode:     variation.starterCode,
-        createdById:     req.auth!.userId,
-        tags:            [],
-        metadata:        {
-          generatedFrom: variation.sourceProblemId,
-          variationId:   variation.id,
-          aiModel:       variation.aiModel,
+  // Promote to a real Problem, then mark approved — both in a transaction.
+  // We pass `updateMany({ where: { id, status: "pending" }})` so a concurrent
+  // approve from another tab cannot create a duplicate Problem; the second
+  // call will hit count=0 and we'll roll back.
+  const inheritedTags = Array.isArray(variation.sourceProblem?.tags)
+    ? variation.sourceProblem.tags
+    : [];
+
+  let newProblem;
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const updated = await tx.problemVariation.updateMany({
+        where: { id, status: VariationStatus.pending },
+        data:  { status: VariationStatus.approved },
+      });
+      if (updated.count === 0) {
+        // Another request already approved/rejected this variation between
+        // our findUnique and updateMany. Abort cleanly.
+        throw new Error("RACE_LOST");
+      }
+      return tx.problem.create({
+        data: {
+          title:           variation.title,
+          description:     variation.description,
+          difficulty:      variation.difficulty,
+          language:        variation.language,
+          starterCode:     variation.starterCode,
+          createdById:     req.auth!.userId,
+          // Inherit tags from the source problem so the variation stays in
+          // the same logical category instead of becoming orphaned.
+          tags:            inheritedTags,
+          metadata:        {
+            generatedFrom: variation.sourceProblemId,
+            variationId:   variation.id,
+            aiModel:       variation.aiModel,
+          },
         },
-      },
-    }),
-    prisma.problemVariation.update({
-      where: { id },
-      data:  { status: "approved" },
-    }),
-  ]);
+      });
+    });
+    newProblem = result;
+  } catch (e) {
+    if (e instanceof Error && e.message === "RACE_LOST") {
+      res.status(409).json({ error: "Variation was already approved or rejected by another request" });
+      return;
+    }
+    throw e;
+  }
 
   // AI-generated variations contain no test cases — the teacher must add them
   // via the problem editor before the problem can be used for grading.

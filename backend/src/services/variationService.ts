@@ -166,22 +166,235 @@ YOUR TASK
 =========
 ${typeInstructions[type]}
 
+ABSOLUTE RULES — failure on any of these makes the variation unusable:
+
+1. STARTER CODE MUST BE A SKELETON, NEVER A SOLUTION.
+   - The "starterCode" field MUST contain ONLY scaffolding: includes/imports, function signatures, an entry point, and a comment marker like "// Your code here" or "# Your code here".
+   - DO NOT include the loop that solves the problem.
+   - DO NOT include output statements (printf / print / System.out.println / cout) that produce the answer.
+   - DO NOT include the algorithm that computes the result.
+   - A student must be unable to submit your starter code as-is and pass any non-trivial test.
+   - Example of GOOD starter for C:
+       #include <stdio.h>
+       int main() {
+           // Your code here
+           return 0;
+       }
+   - Example of BAD starter (this is a SOLUTION, not a skeleton):
+       int main() {
+           char line[1024];
+           fgets(line, sizeof(line), stdin);
+           int count = 0;
+           for (int i = 0; line[i]; i++) if (line[i] == ' ') count++;
+           printf("%d\\n", count + 1);
+           return 0;
+       }
+
+2. EVERY EXAMPLE'S EXPECTED OUTPUT MUST BE ARITHMETICALLY CORRECT.
+   Before you finalize each Input/Output example in the description, do this mental check:
+   • Trace through the input STEP BY STEP using your problem's own rules.
+   • Compute every number (count, sum, average, length, min, max, frequency) by hand.
+   • Verify the output matches your calculation EXACTLY (including decimal places).
+   • If the math doesn't match, REWRITE the example with corrected numbers.
+   Common failures to avoid:
+   • Averages that don't divide correctly (e.g. claiming average = 4.00 when sum/count = 3.67).
+   • Counts that don't match the input (claiming "2 sentences" when input has 1 by your rules).
+   • Frequency lists not actually sorted alphabetically when the spec says alphabetical.
+   • Floats with the wrong number of decimal places.
+
+3. EVERY EXAMPLE MUST BE CONSISTENT WITH YOUR PROBLEM'S OWN DEFINITION.
+   If your problem says "a sentence is a sequence ending with a period", every example MUST split sentences at periods. Do not let examples follow a different rule than the one you defined.
+
+4. DO NOT INCLUDE A REFERENCE SOLUTION ANYWHERE.
+   The description must define the problem (what to compute). It must NEVER include the code that solves it. Algorithmic hints in plain English are acceptable; pseudocode and source code are not.
+
+5. KEEP LANGUAGE: ${input.language}
+
 RESPONSE FORMAT
 ===============
 Respond with ONLY a valid JSON object — no markdown, no explanation, no code fences.
 The JSON must have exactly these fields:
 {
   "title": "<string — new problem title>",
-  "description": "<string — full problem statement with at least one Input/Output example>",
+  "description": "<string — full problem statement with at least one verified Input/Output example>",
   "difficulty": "${targetDifficulty}",
   "language": "${input.language}",
-  "starterCode": "<string — starter code skeleton for the student, may be empty>"
+  "starterCode": "<string — SKELETON only, never a working solution; see Rule 1>"
 }`.trim();
+}
+
+// ── Starter-code sanitization ─────────────────────────────────────────────────
+//
+// The model sometimes drops the entire working solution into the `starterCode`
+// field instead of producing a skeleton. A student would then just submit the
+// pre-filled "starter" and get full marks. We can't ask the model to "promise"
+// — we have to structurally detect a solution-shaped starter and strip it.
+//
+// Heuristic for "looks like a solution":
+//   • Contains an output statement (printf / print / System.out.println /
+//     cout / fmt.Println / console.log) — solutions almost always print.
+//   • OR contains more than 6 statement-ending lines past the function signature
+//     — skeletons are usually ≤ 2 statements plus a marker comment.
+// If detected, replace the body with a "// Your code here" marker while
+// keeping the function signature + includes / boilerplate intact.
+
+const OUTPUT_STATEMENT_PATTERNS: Record<string, RegExp> = {
+  c:          /\b(printf|puts|fprintf|putchar)\s*\(/,
+  cpp:        /\b(printf|cout\s*<<|puts)\b/,
+  java:       /\bSystem\s*\.\s*out\s*\.\s*(println|print|printf)\s*\(/,
+  python:     /\bprint\s*\(/,
+  javascript: /\bconsole\s*\.\s*log\s*\(/,
+  go:         /\bfmt\s*\.\s*(Print|Println|Printf)\b/,
+};
+
+function languageKey(language: string): string {
+  const l = (language || "").toLowerCase();
+  if (l.startsWith("c++") || l === "cpp") return "cpp";
+  if (l.startsWith("c"))                  return "c";
+  if (l.startsWith("java"))               return "java";
+  if (l.startsWith("py"))                 return "python";
+  if (l.startsWith("js") || l.includes("javascript")) return "javascript";
+  if (l.startsWith("go"))                 return "go";
+  return l;
+}
+
+/**
+ * Detect whether `starterCode` looks like a complete working solution rather
+ * than a skeleton, and if so, strip the function body and substitute a
+ * "// Your code here" marker. Always returns SOMETHING the student can edit.
+ *
+ * Returns `{ sanitized, wasLeak }` so the caller can log when a leak was
+ * caught (useful for the demo audit story).
+ */
+function sanitizeStarterCode(
+  starterCode: string,
+  language: string,
+): { sanitized: string; wasLeak: boolean } {
+  if (!starterCode || !starterCode.trim()) {
+    return { sanitized: "", wasLeak: false };
+  }
+
+  const key = languageKey(language);
+  const outputPattern = OUTPUT_STATEMENT_PATTERNS[key];
+
+  // Allow output statements only if they're trivial placeholders like
+  // `printf("%d\n", 0);` inside a `// TODO` block — but that's rare and not
+  // worth special-casing. Any output statement triggers the leak heuristic.
+  const hasOutput = outputPattern ? outputPattern.test(starterCode) : false;
+
+  // Count "real" code lines (skip blanks, single-line comments, braces).
+  const codeLines = starterCode
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) =>
+      l.length > 0 &&
+      !l.startsWith("//") &&
+      !l.startsWith("#") && // C preprocessor + Python comments
+      !l.startsWith("/*") &&
+      !l.startsWith("*")  &&
+      l !== "{" && l !== "}",
+    );
+
+  const looksLikeSolution = hasOutput || codeLines.length > 8;
+  if (!looksLikeSolution) {
+    return { sanitized: starterCode, wasLeak: false };
+  }
+
+  // Build a minimal skeleton per language. We keep includes / imports / the
+  // entry-point signature so the student still has scaffolding to work in.
+  const skeleton = buildSkeletonForLanguage(key, starterCode);
+  return { sanitized: skeleton, wasLeak: true };
+}
+
+function buildSkeletonForLanguage(key: string, original: string): string {
+  // Preserve include / import lines from the original — they're useful and
+  // not a leak (just signals what library to use).
+  const headerLines = original
+    .split("\n")
+    .filter((l) => /^(#include|import |using |from |package )/.test(l.trim()))
+    .join("\n");
+  const header = headerLines ? headerLines + "\n\n" : "";
+
+  switch (key) {
+    case "c":
+      return `${header || "#include <stdio.h>\n\n"}int main() {\n    // Your code here\n    return 0;\n}\n`;
+    case "cpp":
+      return `${header || "#include <iostream>\nusing namespace std;\n\n"}int main() {\n    // Your code here\n    return 0;\n}\n`;
+    case "java":
+      return `${header || "import java.util.Scanner;\n\n"}public class Main {\n    public static void main(String[] args) {\n        // Your code here\n    }\n}\n`;
+    case "python":
+      return `${header}def solve():\n    # Your code here\n    pass\n\nif __name__ == "__main__":\n    solve()\n`;
+    case "javascript":
+      return `${header}function solve() {\n    // Your code here\n}\n\nsolve();\n`;
+    case "go":
+      return `${header || "package main\n\nimport \"fmt\"\n\n"}func main() {\n    // Your code here\n    _ = fmt.Println\n}\n`;
+    default:
+      // Unknown language — return an empty marker rather than the leaked solution.
+      return "// Your code here\n";
+  }
+}
+
+// ── Description sanitization ──────────────────────────────────────────────────
+//
+// The prompt feeds the model a "REFERENCE SOLUTION ANALYSIS" block (loops,
+// recursion, data structures, complexity) so it can decide what to change.
+// That block is for the model's internal use — it must NEVER be copied into
+// the variation's description, where students would see it. We've observed
+// the model echo the entire block verbatim. Detect and strip.
+
+const STRUCTURAL_LEAK_MARKERS = [
+  /REFERENCE\s+SOLUTION\s+ANALYSIS/i,
+  /^\s*Loops\s*:\s*/im,
+  /^\s*Recursion\s*:\s*/im,
+  /^\s*Data\s+[Ss]tructures?\s*:\s*/im,
+  /^\s*Complexity\s*:\s*/im,
+  /^\s*Algorithm\s*:\s*[A-Z][^\n]{0,80}\bcomplex/im,
+];
+
+const MAX_TITLE_CHARS       = 200;
+const MAX_DESCRIPTION_OUTPUT = 10_000;
+
+function sanitizeDescription(description: string): { sanitized: string; structuralLeak: boolean } {
+  let leak = false;
+
+  // If any marker appears, strip from the first marker onward — easier than
+  // surgically removing the block, and any "trailing analysis dump" was never
+  // supposed to be student-facing anyway.
+  for (const pattern of STRUCTURAL_LEAK_MARKERS) {
+    const match = description.match(pattern);
+    if (match && match.index !== undefined) {
+      // Cut at the start of the matched line, including any leading whitespace
+      // on that line. Find the line start by scanning backward.
+      let cut = match.index;
+      while (cut > 0 && description[cut - 1] !== "\n") cut--;
+      description = description.slice(0, cut).trimEnd();
+      leak = true;
+      break;
+    }
+  }
+
+  // Final length cap — even legitimate descriptions shouldn't exceed this.
+  if (description.length > MAX_DESCRIPTION_OUTPUT) {
+    description = description.slice(0, MAX_DESCRIPTION_OUTPUT).trimEnd() + "\n[…truncated]";
+  }
+  return { sanitized: description, structuralLeak: leak };
+}
+
+function normalizeDifficulty(raw: string, fallback: string): string {
+  const t = (raw || "").trim().toLowerCase();
+  if (t.startsWith("easy")) return "Easy";
+  if (t.startsWith("med"))  return "Medium";
+  if (t.startsWith("hard")) return "Hard";
+  return fallback;
 }
 
 // ── JSON extractor ────────────────────────────────────────────────────────────
 
-function extractJson(raw: string): GeneratedVariation | null {
+function extractJson(
+  raw: string,
+  inputLanguage: string,
+  targetDifficulty: string,
+): { variation: GeneratedVariation; starterLeakDetected: boolean; descriptionLeakDetected: boolean } | null {
   // Strip markdown code fences if the model wraps the JSON
   const stripped = raw
     .replace(/^```(?:json)?\s*/im, "")
@@ -196,15 +409,41 @@ function extractJson(raw: string): GeneratedVariation | null {
   try {
     const obj = JSON.parse(stripped.slice(start, end + 1)) as Record<string, unknown>;
 
-    const title       = typeof obj.title       === "string" ? obj.title.trim()       : "";
-    const description = typeof obj.description === "string" ? obj.description.trim() : "";
-    const difficulty  = typeof obj.difficulty  === "string" ? obj.difficulty.trim()  : "Medium";
-    const language    = typeof obj.language    === "string" ? obj.language.trim()    : "python";
-    const starterCode = typeof obj.starterCode === "string" ? obj.starterCode        : "";
+    let title       = typeof obj.title       === "string" ? obj.title.trim()       : "";
+    let description = typeof obj.description === "string" ? obj.description.trim() : "";
+    const rawDifficulty = typeof obj.difficulty === "string" ? obj.difficulty       : "";
+    const rawStarter    = typeof obj.starterCode === "string" ? obj.starterCode     : "";
 
     if (!title || !description) return null;
 
-    return { title, description, difficulty, language, starterCode };
+    // Cap title length defensively — a runaway model could emit thousands of
+    // characters; teachers expect a short title.
+    if (title.length > MAX_TITLE_CHARS) {
+      title = title.slice(0, MAX_TITLE_CHARS).trimEnd();
+    }
+
+    // Strip any "REFERENCE SOLUTION ANALYSIS" block the model may have copied
+    // from the prompt into the student-visible description.
+    const descCheck = sanitizeDescription(description);
+    description = descCheck.sanitized;
+
+    // Always trust the input language, NOT the model's claim. We've observed
+    // the model return `"language": "Python"` when generating a C variation,
+    // which would cause Judge0 to compile C source as Python.
+    const language = inputLanguage;
+
+    // Normalize difficulty casing — model sometimes returns "easy" / "hard".
+    const difficulty = normalizeDifficulty(rawDifficulty, targetDifficulty);
+
+    // Sanitize starter code: if the model emitted a full working solution,
+    // strip the body and replace with a "// Your code here" skeleton.
+    const { sanitized, wasLeak } = sanitizeStarterCode(rawStarter, language);
+
+    return {
+      variation: { title, description, difficulty, language, starterCode: sanitized },
+      starterLeakDetected:    wasLeak,
+      descriptionLeakDetected: descCheck.structuralLeak,
+    };
   } catch {
     return null;
   }
@@ -235,8 +474,13 @@ export async function generateVariation(
         stream: false,
         keep_alive: -1,
         options: {
-          temperature: 0.75,
-          top_p: 0.95,
+          // Lowered from 0.75 → 0.4. Diversity matters less than arithmetic
+          // accuracy in generated examples: an "exciting but wrong" variation
+          // is unusable, a "slightly less novel but correct" variation is fine.
+          // The structural variation comes from the harder/easier/similar
+          // instructions, not from sampling noise.
+          temperature: 0.4,
+          top_p: 0.9,
           num_ctx: 8192,
         },
       }),
@@ -253,12 +497,22 @@ export async function generateVariation(
 
     if (!raw) throw new Error("Ollama returned an empty response");
 
-    const variation = extractJson(raw);
-    if (!variation) {
+    const parsed = extractJson(raw, input.language, difficultyTarget(type, input.difficulty));
+    if (!parsed) {
       throw new Error(`Could not parse JSON from model output: ${raw.slice(0, 300)}`);
     }
+    if (parsed.starterLeakDetected) {
+      console.warn(
+        `[variation] starter-code leak detected on "${input.title}" (${type}) — replaced with skeleton`,
+      );
+    }
+    if (parsed.descriptionLeakDetected) {
+      console.warn(
+        `[variation] structural-analysis leak detected in description on "${input.title}" (${type}) — stripped`,
+      );
+    }
 
-    return { success: true, variation, model };
+    return { success: true, variation: parsed.variation, model };
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
     const message = raw.toLowerCase().includes("abort")

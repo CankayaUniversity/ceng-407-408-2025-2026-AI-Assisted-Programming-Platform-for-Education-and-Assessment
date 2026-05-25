@@ -18,7 +18,33 @@ router.get("/:problemId", async (req: Request, res: Response) => {
   }
 
   const rubric = await prisma.rubric.findFirst({ where: { problemId } });
-  res.json({ success: true, data: rubric ?? null });
+  if (!rubric) {
+    res.json({ success: true, data: null });
+    return;
+  }
+
+  // Normalize the stored `criteria` blob into a flat shape for the frontend.
+  // The AI-generation route stores it wrapped as `{ items: [...], gradingNotes }`
+  // (see POST /:problemId/generate below), but a teacher who later saves a
+  // hand-edited rubric via PUT stores it as a bare array. Both shapes are
+  // valid storage; the GET response always exposes:
+  //   { ...rubric, criteria: <array>, gradingNotes: <string> }
+  // so the frontend's `body.data.criteria.reduce(...)` never blows up.
+  const raw = rubric.criteria as unknown;
+  let criteriaArray: unknown[] = [];
+  let gradingNotes = "";
+  if (Array.isArray(raw)) {
+    criteriaArray = raw;
+  } else if (raw && typeof raw === "object") {
+    const wrapped = raw as { items?: unknown; gradingNotes?: unknown };
+    if (Array.isArray(wrapped.items)) criteriaArray = wrapped.items;
+    if (typeof wrapped.gradingNotes === "string") gradingNotes = wrapped.gradingNotes;
+  }
+
+  res.json({
+    success: true,
+    data: { ...rubric, criteria: criteriaArray, gradingNotes },
+  });
 });
 
 // ── POST /api/rubrics/:problemId/generate ────────────────────────────────────

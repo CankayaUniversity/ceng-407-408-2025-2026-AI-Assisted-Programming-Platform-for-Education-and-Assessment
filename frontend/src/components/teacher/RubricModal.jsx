@@ -29,7 +29,20 @@ import { API_BASE } from "../../apiBase";
 const EMPTY_CRITERION = { name: "", description: "", maxScore: 20, scoringGuide: "" };
 
 function totalOf(criteria) {
-  return criteria.reduce((sum, c) => sum + (Number(c.maxScore) || 0), 0);
+  // Defensive: an upstream shape glitch (e.g. backend returns the wrapped
+  // `{ items: [...] }` object instead of a flat array) used to crash the
+  // modal with "e.reduce is not a function". Treat anything non-array as
+  // empty so the modal can recover and the teacher can re-generate.
+  if (!Array.isArray(criteria)) return 0;
+  return criteria.reduce((sum, c) => sum + (Number(c?.maxScore) || 0), 0);
+}
+
+// Accepts either the flat array shape or the legacy wrapped
+// `{ items: [...], gradingNotes }` shape and always returns an array.
+function normalizeCriteria(raw) {
+  if (Array.isArray(raw)) return raw;
+  if (raw && typeof raw === "object" && Array.isArray(raw.items)) return raw.items;
+  return [];
 }
 
 export default function RubricModal({ open, onClose, problem, token }) {
@@ -55,7 +68,7 @@ export default function RubricModal({ open, onClose, problem, token }) {
         });
         const body = await res.json();
         if (body.data?.criteria) {
-          setCriteria(body.data.criteria);
+          setCriteria(normalizeCriteria(body.data.criteria));
           setGradingNotes(body.data.gradingNotes ?? "");
         } else {
           // No rubric yet — start with empty state
@@ -86,7 +99,7 @@ export default function RubricModal({ open, onClose, problem, token }) {
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || "AI generation failed");
       if (body.data?.criteria) {
-        setCriteria(body.data.criteria);
+        setCriteria(normalizeCriteria(body.data.criteria));
         setGradingNotes(body.data.gradingNotes ?? "");
       }
     } catch (err) {

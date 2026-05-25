@@ -9,6 +9,7 @@
  */
 
 import { analyzeCode } from "./codeAnalyzer";
+import { createDockerSession } from "./dockerRunner";
 
 export type VariationType = "harder" | "easier" | "similar";
 
@@ -30,7 +31,12 @@ export type GeneratedVariation = {
 };
 
 export type VariationResult =
-  | { success: true; variation: GeneratedVariation; model: string }
+  | {
+      success:      true;
+      variation:    GeneratedVariation;
+      model:        string;
+      verification: ExampleVerificationReport;
+    }
   | { success: false; error: string };
 
 // ── Ollama helpers (mirrors mentor.ts) ───────────────────────────────────────
@@ -216,11 +222,34 @@ Respond with ONLY a valid JSON object — no markdown, no explanation, no code f
 The JSON must have exactly these fields:
 {
   "title": "<string — new problem title>",
-  "description": "<string — full problem statement with at least one verified Input/Output example>",
+  "description": "<string — full problem statement with 1–3 Input/Output examples in the format shown below>",
   "difficulty": "${targetDifficulty}",
   "language": "${input.language}",
-  "starterCode": "<string — SKELETON only, never a working solution; see Rule 1>"
-}`.trim();
+  "starterCode": "<string — SKELETON only, never a working solution; see Rule 1>",
+  "referenceSolution": "<string — a COMPLETE working ${input.language} program that correctly solves your problem; this code WILL be executed against every example's Input to verify your claimed Output>"
+}
+
+EXAMPLE FORMAT INSIDE THE DESCRIPTION
+=====================================
+Each example MUST follow this exact shape so the verifier can parse it:
+
+EXAMPLES
+
+Input:
+<exact stdin the program should receive — preserve whitespace, no leading "$ " or commentary>
+
+Output:
+<exact stdout the program should produce — preserve whitespace and newlines>
+
+Input:
+<...>
+
+Output:
+<...>
+
+Do NOT use bullet points, table layouts, or "expected:" prefixes — only the literal labels "Input:" and "Output:" on their own lines, each followed by the raw content.
+
+CRITICAL: your referenceSolution code WILL be compiled and run against each example's Input. If its stdout does not match your claimed Output (whitespace-trimmed per line), that example will be REMOVED from the description before the teacher sees it. Get the reference right.`.trim();
 }
 
 // ── Starter-code sanitization ─────────────────────────────────────────────────
@@ -388,13 +417,257 @@ function normalizeDifficulty(raw: string, fallback: string): string {
   return fallback;
 }
 
+// ── Example parsing + runtime verification ───────────────────────────────────
+//
+// The AI is reliable at writing working code but unreliable at hand-computing
+// arithmetic for examples (averages, word counts, sorting). To fix the
+// "Average: 5.33 when 3 × 5 = 15 / 3 = 5.00" class of bug, we:
+//   1. Ask the AI for a `referenceSolution` alongside the variation
+//   2. Parse Input/Output blocks from the description
+//   3. Compile + run the reference once, pipe each example's Input as stdin
+//   4. Compare actual stdout to the AI's claimed Output (whitespace-tolerant)
+//   5. Strip any example whose claimed Output does NOT match runtime ground truth
+//
+// If the reference itself fails to compile, we skip verification (better to
+// ship an unverified variation than to lose it entirely — teacher review is
+// the next layer of defense). If SOME examples fail and SOME pass, we strip
+// only the failures.
+
+type ParsedExample = {
+  input:          string;
+  expectedOutput: string;
+  /** Position of "Input:" in the original description — used for surgical removal */
+  startOffset:    number;
+  /** Position just past the example's last line */
+  endOffset:      number;
+};
+
+/**
+ * Parse `Input:\n…\n\nOutput:\n…` example blocks out of a description.
+ * Tolerant of variation in spacing; strict about the literal labels "Input:"
+ * and "Output:" being at the start of their own lines.
+ */
+function parseExamplesFromDescription(description: string): ParsedExample[] {
+  const examples: ParsedExample[] = [];
+  // Find every "Input:" anchored at line-start (allow leading whitespace).
+  const inputRegex = /(^|\n)[ \t]*Input:[ \t]*\n/g;
+  const matches: Array<{ start: number; bodyStart: number }> = [];
+  let m: RegExpExecArray | null;
+  while ((m = inputRegex.exec(description)) !== null) {
+    matches.push({
+      start:     m.index + (m[1] === "\n" ? 1 : 0),
+      bodyStart: m.index + m[0].length,
+    });
+  }
+  if (matches.length === 0) return [];
+
+  for (let i = 0; i < matches.length; i++) {
+    const { start, bodyStart } = matches[i];
+    // The end of this example is either the next Input: or end of string.
+    const nextStart = i + 1 < matches.length ? matches[i + 1].start : description.length;
+    const chunk     = description.slice(bodyStart, nextStart);
+
+    // Inside the chunk, find "Output:" at line-start.
+    const outputMatch = chunk.match(/(^|\n)[ \t]*Output:[ \t]*\n/);
+    if (!outputMatch || outputMatch.index === undefined) continue;
+
+    const inputEnd        = outputMatch.index + (outputMatch[1] === "\n" ? 1 : 0);
+    const outputBodyStart = outputMatch.index + outputMatch[0].length;
+
+    const inputText    = chunk.slice(0, inputEnd).replace(/\s+$/, "");
+    const outputText   = chunk.slice(outputBodyStart).replace(/\s+$/, "");
+
+    examples.push({
+      input:          inputText,
+      expectedOutput: outputText,
+      startOffset:    start,
+      endOffset:      bodyStart + chunk.length,
+    });
+  }
+  return examples;
+}
+
+/**
+ * Whitespace-tolerant comparison: trim each line, drop empty trailing lines,
+ * compare line-by-line. Matches what teachers actually expect ("output is the
+ * same modulo trailing whitespace").
+ */
+function outputsMatch(claimed: string, actual: string): boolean {
+  const norm = (s: string) =>
+    s
+      .replace(/\r\n/g, "\n")
+      .split("\n")
+      .map((l) => l.replace(/[ \t]+$/, ""))
+      .join("\n")
+      .replace(/\n+$/, "");
+  return norm(claimed) === norm(actual);
+}
+
+export type ExampleVerificationReport = {
+  /** Total examples parsed from the description */
+  total:            number;
+  /** Examples whose actual output matched the AI's claim */
+  verified:         number;
+  /** Examples removed because actual output did not match */
+  stripped:         number;
+  /** True if verification was skipped (no reference, compile error, or disabled) */
+  skipped:          boolean;
+  /** Human-readable reason if skipped */
+  skipReason?:      string;
+  /** Per-example details (parallel to `examples` order) */
+  details:          Array<{ ok: boolean; reason: string }>;
+};
+
+/**
+ * Run the AI's reference solution against each parsed example. Returns the
+ * subset that passed, plus a report for logging / teacher notes.
+ *
+ * Verification is opt-in via env var so it can be disabled if Docker is slow
+ * or unavailable on a teacher's local dev instance.
+ */
+async function verifyExamples(
+  referenceSolution: string,
+  language:          string,
+  examples:          ParsedExample[],
+): Promise<{ keep: ParsedExample[]; report: ExampleVerificationReport }> {
+  const report: ExampleVerificationReport = {
+    total:    examples.length,
+    verified: 0,
+    stripped: 0,
+    skipped:  false,
+    details:  [],
+  };
+
+  if (process.env.SKIP_VARIATION_VERIFICATION === "true") {
+    return { keep: examples, report: { ...report, skipped: true, skipReason: "disabled via env" } };
+  }
+  if (!referenceSolution || referenceSolution.trim().length < 10) {
+    return { keep: examples, report: { ...report, skipped: true, skipReason: "no reference solution" } };
+  }
+  if (examples.length === 0) {
+    return { keep: examples, report };
+  }
+
+  let session;
+  try {
+    session = await createDockerSession(referenceSolution, language);
+  } catch (e) {
+    const reason = e instanceof Error ? e.message : String(e);
+    return { keep: examples, report: { ...report, skipped: true, skipReason: `session create failed: ${reason}` } };
+  }
+
+  try {
+    // First run probes whether the reference even compiles successfully.
+    // If the first example returns compile_error, abort verification — we
+    // can't trust the reference, so we keep all examples unverified.
+    const keep: ParsedExample[] = [];
+    for (const ex of examples) {
+      const result = await session.run(ex.input, 8_000);
+      if (result.statusId === 6) {
+        // Compile error — reference is broken. Skip the whole verification.
+        return {
+          keep:   examples,
+          report: { ...report, skipped: true, skipReason: "reference solution did not compile" },
+        };
+      }
+      if (result.statusId === 5) {
+        // Time-out — treat as verification failure for THIS example only.
+        report.details.push({ ok: false, reason: "timeout" });
+        report.stripped++;
+        continue;
+      }
+      if (result.statusId === 11) {
+        report.details.push({ ok: false, reason: `runtime error: ${result.stderr.slice(0, 200)}` });
+        report.stripped++;
+        continue;
+      }
+      const matched = outputsMatch(ex.expectedOutput, result.stdout);
+      if (matched) {
+        keep.push(ex);
+        report.verified++;
+        report.details.push({ ok: true, reason: "matched" });
+      } else {
+        report.stripped++;
+        report.details.push({
+          ok:     false,
+          reason: `output mismatch — claimed "${ex.expectedOutput.slice(0, 60).replace(/\n/g, "⏎")}", actual "${result.stdout.trim().slice(0, 60).replace(/\n/g, "⏎")}"`,
+        });
+      }
+    }
+    return { keep, report };
+  } finally {
+    session.cleanup();
+  }
+}
+
+/**
+ * Given the original description and the surviving (verified) examples,
+ * produce a new description with the unverified examples surgically removed.
+ *
+ * Strategy: find the EXAMPLES section (or the first "Input:"), keep
+ * everything before it as the spec, then append only verified examples in
+ * their original order. If everything failed verification, append a teacher
+ * note explaining no examples could be verified.
+ */
+function rewriteDescriptionWithVerifiedExamples(
+  originalDescription: string,
+  allParsed:           ParsedExample[],
+  verified:            ParsedExample[],
+  report:              ExampleVerificationReport,
+): string {
+  if (allParsed.length === 0) return originalDescription;
+  // Did anything change?
+  if (!report.skipped && verified.length === allParsed.length) {
+    return originalDescription;
+  }
+
+  // Find the cut point: prefer "EXAMPLES" header (the line), else the first Input:.
+  let cutAt = -1;
+  const examplesHeader = originalDescription.match(/^[ \t]*EXAMPLES[ \t]*$/m);
+  if (examplesHeader && examplesHeader.index !== undefined) {
+    cutAt = examplesHeader.index;
+  } else {
+    cutAt = allParsed[0].startOffset;
+  }
+
+  const specPart = originalDescription.slice(0, cutAt).replace(/\s+$/, "");
+  const lines: string[] = [specPart, "", "EXAMPLES", ""];
+
+  for (const ex of verified) {
+    lines.push("Input:");
+    lines.push(ex.input);
+    lines.push("");
+    lines.push("Output:");
+    lines.push(ex.expectedOutput);
+    lines.push("");
+  }
+
+  if (verified.length === 0) {
+    lines.push(
+      "_Note: the AI could not produce verified examples for this variation. " +
+      "Please add tested examples before assigning to students._",
+    );
+  } else if (report.stripped > 0) {
+    lines.push(
+      `_Note: ${report.stripped} unverified example(s) were removed because the reference solution's actual output did not match the AI's claimed output._`,
+    );
+  }
+
+  return lines.join("\n").trim() + "\n";
+}
+
 // ── JSON extractor ────────────────────────────────────────────────────────────
 
 function extractJson(
   raw: string,
   inputLanguage: string,
   targetDifficulty: string,
-): { variation: GeneratedVariation; starterLeakDetected: boolean; descriptionLeakDetected: boolean } | null {
+): {
+  variation:                GeneratedVariation;
+  referenceSolution:        string;
+  starterLeakDetected:      boolean;
+  descriptionLeakDetected:  boolean;
+} | null {
   // Strip markdown code fences if the model wraps the JSON
   const stripped = raw
     .replace(/^```(?:json)?\s*/im, "")
@@ -411,8 +684,9 @@ function extractJson(
 
     let title       = typeof obj.title       === "string" ? obj.title.trim()       : "";
     let description = typeof obj.description === "string" ? obj.description.trim() : "";
-    const rawDifficulty = typeof obj.difficulty === "string" ? obj.difficulty       : "";
-    const rawStarter    = typeof obj.starterCode === "string" ? obj.starterCode     : "";
+    const rawDifficulty   = typeof obj.difficulty         === "string" ? obj.difficulty         : "";
+    const rawStarter      = typeof obj.starterCode        === "string" ? obj.starterCode        : "";
+    const referenceSolution = typeof obj.referenceSolution === "string" ? obj.referenceSolution : "";
 
     if (!title || !description) return null;
 
@@ -441,6 +715,7 @@ function extractJson(
 
     return {
       variation: { title, description, difficulty, language, starterCode: sanitized },
+      referenceSolution,
       starterLeakDetected:    wasLeak,
       descriptionLeakDetected: descCheck.structuralLeak,
     };
@@ -512,7 +787,49 @@ export async function generateVariation(
       );
     }
 
-    return { success: true, variation: parsed.variation, model };
+    // ── Runtime example verification ──
+    // Compile the AI's reference solution and run it against each example's
+    // Input. Strip any example whose actual stdout doesn't match the AI's
+    // claimed Output. This catches the arithmetic-in-test-data bug class
+    // (e.g. "Average: 5.33 when 15 / 3 = 5.00") that prompting alone can't.
+    const parsedExamples = parseExamplesFromDescription(parsed.variation.description);
+    const { keep: verifiedExamples, report } = await verifyExamples(
+      parsed.referenceSolution,
+      parsed.variation.language,
+      parsedExamples,
+    );
+
+    const finalDescription = rewriteDescriptionWithVerifiedExamples(
+      parsed.variation.description,
+      parsedExamples,
+      verifiedExamples,
+      report,
+    );
+
+    // Build the variation we actually return, with the verified description.
+    const finalVariation: GeneratedVariation = {
+      ...parsed.variation,
+      description: finalDescription,
+    };
+
+    // Log a compact summary so the demo / report can show how often
+    // verification catches problems.
+    if (report.skipped) {
+      console.warn(
+        `[variation] example verification SKIPPED on "${input.title}" (${type}): ${report.skipReason}`,
+      );
+    } else {
+      console.log(
+        `[variation] examples verified on "${input.title}" (${type}): ${report.verified}/${report.total} matched, ${report.stripped} stripped`,
+      );
+      if (report.stripped > 0) {
+        for (const d of report.details) {
+          if (!d.ok) console.log(`  - rejected example: ${d.reason}`);
+        }
+      }
+    }
+
+    return { success: true, variation: finalVariation, model, verification: report };
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
     const message = raw.toLowerCase().includes("abort")

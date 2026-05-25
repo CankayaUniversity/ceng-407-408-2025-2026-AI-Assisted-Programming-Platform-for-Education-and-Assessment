@@ -30,12 +30,14 @@ import WarningIcon           from "@mui/icons-material/Warning";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import FilterListIcon        from "@mui/icons-material/FilterList";
 import HistoryIcon           from "@mui/icons-material/History";
+import GradeIcon             from "@mui/icons-material/Grade";
 import CloseIcon             from "@mui/icons-material/Close";
 import { useNavigate }       from "react-router-dom";
 
 import AppLayout   from "../../components/layout/AppLayout";
 import SectionCard from "../../components/common/SectionCard";
 import { SubmissionTimelineDialog } from "../../components/student/SubmissionHistory";
+import GradeModal  from "../../components/student/GradeModal";
 import { API_BASE } from "../../apiBase";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -164,7 +166,7 @@ function examState(a) {
 
 // ── Exam assignment row ───────────────────────────────────────────────────────
 
-function ExamRow({ a, idx, solvedSet, onHistoryClick }) {
+function ExamRow({ a, idx, solvedSet, gradeSummary, onHistoryClick, onGradeClick }) {
   const navigate = useNavigate();
   const [dialogOpen,       setDialogOpen]       = useState(false);
   // "Are you sure you want to start the exam?" confirmation. Fires when a
@@ -306,8 +308,21 @@ function ExamRow({ a, idx, solvedSet, onHistoryClick }) {
         </TableCell>
 
         <TableCell>
-          <Stack direction="row" alignItems="center" spacing={0.5}>
+          <Stack direction="row" alignItems="center" spacing={0.5} flexWrap="wrap" useFlexGap>
             {statusChip}
+            {gradeSummary && (
+              <Tooltip title="View your grade and teacher feedback">
+                <Chip
+                  icon={<GradeIcon sx={{ fontSize: 14 }} />}
+                  label={`${gradeSummary.score}/${gradeSummary.maxScore}`}
+                  size="small"
+                  color={gradeSummary.score / Math.max(1, gradeSummary.maxScore) >= 0.6 ? "primary" : "warning"}
+                  variant="filled"
+                  onClick={(e) => { e.stopPropagation(); onGradeClick(a); }}
+                  sx={{ fontWeight: 700, cursor: "pointer", fontSize: 11 }}
+                />
+              </Tooltip>
+            )}
             <Tooltip title="View submission history">
               <span>
                 <IconButton
@@ -392,7 +407,7 @@ function ExamRow({ a, idx, solvedSet, onHistoryClick }) {
 
 // ── Assignment / Practice row ─────────────────────────────────────────────────
 
-function AssignmentRow({ a, idx, solvedSet, onHistoryClick }) {
+function AssignmentRow({ a, idx, solvedSet, gradeSummary, onHistoryClick, onGradeClick }) {
   const navigate = useNavigate();
   const problem   = a.problem ?? {};
   const solved    = solvedSet.has(problem.id);
@@ -460,7 +475,7 @@ function AssignmentRow({ a, idx, solvedSet, onHistoryClick }) {
       <TableCell><DeadlineCell assignment={a} /></TableCell>
 
       <TableCell>
-        <Stack direction="row" alignItems="center" spacing={0.5}>
+        <Stack direction="row" alignItems="center" spacing={0.5} flexWrap="wrap" useFlexGap>
           {!published ? (
             <Chip label="Coming soon" size="small" color="default" variant="outlined" sx={{ fontSize: 10 }} />
           ) : isLate ? (
@@ -474,6 +489,19 @@ function AssignmentRow({ a, idx, solvedSet, onHistoryClick }) {
               color={solved ? "success" : "default"}
               variant={solved ? "filled" : "outlined"}
             />
+          )}
+          {gradeSummary && (
+            <Tooltip title="View your grade and teacher feedback">
+              <Chip
+                icon={<GradeIcon sx={{ fontSize: 14 }} />}
+                label={`${gradeSummary.score}/${gradeSummary.maxScore}`}
+                size="small"
+                color={gradeSummary.score / Math.max(1, gradeSummary.maxScore) >= 0.6 ? "primary" : "warning"}
+                variant="filled"
+                onClick={(e) => { e.stopPropagation(); onGradeClick(a); }}
+                sx={{ fontWeight: 700, cursor: "pointer", fontSize: 11 }}
+              />
+            </Tooltip>
           )}
           <Tooltip title="View submission history">
             <span>
@@ -511,6 +539,30 @@ export default function AssignmentsPage({ currentUser, token, handleLogout, navI
   // "Detail" dialog: SubmissionTimelineDialog opened from a list row
   const [timelineOpen,   setTimelineOpen]   = useState(false);
   const [timelineIdx,    setTimelineIdx]    = useState(0);
+
+  // ── Grade dialog ─────────────────────────────────────────────────────────
+  // gradeMap: { [assignmentId]: { score, maxScore } | null }
+  //   • undefined → not fetched yet
+  //   • null      → fetched, not graded
+  //   • object    → fetched, graded; full detail is re-fetched on click
+  const [gradeMap,        setGradeMap]        = useState({});
+  const [gradeDialogOpen, setGradeDialogOpen] = useState(false);
+  const [gradeDialogData, setGradeDialogData] = useState(null);
+
+  async function openGrade(a) {
+    setGradeDialogData(null);
+    setGradeDialogOpen(true);
+    try {
+      const res  = await fetch(`${API_BASE}/api/grades/me/assignment/${a.id}`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+      });
+      const body = await res.json();
+      // body.data: { graded, grade?, rubric?, assignment? }
+      setGradeDialogData(body?.data?.graded ? body.data : { graded: false });
+    } catch {
+      setGradeDialogData({ graded: false });
+    }
+  }
 
   async function openHistory(a) {
     const problemId = a.problem?.id;
@@ -559,6 +611,28 @@ export default function AssignmentsPage({ currentUser, token, handleLogout, navI
         const ex = data.filter((a) => a.mode === "exam");
         if (hw.length === 0 && pr.length > 0) setTab(1);
         else if (hw.length === 0 && pr.length === 0 && ex.length > 0) setTab(2);
+
+        // ── Fetch grade summaries in parallel ──────────────────────────────
+        // Best-effort: failures don't block rendering, ungraded assignments
+        // just don't show a grade chip. Done in a second pass so the table
+        // renders immediately and grade chips appear as they arrive.
+        const fetchOne = (a) =>
+          fetch(`${API_BASE}/api/grades/me/assignment/${a.id}`, { headers })
+            .then((r) => r.ok ? r.json() : null)
+            .then((body) => ({
+              id: a.id,
+              summary:
+                body?.data?.graded
+                  ? { score: body.data.grade.score, maxScore: body.data.grade.maxScore }
+                  : null,
+            }))
+            .catch(() => ({ id: a.id, summary: null }));
+
+        Promise.all(data.map(fetchOne)).then((results) => {
+          const next = {};
+          for (const r of results) next[r.id] = r.summary;
+          setGradeMap(next);
+        });
       })
       .catch((err) => console.error("AssignmentsPage fetch failed:", err))
       .finally(() => setLoading(false));
@@ -723,9 +797,25 @@ export default function AssignmentsPage({ currentUser, token, handleLogout, navI
                 <TableBody>
                   {filteredItems.map((a, idx) =>
                     current.isExam ? (
-                      <ExamRow key={a.id} a={a} idx={idx} solvedSet={solvedSet} onHistoryClick={openHistory} />
+                      <ExamRow
+                        key={a.id}
+                        a={a}
+                        idx={idx}
+                        solvedSet={solvedSet}
+                        gradeSummary={gradeMap[a.id] ?? null}
+                        onHistoryClick={openHistory}
+                        onGradeClick={openGrade}
+                      />
                     ) : (
-                      <AssignmentRow key={a.id} a={a} idx={idx} solvedSet={solvedSet} onHistoryClick={openHistory} />
+                      <AssignmentRow
+                        key={a.id}
+                        a={a}
+                        idx={idx}
+                        solvedSet={solvedSet}
+                        gradeSummary={gradeMap[a.id] ?? null}
+                        onHistoryClick={openHistory}
+                        onGradeClick={openGrade}
+                      />
                     )
                   )}
                 </TableBody>
@@ -829,6 +919,13 @@ export default function AssignmentsPage({ currentUser, token, handleLogout, navI
           initialIndex={timelineIdx}
         />
       )}
+
+      {/* ── Grade detail dialog ──────────────────────────────────────────── */}
+      <GradeModal
+        open={gradeDialogOpen}
+        onClose={() => setGradeDialogOpen(false)}
+        data={gradeDialogData}
+      />
     </AppLayout>
   );
 }

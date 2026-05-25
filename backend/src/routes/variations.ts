@@ -54,13 +54,24 @@ router.post("/generate", async (req, res) => {
       difficulty:      result.variation.difficulty,
       language:        result.variation.language,
       starterCode:     result.variation.starterCode || null,
-      status:          "pending",
+      status:          VariationStatus.pending,
       aiModel:         result.model,
-      promptVersion:   "variation_v2",
+      // Bump to v3 to mark this row as having gone through runtime
+      // example verification — useful for analytics and the report.
+      promptVersion:   "variation_v3",
     },
   });
 
-  res.status(201).json({ data: variation });
+  res.status(201).json({
+    data: variation,
+    verification: {
+      total:    result.verification.total,
+      verified: result.verification.verified,
+      stripped: result.verification.stripped,
+      skipped:  result.verification.skipped,
+      skipReason: result.verification.skipReason,
+    },
+  });
 });
 
 // ── GET /api/variations?problemId=X&status=Y ─────────────────────────────────

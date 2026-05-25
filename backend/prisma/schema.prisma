@@ -420,7 +420,12 @@ model Flashcard {
   user    User    @relation(fields: [userId],       references: [id])
   problem Problem @relation(fields: [problemId],    references: [id], onDelete: Cascade)
 
-  @@index([userId, problemId])
+  // One flashcard set per (user, problem). The route layer also enforces
+  // this via an in-process mutex (generatingSet), but adding the DB-level
+  // constraint means a concurrent race that survives the mutex (e.g.
+  // process restart between the await and the insert) gets rejected at
+  // the database instead of silently creating duplicate rows.
+  @@unique([userId, problemId])
   @@index([submissionId])
 }
 

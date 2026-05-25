@@ -19,12 +19,84 @@ import type { RubricCriterion } from "../services/rubricService";
 
 const router = Router();
 router.use(requireAuth);
-router.use(requireRole("teacher"));
 
 function parseId(raw: string): number | null {
   const n = Number.parseInt(raw, 10);
   return Number.isNaN(n) ? null : n;
 }
+
+// ── GET /api/grades/me/assignment/:assignmentId ───────────────────────────────
+// Student-facing: returns the requesting student's own grade for one assignment.
+// Authorization is scoped to req.auth.userId so a student can NEVER read
+// another student's grade through this endpoint, even by guessing IDs.
+//
+// Response shapes:
+//   { graded: false }                                    → not graded yet
+//   { graded: true, grade: { score, maxScore, ... }, rubric, assignment }
+//                                                       → graded; includes
+//                                                         everything the
+//                                                         student needs to
+//                                                         understand the score
+//
+// Declared BEFORE the requireRole("teacher") middleware below so it remains
+// accessible to students.
+router.get("/me/assignment/:assignmentId", async (req: Request, res: Response) => {
+  const assignmentId = parseId(req.params.assignmentId);
+  if (!assignmentId) { res.status(400).json({ error: "Invalid assignment ID" }); return; }
+
+  const userId = req.auth?.userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  // Ensure the student is actually enrolled in this assignment — prevents
+  // information leakage like "this assignment exists" probes.
+  const enrollment = await prisma.assignmentEnrollment.findFirst({
+    where: { assignmentId, userId },
+    select: { id: true },
+  });
+  if (!enrollment) { res.status(404).json({ error: "Assignment not found or you are not enrolled" }); return; }
+
+  const grade = await prisma.grade.findUnique({
+    where: { assignmentId_userId: { assignmentId, userId } },
+  });
+
+  if (!grade) {
+    res.json({ success: true, data: { graded: false } });
+    return;
+  }
+
+  // Pull the rubric so the student sees criterion names + maxScores alongside
+  // the per-criterion breakdown the teacher saved.
+  const assignment = await prisma.assignment.findUnique({
+    where: { id: assignmentId },
+    select: {
+      id: true, title: true,
+      problem: { select: { id: true, title: true } },
+    },
+  });
+  const rubric = assignment
+    ? await prisma.rubric.findFirst({ where: { problemId: assignment.problem.id } })
+    : null;
+
+  res.json({
+    success: true,
+    data: {
+      graded:     true,
+      grade:      {
+        score:        grade.score,
+        maxScore:     grade.maxScore,
+        breakdown:    grade.breakdown,
+        feedback:     grade.feedback,
+        aiSuggested:  grade.aiSuggested,
+        gradedAt:     grade.updatedAt,
+      },
+      rubric:     rubric ? { criteria: rubric.criteria } : null,
+      assignment: assignment ?? null,
+    },
+  });
+});
+
+// Everything below this point is teacher-only.
+router.use(requireRole("teacher"));
 
 // ── GET /api/grades/assignment/:assignmentId ──────────────────────────────────
 // Returns list of enrolled students with their latest submission + existing grade.

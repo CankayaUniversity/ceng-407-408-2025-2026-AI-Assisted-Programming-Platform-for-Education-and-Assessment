@@ -39,12 +39,23 @@ router.post(
       return;
     }
 
+    // Pull the problem's test cases so the rubric criteria can be problem-
+    // specific (e.g. "handles empty input, multi-space separators") rather
+    // than generic ("handles all test cases"). Hidden tests are counted but
+    // their inputs are withheld from the prompt — see formatTestCases().
+    const tests = await prisma.testCase.findMany({
+      where: { problemId },
+      select: { input: true, expectedOutput: true, isHidden: true },
+      orderBy: { id: "asc" },
+    });
+
     const result = await generateRubric(
       problem.title,
       problem.description,
       problem.language,
       problem.difficulty,
       problem.referenceSolution ?? null,
+      tests,
     );
 
     if (!result.success) {

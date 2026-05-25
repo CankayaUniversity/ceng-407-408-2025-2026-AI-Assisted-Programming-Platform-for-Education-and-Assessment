@@ -72,9 +72,95 @@ function getModelName(): string {
   return process.env.OLLAMA_MODEL ?? "ai-mentor";
 }
 
+// ── Anti-hallucination + proportional enforcement ────────────────────────────
+//
+// The AI's `comment` field is unverified by default — it can claim the student
+// "uses bubble sort" even when the student wrote merge sort. These helpers
+// programmatically verify two things after the LLM returns:
+//   1. Backticked code citations in the comment actually appear in the
+//      student's source (whitespace-tolerant). If they don't, the comment
+//      gets flagged so the teacher knows the AI hallucinated.
+//   2. The Correctness score is within ±10% of the proportional expectation
+//      (k passed / n total × maxScore). Outside that band, we clamp.
+
+function normalizeForCodeMatch(s: string): string {
+  return s.replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+/**
+ * Extract backticked spans (e.g. `word_count`, `strlen(buf)`) from a comment
+ * and check each one appears in the student's source code. Returns the list
+ * of unverified citations (empty list means all citations check out).
+ *
+ * Single-character backticks (e.g. `+`, `n`) and very short non-identifier
+ * tokens are ignored — they're too noisy to verify reliably.
+ */
+function findUnverifiedCitations(comment: string, studentCode: string): string[] {
+  const corpus = normalizeForCodeMatch(studentCode);
+  const matches = comment.match(/`([^`]+)`/g) ?? [];
+  const unverified: string[] = [];
+  for (const m of matches) {
+    const span = m.replace(/`/g, "").trim();
+    // Skip noise: ≤2 chars, or single common-English words
+    if (span.length <= 2) continue;
+    const normalized = normalizeForCodeMatch(span);
+    if (!normalized) continue;
+    if (!corpus.includes(normalized)) unverified.push(span);
+  }
+  return unverified;
+}
+
+/**
+ * If execution results exist with a clear pass/total count, compute the
+ * tolerance band for Correctness. Returns null if we can't determine a band
+ * (no execution data, or zero total tests).
+ */
+function computeCorrectnessBand(
+  maxScore: number,
+  exec: ExecutionContext | null,
+): { lo: number; hi: number; expected: number } | null {
+  if (!exec) return null;
+  // Compile error → Correctness = 0 (already enforced by the prompt's hard rule,
+  // but we belt-and-brace it here).
+  if (exec.normalizedStatus === "compile_error") {
+    return { lo: 0, hi: 0, expected: 0 };
+  }
+  const pubP = exec.publicPassed ?? 0;
+  const pubT = exec.publicTotal ?? 0;
+  const hidP = exec.hiddenPassed ?? 0;
+  const hidT = exec.hiddenTotal ?? 0;
+  const passed = pubP + hidP;
+  const total = pubT + hidT;
+  if (total <= 0) return null;
+  const ratio = passed / total;
+  const expected = ratio * maxScore;
+  // ±10% of maxScore around the expected value, clamped to [0, maxScore].
+  const tolerance = 0.1 * maxScore;
+  const lo = Math.max(0, Math.round(expected - tolerance));
+  const hi = Math.min(maxScore, Math.round(expected + tolerance));
+  return { lo, hi, expected: Math.round(expected) };
+}
+
+/**
+ * Check whether a criterion is the Correctness criterion. We look for the
+ * word "correct" anywhere in its name (case-insensitive) — matches "Correctness",
+ * "Doğruluk" (no — but matches "Correctness" labels), etc. This is a soft
+ * heuristic; if your rubric names Correctness something else, the
+ * proportional rule won't activate. That's a deliberate trade-off — better
+ * to silently skip than mis-clamp a non-correctness criterion.
+ */
+function isCorrectnessCriterion(name: string): boolean {
+  return /correct/i.test(name);
+}
+
 // ── JSON extraction ───────────────────────────────────────────────────────────
 
-function extractJson(raw: string, criteria: RubricCriterion[]): ScoreSuggestion | null {
+function extractJson(
+  raw: string,
+  criteria: RubricCriterion[],
+  studentCode: string = "",
+  exec: ExecutionContext | null = null,
+): ScoreSuggestion | null {
   const stripped = raw
     .replace(/^```(?:json)?\s*/im, "")
     .replace(/```\s*$/im, "")
@@ -105,12 +191,45 @@ function extractJson(raw: string, criteria: RubricCriterion[]): ScoreSuggestion 
           : typeof b.suggested === "string"
             ? Number.parseFloat(b.suggested)
             : 0;
-        const suggested = Math.max(0, Math.min(maxScore, Math.round(Number.isFinite(rawScore) ? rawScore : 0)));
+        let suggested = Math.max(0, Math.min(maxScore, Math.round(Number.isFinite(rawScore) ? rawScore : 0)));
+        const name = typeof b.name === "string" ? b.name.trim() : matched?.name ?? `Criterion ${idx + 1}`;
+        let comment = typeof b.comment === "string" ? b.comment.trim() : "";
+
+        // ── Proportional correctness enforcement ──
+        // For the Correctness criterion (when execution data exists), force
+        // the suggested score into the ±10%-of-max band around the actual
+        // pass ratio. The AI is asked to do this in the prompt; this clamps
+        // any out-of-band scores back into the legitimate range.
+        if (isCorrectnessCriterion(name)) {
+          const band = computeCorrectnessBand(maxScore, exec);
+          if (band !== null) {
+            if (suggested < band.lo) {
+              comment = `${comment} [auto-adjusted from ${suggested} → ${band.lo}: below proportional floor for ${exec!.publicPassed ?? 0}/${exec!.publicTotal ?? 0} public + ${exec!.hiddenPassed ?? 0}/${exec!.hiddenTotal ?? 0} hidden tests passed]`.trim();
+              suggested = band.lo;
+            } else if (suggested > band.hi) {
+              comment = `${comment} [auto-adjusted from ${suggested} → ${band.hi}: above proportional ceiling for ${exec!.publicPassed ?? 0}/${exec!.publicTotal ?? 0} public + ${exec!.hiddenPassed ?? 0}/${exec!.hiddenTotal ?? 0} hidden tests passed]`.trim();
+              suggested = band.hi;
+            }
+          }
+        }
+
+        // ── Anti-hallucination citation check ──
+        // Backticked spans in the comment must appear in the student's code.
+        // Unverified citations get appended as a teacher-visible warning so
+        // the score isn't silently trusting a fabricated claim.
+        if (studentCode && comment) {
+          const unverified = findUnverifiedCitations(comment, studentCode);
+          if (unverified.length > 0) {
+            const tag = unverified.map((c) => `\`${c}\``).join(", ");
+            comment = `${comment} [⚠ unverified citations: ${tag} — not found in student's code; manual review recommended]`;
+          }
+        }
+
         return {
-          name:      typeof b.name    === "string" ? b.name.trim() : matched?.name ?? `Criterion ${idx + 1}`,
+          name,
           maxScore,
           suggested,
-          comment:   typeof b.comment === "string" ? b.comment.trim() : "",
+          comment,
         };
       });
 
@@ -259,12 +378,20 @@ CALIBRATION — what scores mean:
 
 CRITICAL RULES — you MUST follow these:
 - Execution results are ground truth. If tests FAILED, Correctness CANNOT be above 60% of its maxScore.
+- PROPORTIONAL CORRECTNESS RULE: If k of n tests passed and the result is not a compile error, the Correctness score MUST be within ±10% of (k / n) × maxScore. Example: 7 of 10 public tests passed and Correctness maxScore is 40 → suggested Correctness must be between 25 and 31 (≈ 28 ± 10%). If hidden tests are also reported, count both: use (publicPassed + hiddenPassed) / (publicTotal + hiddenTotal).
 - If ALL tests passed (allPassed = true), Correctness may be high, but other criteria must still be graded critically on their own merits.
 - If there is a compile error, Correctness = 0. Code Quality must also be very low (≤ 20% of its maxScore).
 - If the code has no comments, hardcoded values, poor variable names, or is a single unstructured block, Code Quality must reflect that.
 - If the solution uses an inefficient algorithm when the reference uses a clearly better one, Algorithm score must be reduced.
 - Do NOT give full marks unless the student's solution is genuinely excellent for that criterion.
 - Do NOT be influenced by the student submitting — the score must reflect actual quality, not effort.
+
+ANTI-HALLUCINATION RULES — your "comment" field will be programmatically verified:
+- Every code pattern or identifier you cite in a comment MUST appear verbatim in the student's actual code shown above. Wrap exact citations in backticks (e.g. \`word_count\`, \`strlen(buf)\`).
+- Do NOT claim the student "uses bubble sort" / "uses recursion" / "ignores edge case X" unless you can quote a backticked code fragment from their code that proves it.
+- Do NOT invent variable names, function calls, library imports, or algorithms that are not in the student's code.
+- Do NOT cite specific failing test inputs/outputs unless they appear in the execution results above.
+- Vague comments like "good code", "well structured", "could be improved" are FORBIDDEN. Be specific or omit the comment.
 
 For each criterion:
 - Assign "suggested" as an integer between 0 and maxScore (inclusive).
@@ -347,7 +474,7 @@ export async function suggestScore(
     const raw  = (data.response ?? "").trim();
     if (!raw) throw new Error("Ollama returned an empty response");
 
-    const suggestion = extractJson(raw, criteria);
+    const suggestion = extractJson(raw, criteria, studentCode, exec);
     if (!suggestion) {
       throw new Error(`Could not parse score JSON from model output: ${raw.slice(0, 300)}`);
     }

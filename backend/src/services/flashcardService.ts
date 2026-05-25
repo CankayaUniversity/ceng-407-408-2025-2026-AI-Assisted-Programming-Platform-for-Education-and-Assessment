@@ -182,6 +182,30 @@ Rules:
 - **EVERY "body" MUST quote at least one specific token from the student's actual code or an actual error message**: a variable name, a function call, a literal value, or an exact error string. Wrap it in backticks. Generic statements like "be careful with loops" or "make sure to handle edge cases" are FORBIDDEN — if you cannot point to a specific piece of evidence, do not produce that card.
 - If the student had zero failed attempts, generate ${cardCount} "improvement" or "shortcoming" cards only.
 
+ANTI-HALLUCINATION RULES — read these carefully, the most common failure modes:
+
+1. CODE SNIPPETS MUST BE VERBATIM FROM THE INPUT.
+   - "codeSnippet.bad" for an "error" card MUST appear (allowing for whitespace differences) inside one of the failed attempts above.
+   - "codeSnippet.bad" for a "shortcoming" or "improvement" card MUST appear in the student's ACCEPTED code above.
+   - "codeSnippet.good" for an "improvement" card MUST appear in the REFERENCE SOLUTION above AND must NOT already be present in the student's accepted code.
+   - Do NOT fabricate, paraphrase, or "clean up" code that isn't in the input. If you can't find a real verbatim snippet, omit "codeSnippet" entirely.
+
+2. DO NOT REFERENCE TEST NUMBERS OR TEST OUTPUTS THAT AREN'T IN THE INPUT.
+   - The failed attempts log contains stdout/stderr text, but NOT test labels like "Test 1", "Test 2", "test 3", "Hidden 1".
+   - NEVER write "Test N failed because..." or "in Test N..." — those test labels do not exist in the input you have. Refer to specific input examples or specific stdout strings instead (e.g. "for input \`hello world\` your code output \`...\`").
+
+3. DO NOT CLAIM A DIFFERENCE BETWEEN STUDENT AND REFERENCE THAT DOESN'T EXIST.
+   - Before writing an "improvement" card, compare the student's accepted code and the reference solution line-by-line.
+   - Do NOT claim the reference "also does X" or "has a check the student doesn't" unless you can quote BOTH the reference's version and confirm it's actually missing from the student's code.
+
+4. STATE CONCRETE BEHAVIOR, NOT VAGUE WARNINGS.
+   - FORBIDDEN: "may behave unpredictably", "could cause issues", "might break", "is risky".
+   - REQUIRED: state exactly what happens. "Truncates input over 1023 chars", "crashes with segmentation fault on empty input", "returns 0 for negative inputs", etc.
+   - If you don't know the precise behavior, do not produce the card.
+
+5. DO NOT INVENT CAUSAL LINKS.
+   - Only claim "X caused Y" if both X (the code change) and Y (the actual observed error or wrong output) are clearly visible in the failed attempts log.
+
 [EXAMPLES — for calibration]
 
 BAD card (do NOT produce this — too generic, no specific evidence):
@@ -327,6 +351,77 @@ const COMMON_ENGLISH_WORDS = new Set([
   "really", "very", "still", "again", "then", "than", "their", "them",
 ]);
 
+/**
+ * Normalize a code string for fuzzy substring matching: collapse all whitespace
+ * runs to a single space, lowercase. Two snippets that differ only in
+ * indentation or trailing newlines will match.
+ */
+function normalizeForCodeMatch(s: string): string {
+  return s.replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+/**
+ * True if every non-empty line of `needle` appears as a substring of
+ * `haystack` after normalization. Tolerates indentation/whitespace
+ * differences but catches snippets that don't actually exist in the corpus.
+ */
+function snippetAppearsIn(needle: string | undefined, haystack: string): boolean {
+  if (!needle || !needle.trim()) return true; // nothing to verify
+  const corpus = normalizeForCodeMatch(haystack);
+  const lines = needle.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
+  if (lines.length === 0) return true;
+  return lines.every((line) => corpus.includes(normalizeForCodeMatch(line)));
+}
+
+/**
+ * A6 — Snippet grounding (structural fact check).
+ *
+ * The token-level `hasGrounding` filter accepts any card that name-drops a
+ * real identifier — it can't tell whether the card's CLAIM is accurate. This
+ * filter checks the structural truth of any code snippet attached to the
+ * card by verifying the snippets actually exist in the right source:
+ *
+ *   - error cards       → `bad` must appear in at least one failed attempt
+ *   - shortcoming cards → `bad` must appear in accepted code
+ *   - improvement cards → `bad` must appear in accepted code AND
+ *                         `good` must appear in the reference solution
+ *                         AND `good` must NOT already appear verbatim in
+ *                         the accepted code (otherwise it's a non-improvement
+ *                         the student already has)
+ *
+ * Cards without `codeSnippet` pass through unchanged — this filter is only
+ * about verifying structural claims when the model made them concrete.
+ */
+function hasValidSnippetGrounding(
+  c: FlashcardItem,
+  acceptedCode: string,
+  failedAttempts: FailedAttempt[],
+  referenceSolution: string | null,
+): boolean {
+  const snip = c.codeSnippet;
+  if (!snip || (!snip.bad && !snip.good)) return true;
+
+  const failedSource = failedAttempts.map((a) => a.sourceCode).join("\n");
+
+  if (c.type === "error") {
+    if (snip.bad && !snippetAppearsIn(snip.bad, failedSource)) return false;
+    return true;
+  }
+
+  if (c.type === "shortcoming") {
+    if (snip.bad && !snippetAppearsIn(snip.bad, acceptedCode)) return false;
+    return true;
+  }
+
+  // improvement
+  if (snip.bad && !snippetAppearsIn(snip.bad, acceptedCode)) return false;
+  if (referenceSolution && snip.good && !snippetAppearsIn(snip.good, referenceSolution)) return false;
+  // A "good" snippet the student already wrote is not an improvement.
+  if (snip.good && snippetAppearsIn(snip.good, acceptedCode)) return false;
+
+  return true;
+}
+
 function extractCards(raw: string): FlashcardItem[] {
   const stripped = raw
     .replace(/```json\s*/gi, "")
@@ -408,22 +503,31 @@ export async function generateFlashcards(input: FlashcardInput): Promise<Flashca
     const raw  = (data.response ?? "").trim();
     if (!raw) throw new Error("Empty response from model");
 
-    // Pipeline: extract → A2 structural validity → A3 dedupe → A5 grounding.
-    // Each stage only narrows; nothing is mutated. The final slice enforces
-    // the target count when the model over-produces.
+    // Pipeline: extract → A2 structural validity → A3 dedupe → A5 token-grounding
+    // → A6 snippet-grounding. Each stage only narrows; nothing is mutated. The
+    // final slice enforces the target count when the model over-produces.
     const extracted = extractCards(raw);
     const valid     = extracted.filter(isValidCard);
     const deduped   = dedupeCards(valid);
     const grounded  = deduped.filter((c) =>
       hasGrounding(c, input.failedAttempts, input.acceptedCode),
     );
+    const snippetGrounded = grounded.filter((c) =>
+      hasValidSnippetGrounding(
+        c,
+        input.acceptedCode,
+        input.failedAttempts,
+        input.referenceSolution,
+      ),
+    );
 
     console.log(
       `[flashcards] generated=${extracted.length} valid=${valid.length} ` +
-      `deduped=${deduped.length} grounded=${grounded.length} target=${target}`,
+      `deduped=${deduped.length} grounded=${grounded.length} ` +
+      `snippetGrounded=${snippetGrounded.length} target=${target}`,
     );
 
-    return grounded.slice(0, target);
+    return snippetGrounded.slice(0, target);
   } finally {
     clearTimeout(timeout);
   }

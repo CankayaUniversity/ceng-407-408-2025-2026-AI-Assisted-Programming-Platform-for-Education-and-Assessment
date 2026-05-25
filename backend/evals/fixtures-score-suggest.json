@@ -1,0 +1,605 @@
+[
+  {
+    "id": "sum-A-perfect",
+    "category": "perfect-solution",
+    "expectedBehavior": "All tests passed, clean code. Total score should be ≥85/100. Correctness should be at or near max.",
+    "expectedScoreRange": [85, 100],
+    "problemTitle": "Sum 1 to N",
+    "problemDescription": "Read an integer n from stdin and print the sum of integers from 1 to n inclusive.",
+    "language": "python",
+    "referenceSolution": "n = int(input())\nprint(n * (n + 1) // 2)",
+    "studentCode": "n = int(input())\ntotal = 0\nfor i in range(1, n + 1):\n    total += i\nprint(total)",
+    "criteria": [
+      { "name": "Correctness", "description": "Output matches expected for all test cases", "maxScore": 40, "scoringGuide": "Full: all tests pass. Partial: most tests pass. Zero: no tests pass." },
+      { "name": "Algorithm", "description": "Uses an appropriate algorithm", "maxScore": 20, "scoringGuide": "Full: efficient. Partial: works but suboptimal. Zero: wrong approach." },
+      { "name": "Code Quality", "description": "Readable variable names and structure", "maxScore": 20, "scoringGuide": "Full: clean. Partial: minor issues. Zero: unreadable." },
+      { "name": "Edge Cases", "description": "Handles boundary inputs like n=0 and n=1", "maxScore": 20, "scoringGuide": "Full: handles all. Partial: handles some. Zero: handles none." }
+    ],
+    "exec": {
+      "normalizedStatus": "accepted",
+      "publicPassed": 5, "publicTotal": 5,
+      "hiddenPassed": 5, "hiddenTotal": 5,
+      "allPassed": true,
+      "stdout": "55\n",
+      "stderr": null,
+      "compileOutput": null,
+      "executionTimeMs": 12.3,
+      "memoryKb": 3072,
+      "testCases": [
+        { "input": "10", "expectedOutput": "55" },
+        { "input": "1", "expectedOutput": "1" },
+        { "input": "100", "expectedOutput": "5050" }
+      ]
+    }
+  },
+  {
+    "id": "sum-B-off-by-one",
+    "category": "partial-pass",
+    "expectedBehavior": "Off-by-one bug: range(1, n) excludes n. Some tests fail. Correctness should be ~k/n of max ± 10%.",
+    "expectedScoreRange": [35, 65],
+    "problemTitle": "Sum 1 to N",
+    "problemDescription": "Read an integer n from stdin and print the sum of integers from 1 to n inclusive.",
+    "language": "python",
+    "referenceSolution": "n = int(input())\nprint(n * (n + 1) // 2)",
+    "studentCode": "n = int(input())\ntotal = 0\nfor i in range(1, n):\n    total += i\nprint(total)",
+    "criteria": [
+      { "name": "Correctness", "description": "Output matches expected for all test cases", "maxScore": 40, "scoringGuide": "Full: all tests pass. Partial: most tests pass. Zero: no tests pass." },
+      { "name": "Algorithm", "description": "Uses an appropriate algorithm", "maxScore": 20, "scoringGuide": "Full: efficient. Partial: works but suboptimal. Zero: wrong approach." },
+      { "name": "Code Quality", "description": "Readable variable names and structure", "maxScore": 20, "scoringGuide": "Full: clean. Partial: minor issues. Zero: unreadable." },
+      { "name": "Edge Cases", "description": "Handles boundary inputs like n=0 and n=1", "maxScore": 20, "scoringGuide": "Full: handles all. Partial: handles some. Zero: handles none." }
+    ],
+    "exec": {
+      "normalizedStatus": "wrong_answer",
+      "publicPassed": 1, "publicTotal": 5,
+      "hiddenPassed": 0, "hiddenTotal": 5,
+      "allPassed": false,
+      "stdout": "45\n",
+      "stderr": null,
+      "compileOutput": null,
+      "executionTimeMs": 11.0,
+      "memoryKb": 3072,
+      "testCases": [
+        { "input": "10", "expectedOutput": "55" },
+        { "input": "1", "expectedOutput": "1" }
+      ]
+    }
+  },
+  {
+    "id": "sum-C-compile-error",
+    "category": "compile-error",
+    "expectedBehavior": "Compile/syntax error — code doesn't run. Correctness MUST be 0. Code Quality MUST be very low (≤20% max).",
+    "expectedScoreRange": [0, 20],
+    "problemTitle": "Sum 1 to N",
+    "problemDescription": "Read an integer n from stdin and print the sum of integers from 1 to n inclusive.",
+    "language": "python",
+    "referenceSolution": "n = int(input())\nprint(n * (n + 1) // 2)",
+    "studentCode": "n = int(input()\ntotal = 0\nfor i in range(1, n + 1)\n    total += i\nprint(total)",
+    "criteria": [
+      { "name": "Correctness", "description": "Output matches expected for all test cases", "maxScore": 40, "scoringGuide": "Full: all tests pass. Partial: most tests pass. Zero: no tests pass." },
+      { "name": "Algorithm", "description": "Uses an appropriate algorithm", "maxScore": 20, "scoringGuide": "Full: efficient. Partial: works but suboptimal. Zero: wrong approach." },
+      { "name": "Code Quality", "description": "Readable variable names and structure", "maxScore": 20, "scoringGuide": "Full: clean. Partial: minor issues. Zero: unreadable." },
+      { "name": "Edge Cases", "description": "Handles boundary inputs like n=0 and n=1", "maxScore": 20, "scoringGuide": "Full: handles all. Partial: handles some. Zero: handles none." }
+    ],
+    "exec": {
+      "normalizedStatus": "compile_error",
+      "publicPassed": 0, "publicTotal": 5,
+      "hiddenPassed": 0, "hiddenTotal": 5,
+      "allPassed": false,
+      "stdout": null,
+      "stderr": "  File \"sol.py\", line 1\n    n = int(input()\n                  ^\nSyntaxError: '(' was never closed",
+      "compileOutput": "SyntaxError: '(' was never closed",
+      "executionTimeMs": null,
+      "memoryKb": null,
+      "testCases": [{ "input": "10", "expectedOutput": "55" }]
+    }
+  },
+  {
+    "id": "sum-D-format-mismatch",
+    "category": "format-issue",
+    "expectedBehavior": "Logic correct but adds extra text. All tests fail due to format. Algorithm should be high, Correctness should match pass ratio (≈0).",
+    "expectedScoreRange": [15, 45],
+    "problemTitle": "Sum 1 to N",
+    "problemDescription": "Read an integer n from stdin and print the sum of integers from 1 to n inclusive.",
+    "language": "python",
+    "referenceSolution": "n = int(input())\nprint(n * (n + 1) // 2)",
+    "studentCode": "n = int(input())\ntotal = sum(range(1, n + 1))\nprint(f'The sum is: {total}')",
+    "criteria": [
+      { "name": "Correctness", "description": "Output matches expected for all test cases", "maxScore": 40, "scoringGuide": "Full: all tests pass. Partial: most tests pass. Zero: no tests pass." },
+      { "name": "Algorithm", "description": "Uses an appropriate algorithm", "maxScore": 20, "scoringGuide": "Full: efficient. Partial: works but suboptimal. Zero: wrong approach." },
+      { "name": "Code Quality", "description": "Readable variable names and structure", "maxScore": 20, "scoringGuide": "Full: clean. Partial: minor issues. Zero: unreadable." },
+      { "name": "Edge Cases", "description": "Handles boundary inputs like n=0 and n=1", "maxScore": 20, "scoringGuide": "Full: handles all. Partial: handles some. Zero: handles none." }
+    ],
+    "exec": {
+      "normalizedStatus": "wrong_answer",
+      "publicPassed": 0, "publicTotal": 5,
+      "hiddenPassed": 0, "hiddenTotal": 5,
+      "allPassed": false,
+      "stdout": "The sum is: 55\n",
+      "stderr": null,
+      "compileOutput": null,
+      "executionTimeMs": 11.5,
+      "memoryKb": 3072,
+      "testCases": [{ "input": "10", "expectedOutput": "55" }]
+    }
+  },
+  {
+    "id": "sum-E-hardcoded-cheat",
+    "category": "tricky-cheating",
+    "expectedBehavior": "Hardcoded ifs that pass public but fail hidden. Correctness should reflect partial ratio (low). Algorithm score should be LOW.",
+    "expectedScoreRange": [15, 50],
+    "problemTitle": "Sum 1 to N",
+    "problemDescription": "Read an integer n from stdin and print the sum of integers from 1 to n inclusive.",
+    "language": "python",
+    "referenceSolution": "n = int(input())\nprint(n * (n + 1) // 2)",
+    "studentCode": "n = int(input())\nif n == 10:\n    print(55)\nelif n == 1:\n    print(1)\nelif n == 100:\n    print(5050)\nelse:\n    print(0)",
+    "criteria": [
+      { "name": "Correctness", "description": "Output matches expected for all test cases", "maxScore": 40, "scoringGuide": "Full: all tests pass. Partial: most tests pass. Zero: no tests pass." },
+      { "name": "Algorithm", "description": "Uses an appropriate algorithm", "maxScore": 20, "scoringGuide": "Full: efficient. Partial: works but suboptimal. Zero: wrong approach." },
+      { "name": "Code Quality", "description": "Readable variable names and structure", "maxScore": 20, "scoringGuide": "Full: clean. Partial: minor issues. Zero: unreadable." },
+      { "name": "Edge Cases", "description": "Handles boundary inputs like n=0 and n=1", "maxScore": 20, "scoringGuide": "Full: handles all. Partial: handles some. Zero: handles none." }
+    ],
+    "exec": {
+      "normalizedStatus": "wrong_answer",
+      "publicPassed": 3, "publicTotal": 5,
+      "hiddenPassed": 0, "hiddenTotal": 5,
+      "allPassed": false,
+      "stdout": "55\n",
+      "stderr": null,
+      "compileOutput": null,
+      "executionTimeMs": 9.8,
+      "memoryKb": 3072,
+      "testCases": [
+        { "input": "10", "expectedOutput": "55" },
+        { "input": "1", "expectedOutput": "1" },
+        { "input": "100", "expectedOutput": "5050" },
+        { "input": "5", "expectedOutput": "15" },
+        { "input": "20", "expectedOutput": "210" }
+      ]
+    }
+  },
+
+  {
+    "id": "pal-A-perfect",
+    "category": "perfect-solution",
+    "expectedBehavior": "Clean palindrome check, all tests pass. High total score.",
+    "expectedScoreRange": [85, 100],
+    "problemTitle": "Palindrome Check",
+    "problemDescription": "Read a string and print 'yes' if it is a palindrome (reads the same forwards and backwards, case-insensitive), else 'no'.",
+    "language": "python",
+    "referenceSolution": "s = input().lower()\nprint('yes' if s == s[::-1] else 'no')",
+    "studentCode": "s = input().lower()\nif s == s[::-1]:\n    print('yes')\nelse:\n    print('no')",
+    "criteria": [
+      { "name": "Correctness", "description": "Output matches expected", "maxScore": 50, "scoringGuide": "Full: all tests pass. Partial proportional. Zero: no tests pass." },
+      { "name": "Case Handling", "description": "Correctly handles case-insensitivity", "maxScore": 20, "scoringGuide": "Full: handles uppercase. Partial: misses some. Zero: ignores case rule." },
+      { "name": "Code Style", "description": "Clean and readable", "maxScore": 30, "scoringGuide": "Full: idiomatic. Partial: minor issues. Zero: poor." }
+    ],
+    "exec": {
+      "normalizedStatus": "accepted",
+      "publicPassed": 4, "publicTotal": 4,
+      "hiddenPassed": 6, "hiddenTotal": 6,
+      "allPassed": true,
+      "stdout": "yes\n",
+      "stderr": null,
+      "compileOutput": null,
+      "executionTimeMs": 8.2,
+      "memoryKb": 3072,
+      "testCases": [
+        { "input": "racecar", "expectedOutput": "yes" },
+        { "input": "Hello", "expectedOutput": "no" }
+      ]
+    }
+  },
+  {
+    "id": "pal-B-missing-case",
+    "category": "partial-pass",
+    "expectedBehavior": "Forgets to lowercase. Fails uppercase tests. Correctness proportional to pass rate. Case Handling should be very low.",
+    "expectedScoreRange": [25, 55],
+    "problemTitle": "Palindrome Check",
+    "problemDescription": "Read a string and print 'yes' if it is a palindrome (reads the same forwards and backwards, case-insensitive), else 'no'.",
+    "language": "python",
+    "referenceSolution": "s = input().lower()\nprint('yes' if s == s[::-1] else 'no')",
+    "studentCode": "s = input()\nif s == s[::-1]:\n    print('yes')\nelse:\n    print('no')",
+    "criteria": [
+      { "name": "Correctness", "description": "Output matches expected", "maxScore": 50, "scoringGuide": "Full: all tests pass. Partial proportional. Zero: no tests pass." },
+      { "name": "Case Handling", "description": "Correctly handles case-insensitivity", "maxScore": 20, "scoringGuide": "Full: handles uppercase. Partial: misses some. Zero: ignores case rule." },
+      { "name": "Code Style", "description": "Clean and readable", "maxScore": 30, "scoringGuide": "Full: idiomatic. Partial: minor issues. Zero: poor." }
+    ],
+    "exec": {
+      "normalizedStatus": "wrong_answer",
+      "publicPassed": 2, "publicTotal": 4,
+      "hiddenPassed": 3, "hiddenTotal": 6,
+      "allPassed": false,
+      "stdout": "no\n",
+      "stderr": null,
+      "compileOutput": null,
+      "executionTimeMs": 7.9,
+      "memoryKb": 3072,
+      "testCases": [
+        { "input": "RaceCar", "expectedOutput": "yes" },
+        { "input": "racecar", "expectedOutput": "yes" }
+      ]
+    }
+  },
+  {
+    "id": "pal-C-runtime-error",
+    "category": "runtime-error",
+    "expectedBehavior": "Crashes on empty input (IndexError). Correctness ≈ partial. Edge handling low.",
+    "expectedScoreRange": [10, 50],
+    "problemTitle": "Palindrome Check",
+    "problemDescription": "Read a string and print 'yes' if it is a palindrome (reads the same forwards and backwards, case-insensitive), else 'no'.",
+    "language": "python",
+    "referenceSolution": "s = input().lower()\nprint('yes' if s == s[::-1] else 'no')",
+    "studentCode": "s = input().lower()\nif s[0] == s[-1] and s == s[::-1]:\n    print('yes')\nelse:\n    print('no')",
+    "criteria": [
+      { "name": "Correctness", "description": "Output matches expected", "maxScore": 50, "scoringGuide": "Full: all tests pass. Partial proportional. Zero: no tests pass." },
+      { "name": "Case Handling", "description": "Correctly handles case-insensitivity", "maxScore": 20, "scoringGuide": "Full: handles uppercase. Partial: misses some. Zero: ignores case rule." },
+      { "name": "Code Style", "description": "Clean and readable", "maxScore": 30, "scoringGuide": "Full: idiomatic. Partial: minor issues. Zero: poor." }
+    ],
+    "exec": {
+      "normalizedStatus": "runtime_error",
+      "publicPassed": 3, "publicTotal": 4,
+      "hiddenPassed": 4, "hiddenTotal": 6,
+      "allPassed": false,
+      "stdout": null,
+      "stderr": "Traceback (most recent call last):\n  File \"sol.py\", line 2, in <module>\n    if s[0] == s[-1] and s == s[::-1]:\nIndexError: string index out of range",
+      "compileOutput": null,
+      "executionTimeMs": 6.0,
+      "memoryKb": 3072,
+      "testCases": [
+        { "input": "", "expectedOutput": "yes" },
+        { "input": "racecar", "expectedOutput": "yes" }
+      ]
+    }
+  },
+  {
+    "id": "pal-D-uppercase-everywhere",
+    "category": "tricky-style",
+    "expectedBehavior": "Correctness is fine (all tests pass) but variable names are single-letter / no comments. Code style should not be max.",
+    "expectedScoreRange": [70, 90],
+    "problemTitle": "Palindrome Check",
+    "problemDescription": "Read a string and print 'yes' if it is a palindrome (reads the same forwards and backwards, case-insensitive), else 'no'.",
+    "language": "python",
+    "referenceSolution": "s = input().lower()\nprint('yes' if s == s[::-1] else 'no')",
+    "studentCode": "X=input().lower()\nY=X[::-1]\nZ=(X==Y)\nprint('yes'if Z else'no')",
+    "criteria": [
+      { "name": "Correctness", "description": "Output matches expected", "maxScore": 50, "scoringGuide": "Full: all tests pass. Partial proportional. Zero: no tests pass." },
+      { "name": "Case Handling", "description": "Correctly handles case-insensitivity", "maxScore": 20, "scoringGuide": "Full: handles uppercase. Partial: misses some. Zero: ignores case rule." },
+      { "name": "Code Style", "description": "Clean and readable", "maxScore": 30, "scoringGuide": "Full: idiomatic. Partial: minor issues. Zero: poor." }
+    ],
+    "exec": {
+      "normalizedStatus": "accepted",
+      "publicPassed": 4, "publicTotal": 4,
+      "hiddenPassed": 6, "hiddenTotal": 6,
+      "allPassed": true,
+      "stdout": "yes\n",
+      "stderr": null,
+      "compileOutput": null,
+      "executionTimeMs": 8.0,
+      "memoryKb": 3072,
+      "testCases": [{ "input": "racecar", "expectedOutput": "yes" }]
+    }
+  },
+  {
+    "id": "pal-E-empty-attempt",
+    "category": "minimal-effort",
+    "expectedBehavior": "Empty student code. Should produce near-zero scores across all criteria.",
+    "expectedScoreRange": [0, 15],
+    "problemTitle": "Palindrome Check",
+    "problemDescription": "Read a string and print 'yes' if it is a palindrome (reads the same forwards and backwards, case-insensitive), else 'no'.",
+    "language": "python",
+    "referenceSolution": "s = input().lower()\nprint('yes' if s == s[::-1] else 'no')",
+    "studentCode": "",
+    "criteria": [
+      { "name": "Correctness", "description": "Output matches expected", "maxScore": 50, "scoringGuide": "Full: all tests pass. Partial proportional. Zero: no tests pass." },
+      { "name": "Case Handling", "description": "Correctly handles case-insensitivity", "maxScore": 20, "scoringGuide": "Full: handles uppercase. Partial: misses some. Zero: ignores case rule." },
+      { "name": "Code Style", "description": "Clean and readable", "maxScore": 30, "scoringGuide": "Full: idiomatic. Partial: minor issues. Zero: poor." }
+    ],
+    "exec": {
+      "normalizedStatus": "wrong_answer",
+      "publicPassed": 0, "publicTotal": 4,
+      "hiddenPassed": 0, "hiddenTotal": 6,
+      "allPassed": false,
+      "stdout": "",
+      "stderr": null,
+      "compileOutput": null,
+      "executionTimeMs": 5.0,
+      "memoryKb": 3072,
+      "testCases": [{ "input": "racecar", "expectedOutput": "yes" }]
+    }
+  },
+
+  {
+    "id": "wstat-A-perfect",
+    "category": "perfect-solution",
+    "expectedBehavior": "Word Statistics in C, all tests pass with empty-input guard. High total.",
+    "expectedScoreRange": [80, 100],
+    "problemTitle": "Word Statistics",
+    "problemDescription": "Read a line of text. Print word count, longest word length, and average word length to 2 decimals.",
+    "language": "c",
+    "referenceSolution": "#include <stdio.h>\n#include <ctype.h>\n#include <string.h>\nint main(void) {\n    char buf[1024];\n    fgets(buf, sizeof(buf), stdin);\n    int len = strlen(buf);\n    if (len > 0 && buf[len-1] == '\\n') buf[--len] = '\\0';\n    int word_count = 0, total_length = 0, current_length = 0, longest = 0, in_word = 0;\n    for (int i = 0; i <= len; i++) {\n        if (i < len && !isspace((unsigned char)buf[i])) {\n            if (!in_word) { in_word = 1; current_length = 0; word_count++; }\n            current_length++;\n        } else if (in_word) {\n            in_word = 0;\n            total_length += current_length;\n            if (current_length > longest) longest = current_length;\n        }\n    }\n    double avg = word_count > 0 ? (double)total_length / word_count : 0.0;\n    printf(\"Words: %d\\nLongest: %d\\nAverage: %.2f\\n\", word_count, longest, avg);\n    return 0;\n}",
+    "studentCode": "#include <stdio.h>\n#include <ctype.h>\n#include <string.h>\nint main(void) {\n    char buf[1024];\n    fgets(buf, sizeof(buf), stdin);\n    int len = strlen(buf);\n    if (len > 0 && buf[len-1] == '\\n') buf[--len] = '\\0';\n    int word_count = 0, total_length = 0, current_length = 0, longest = 0, in_word = 0;\n    for (int i = 0; i <= len; i++) {\n        if (i < len && !isspace((unsigned char)buf[i])) {\n            if (!in_word) { in_word = 1; current_length = 0; word_count++; }\n            current_length++;\n        } else if (in_word) {\n            in_word = 0;\n            total_length += current_length;\n            if (current_length > longest) longest = current_length;\n        }\n    }\n    float average = word_count > 0 ? (float)total_length / word_count : 0.0f;\n    printf(\"Words: %d\\nLongest: %d\\nAverage: %.2f\\n\", word_count, longest, average);\n    return 0;\n}",
+    "criteria": [
+      { "name": "Correctness", "description": "All test outputs match expected", "maxScore": 40, "scoringGuide": "Full: all tests pass. Partial proportional. Zero: no tests pass." },
+      { "name": "Edge Cases", "description": "Handles empty input and multiple-space separators", "maxScore": 20, "scoringGuide": "Full: handles all. Partial: misses some. Zero: crashes." },
+      { "name": "Code Quality", "description": "Readable structure and naming", "maxScore": 20, "scoringGuide": "Full: clean. Partial: ok. Zero: poor." },
+      { "name": "Memory Safety", "description": "No buffer overflows or undefined behavior", "maxScore": 20, "scoringGuide": "Full: safe. Partial: minor concerns. Zero: unsafe." }
+    ],
+    "exec": {
+      "normalizedStatus": "accepted",
+      "publicPassed": 3, "publicTotal": 3,
+      "hiddenPassed": 4, "hiddenTotal": 4,
+      "allPassed": true,
+      "stdout": "Words: 2\nLongest: 5\nAverage: 5.00\n",
+      "stderr": null,
+      "compileOutput": null,
+      "executionTimeMs": 4.0,
+      "memoryKb": 2048,
+      "testCases": [
+        { "input": "hello world", "expectedOutput": "Words: 2\nLongest: 5\nAverage: 5.00" }
+      ]
+    }
+  },
+  {
+    "id": "wstat-B-nan-empty",
+    "category": "partial-pass",
+    "expectedBehavior": "Missing empty-input guard. Public tests pass but hidden empty-input test fails. Correctness ≈ 70% of max.",
+    "expectedScoreRange": [50, 75],
+    "problemTitle": "Word Statistics",
+    "problemDescription": "Read a line of text. Print word count, longest word length, and average word length to 2 decimals.",
+    "language": "c",
+    "referenceSolution": "#include <stdio.h>\n#include <ctype.h>\n#include <string.h>\nint main(void) { /* full reference */ return 0; }",
+    "studentCode": "#include <stdio.h>\n#include <ctype.h>\n#include <string.h>\nint main(void) {\n    char buf[1024];\n    fgets(buf, sizeof(buf), stdin);\n    int len = strlen(buf);\n    if (len > 0 && buf[len-1] == '\\n') buf[--len] = '\\0';\n    int word_count = 0, total_length = 0, current_length = 0, longest = 0, in_word = 0;\n    for (int i = 0; i <= len; i++) {\n        if (i < len && !isspace(buf[i])) {\n            if (!in_word) { in_word = 1; current_length = 0; word_count++; }\n            current_length++;\n        } else if (in_word) {\n            in_word = 0;\n            total_length += current_length;\n            if (current_length > longest) longest = current_length;\n        }\n    }\n    float average = (float)total_length / word_count;\n    printf(\"Words: %d\\nLongest: %d\\nAverage: %.2f\\n\", word_count, longest, average);\n    return 0;\n}",
+    "criteria": [
+      { "name": "Correctness", "description": "All test outputs match expected", "maxScore": 40, "scoringGuide": "Full: all tests pass. Partial proportional. Zero: no tests pass." },
+      { "name": "Edge Cases", "description": "Handles empty input and multiple-space separators", "maxScore": 20, "scoringGuide": "Full: handles all. Partial: misses some. Zero: crashes." },
+      { "name": "Code Quality", "description": "Readable structure and naming", "maxScore": 20, "scoringGuide": "Full: clean. Partial: ok. Zero: poor." },
+      { "name": "Memory Safety", "description": "No buffer overflows or undefined behavior", "maxScore": 20, "scoringGuide": "Full: safe. Partial: minor concerns. Zero: unsafe." }
+    ],
+    "exec": {
+      "normalizedStatus": "wrong_answer",
+      "publicPassed": 3, "publicTotal": 3,
+      "hiddenPassed": 2, "hiddenTotal": 4,
+      "allPassed": false,
+      "stdout": "Words: 0\nLongest: 0\nAverage: -nan\n",
+      "stderr": null,
+      "compileOutput": null,
+      "executionTimeMs": 4.0,
+      "memoryKb": 2048,
+      "testCases": [{ "input": "", "expectedOutput": "Words: 0\nLongest: 0\nAverage: 0.00" }]
+    }
+  },
+  {
+    "id": "wstat-C-segfault",
+    "category": "runtime-error",
+    "expectedBehavior": "Uninitialized pointer → segfault. All tests fail. Correctness should be 0 or near-0. Memory Safety should be very low.",
+    "expectedScoreRange": [0, 25],
+    "problemTitle": "Word Statistics",
+    "problemDescription": "Read a line of text. Print word count, longest word length, and average word length to 2 decimals.",
+    "language": "c",
+    "referenceSolution": "/* full reference */",
+    "studentCode": "#include <stdio.h>\nint main(void) {\n    char *buf;\n    fgets(buf, 1024, stdin);\n    printf(\"%s\", buf);\n    return 0;\n}",
+    "criteria": [
+      { "name": "Correctness", "description": "All test outputs match expected", "maxScore": 40, "scoringGuide": "Full: all tests pass. Partial proportional. Zero: no tests pass." },
+      { "name": "Edge Cases", "description": "Handles empty input and multiple-space separators", "maxScore": 20, "scoringGuide": "Full: handles all. Partial: misses some. Zero: crashes." },
+      { "name": "Code Quality", "description": "Readable structure and naming", "maxScore": 20, "scoringGuide": "Full: clean. Partial: ok. Zero: poor." },
+      { "name": "Memory Safety", "description": "No buffer overflows or undefined behavior", "maxScore": 20, "scoringGuide": "Full: safe. Partial: minor concerns. Zero: unsafe." }
+    ],
+    "exec": {
+      "normalizedStatus": "runtime_error",
+      "publicPassed": 0, "publicTotal": 3,
+      "hiddenPassed": 0, "hiddenTotal": 4,
+      "allPassed": false,
+      "stdout": null,
+      "stderr": "Segmentation fault (core dumped)",
+      "compileOutput": null,
+      "executionTimeMs": null,
+      "memoryKb": null,
+      "testCases": [{ "input": "hello world", "expectedOutput": "Words: 2\nLongest: 5\nAverage: 5.00" }]
+    }
+  },
+  {
+    "id": "wstat-D-counts-chars",
+    "category": "wrong-algorithm",
+    "expectedBehavior": "Counts non-whitespace chars instead of words. Algorithm score should be low. Correctness ≈ 0 (no tests pass).",
+    "expectedScoreRange": [5, 40],
+    "problemTitle": "Word Statistics",
+    "problemDescription": "Read a line of text. Print word count, longest word length, and average word length to 2 decimals.",
+    "language": "c",
+    "referenceSolution": "/* full reference */",
+    "studentCode": "#include <stdio.h>\n#include <ctype.h>\n#include <string.h>\nint main(void) {\n    char buf[1024];\n    fgets(buf, sizeof(buf), stdin);\n    int word_count = 0;\n    for (int i = 0; i < strlen(buf); i++) {\n        if (!isspace(buf[i])) word_count++;\n    }\n    printf(\"Words: %d\\nLongest: 0\\nAverage: 0.00\\n\", word_count);\n    return 0;\n}",
+    "criteria": [
+      { "name": "Correctness", "description": "All test outputs match expected", "maxScore": 40, "scoringGuide": "Full: all tests pass. Partial proportional. Zero: no tests pass." },
+      { "name": "Edge Cases", "description": "Handles empty input and multiple-space separators", "maxScore": 20, "scoringGuide": "Full: handles all. Partial: misses some. Zero: crashes." },
+      { "name": "Code Quality", "description": "Readable structure and naming", "maxScore": 20, "scoringGuide": "Full: clean. Partial: ok. Zero: poor." },
+      { "name": "Memory Safety", "description": "No buffer overflows or undefined behavior", "maxScore": 20, "scoringGuide": "Full: safe. Partial: minor concerns. Zero: unsafe." }
+    ],
+    "exec": {
+      "normalizedStatus": "wrong_answer",
+      "publicPassed": 0, "publicTotal": 3,
+      "hiddenPassed": 0, "hiddenTotal": 4,
+      "allPassed": false,
+      "stdout": "Words: 10\nLongest: 0\nAverage: 0.00\n",
+      "stderr": null,
+      "compileOutput": null,
+      "executionTimeMs": 4.0,
+      "memoryKb": 2048,
+      "testCases": [{ "input": "hello world", "expectedOutput": "Words: 2\nLongest: 5\nAverage: 5.00" }]
+    }
+  },
+  {
+    "id": "wstat-E-partial",
+    "category": "partial-pass",
+    "expectedBehavior": "Works for simple inputs but fails on multi-space and single-word. ~50% pass rate. Correctness ≈ 50% of max.",
+    "expectedScoreRange": [40, 70],
+    "problemTitle": "Word Statistics",
+    "problemDescription": "Read a line of text. Print word count, longest word length, and average word length to 2 decimals.",
+    "language": "c",
+    "referenceSolution": "/* full reference */",
+    "studentCode": "#include <stdio.h>\n#include <string.h>\nint main(void) {\n    char buf[1024];\n    fgets(buf, sizeof(buf), stdin);\n    int len = strlen(buf);\n    if (len > 0 && buf[len-1] == '\\n') buf[--len] = '\\0';\n    int words = 1;\n    int longest = 0, current = 0, total = 0;\n    for (int i = 0; i < len; i++) {\n        if (buf[i] == ' ') {\n            words++;\n            if (current > longest) longest = current;\n            total += current;\n            current = 0;\n        } else current++;\n    }\n    if (current > longest) longest = current;\n    total += current;\n    float avg = (float)total / words;\n    printf(\"Words: %d\\nLongest: %d\\nAverage: %.2f\\n\", words, longest, avg);\n    return 0;\n}",
+    "criteria": [
+      { "name": "Correctness", "description": "All test outputs match expected", "maxScore": 40, "scoringGuide": "Full: all tests pass. Partial proportional. Zero: no tests pass." },
+      { "name": "Edge Cases", "description": "Handles empty input and multiple-space separators", "maxScore": 20, "scoringGuide": "Full: handles all. Partial: misses some. Zero: crashes." },
+      { "name": "Code Quality", "description": "Readable structure and naming", "maxScore": 20, "scoringGuide": "Full: clean. Partial: ok. Zero: poor." },
+      { "name": "Memory Safety", "description": "No buffer overflows or undefined behavior", "maxScore": 20, "scoringGuide": "Full: safe. Partial: minor concerns. Zero: unsafe." }
+    ],
+    "exec": {
+      "normalizedStatus": "wrong_answer",
+      "publicPassed": 2, "publicTotal": 3,
+      "hiddenPassed": 1, "hiddenTotal": 4,
+      "allPassed": false,
+      "stdout": "Words: 2\nLongest: 5\nAverage: 5.00\n",
+      "stderr": null,
+      "compileOutput": null,
+      "executionTimeMs": 4.0,
+      "memoryKb": 2048,
+      "testCases": [
+        { "input": "hello world", "expectedOutput": "Words: 2\nLongest: 5\nAverage: 5.00" },
+        { "input": "hello    world   foo", "expectedOutput": "Words: 3\nLongest: 5\nAverage: 4.33" }
+      ]
+    }
+  },
+
+  {
+    "id": "max-A-perfect-java",
+    "category": "perfect-solution",
+    "expectedBehavior": "Clean Java max-of-array. All tests pass. High total.",
+    "expectedScoreRange": [80, 100],
+    "problemTitle": "Maximum of Array",
+    "problemDescription": "Read n then n integers (space-separated). Print the maximum value.",
+    "language": "java",
+    "referenceSolution": "import java.util.Scanner;\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt();\n        int max = Integer.MIN_VALUE;\n        for (int i = 0; i < n; i++) {\n            int x = sc.nextInt();\n            if (x > max) max = x;\n        }\n        System.out.println(max);\n    }\n}",
+    "studentCode": "import java.util.Scanner;\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt();\n        int max = Integer.MIN_VALUE;\n        for (int i = 0; i < n; i++) {\n            int x = sc.nextInt();\n            if (x > max) max = x;\n        }\n        System.out.println(max);\n    }\n}",
+    "criteria": [
+      { "name": "Correctness", "description": "Returns max for all inputs", "maxScore": 50, "scoringGuide": "Full: all pass. Partial proportional. Zero: none pass." },
+      { "name": "Edge Cases", "description": "Handles negative-only input and single element", "maxScore": 25, "scoringGuide": "Full: handles all. Partial: misses some. Zero: crashes." },
+      { "name": "Code Quality", "description": "Clear and idiomatic Java", "maxScore": 25, "scoringGuide": "Full: clean. Partial: ok. Zero: poor." }
+    ],
+    "exec": {
+      "normalizedStatus": "accepted",
+      "publicPassed": 5, "publicTotal": 5,
+      "hiddenPassed": 5, "hiddenTotal": 5,
+      "allPassed": true,
+      "stdout": "9\n",
+      "stderr": null,
+      "compileOutput": null,
+      "executionTimeMs": 95.0,
+      "memoryKb": 28000,
+      "testCases": [{ "input": "5\n3 1 9 2 5", "expectedOutput": "9" }]
+    }
+  },
+  {
+    "id": "max-B-zero-init",
+    "category": "partial-pass",
+    "expectedBehavior": "Initializes max=0 — fails for all-negative input. Some tests pass. Correctness proportional. Edge Cases score should be low.",
+    "expectedScoreRange": [30, 60],
+    "problemTitle": "Maximum of Array",
+    "problemDescription": "Read n then n integers (space-separated). Print the maximum value.",
+    "language": "java",
+    "referenceSolution": "/* full ref */",
+    "studentCode": "import java.util.Scanner;\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt();\n        int max = 0;\n        for (int i = 0; i < n; i++) {\n            int x = sc.nextInt();\n            if (x > max) max = x;\n        }\n        System.out.println(max);\n    }\n}",
+    "criteria": [
+      { "name": "Correctness", "description": "Returns max for all inputs", "maxScore": 50, "scoringGuide": "Full: all pass. Partial proportional. Zero: none pass." },
+      { "name": "Edge Cases", "description": "Handles negative-only input and single element", "maxScore": 25, "scoringGuide": "Full: handles all. Partial: misses some. Zero: crashes." },
+      { "name": "Code Quality", "description": "Clear and idiomatic Java", "maxScore": 25, "scoringGuide": "Full: clean. Partial: ok. Zero: poor." }
+    ],
+    "exec": {
+      "normalizedStatus": "wrong_answer",
+      "publicPassed": 4, "publicTotal": 5,
+      "hiddenPassed": 3, "hiddenTotal": 5,
+      "allPassed": false,
+      "stdout": "0\n",
+      "stderr": null,
+      "compileOutput": null,
+      "executionTimeMs": 92.0,
+      "memoryKb": 28000,
+      "testCases": [
+        { "input": "3\n-5 -3 -1", "expectedOutput": "-1" },
+        { "input": "5\n3 1 9 2 5", "expectedOutput": "9" }
+      ]
+    }
+  },
+  {
+    "id": "max-C-compile-error",
+    "category": "compile-error",
+    "expectedBehavior": "Java compile error (missing semicolon). Correctness = 0, Code Quality should be very low.",
+    "expectedScoreRange": [0, 20],
+    "problemTitle": "Maximum of Array",
+    "problemDescription": "Read n then n integers (space-separated). Print the maximum value.",
+    "language": "java",
+    "referenceSolution": "/* full ref */",
+    "studentCode": "import java.util.Scanner;\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in)\n        int n = sc.nextInt();\n        System.out.println(n);\n    }\n}",
+    "criteria": [
+      { "name": "Correctness", "description": "Returns max for all inputs", "maxScore": 50, "scoringGuide": "Full: all pass. Partial proportional. Zero: none pass." },
+      { "name": "Edge Cases", "description": "Handles negative-only input and single element", "maxScore": 25, "scoringGuide": "Full: handles all. Partial: misses some. Zero: crashes." },
+      { "name": "Code Quality", "description": "Clear and idiomatic Java", "maxScore": 25, "scoringGuide": "Full: clean. Partial: ok. Zero: poor." }
+    ],
+    "exec": {
+      "normalizedStatus": "compile_error",
+      "publicPassed": 0, "publicTotal": 5,
+      "hiddenPassed": 0, "hiddenTotal": 5,
+      "allPassed": false,
+      "stdout": null,
+      "stderr": "Main.java:5: error: ';' expected\n        Scanner sc = new Scanner(System.in)\n                                            ^",
+      "compileOutput": "Main.java:5: error: ';' expected",
+      "executionTimeMs": null,
+      "memoryKb": null,
+      "testCases": [{ "input": "5\n3 1 9 2 5", "expectedOutput": "9" }]
+    }
+  },
+  {
+    "id": "max-D-uses-sort-wasteful",
+    "category": "suboptimal",
+    "expectedBehavior": "Sorts array and returns last element. Correct but O(n log n) where O(n) would do. Algorithm/efficiency score should be reduced.",
+    "expectedScoreRange": [60, 90],
+    "problemTitle": "Maximum of Array",
+    "problemDescription": "Read n then n integers (space-separated). Print the maximum value.",
+    "language": "java",
+    "referenceSolution": "/* full ref using O(n) scan */",
+    "studentCode": "import java.util.Scanner;\nimport java.util.Arrays;\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt();\n        int[] arr = new int[n];\n        for (int i = 0; i < n; i++) arr[i] = sc.nextInt();\n        Arrays.sort(arr);\n        System.out.println(arr[n-1]);\n    }\n}",
+    "criteria": [
+      { "name": "Correctness", "description": "Returns max for all inputs", "maxScore": 50, "scoringGuide": "Full: all pass. Partial proportional. Zero: none pass." },
+      { "name": "Edge Cases", "description": "Handles negative-only input and single element", "maxScore": 25, "scoringGuide": "Full: handles all. Partial: misses some. Zero: crashes." },
+      { "name": "Code Quality", "description": "Clear and idiomatic Java", "maxScore": 25, "scoringGuide": "Full: clean. Partial: ok. Zero: poor." }
+    ],
+    "exec": {
+      "normalizedStatus": "accepted",
+      "publicPassed": 5, "publicTotal": 5,
+      "hiddenPassed": 5, "hiddenTotal": 5,
+      "allPassed": true,
+      "stdout": "9\n",
+      "stderr": null,
+      "compileOutput": null,
+      "executionTimeMs": 100.0,
+      "memoryKb": 30000,
+      "testCases": [{ "input": "5\n3 1 9 2 5", "expectedOutput": "9" }]
+    }
+  },
+  {
+    "id": "max-E-half-pass",
+    "category": "partial-pass",
+    "expectedBehavior": "Code reads wrong number of integers (off-by-one in loop). Mixed pass rate. Correctness ≈ 50%.",
+    "expectedScoreRange": [25, 60],
+    "problemTitle": "Maximum of Array",
+    "problemDescription": "Read n then n integers (space-separated). Print the maximum value.",
+    "language": "java",
+    "referenceSolution": "/* full ref */",
+    "studentCode": "import java.util.Scanner;\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt();\n        int max = Integer.MIN_VALUE;\n        for (int i = 0; i < n - 1; i++) {\n            int x = sc.nextInt();\n            if (x > max) max = x;\n        }\n        System.out.println(max);\n    }\n}",
+    "criteria": [
+      { "name": "Correctness", "description": "Returns max for all inputs", "maxScore": 50, "scoringGuide": "Full: all pass. Partial proportional. Zero: none pass." },
+      { "name": "Edge Cases", "description": "Handles negative-only input and single element", "maxScore": 25, "scoringGuide": "Full: handles all. Partial: misses some. Zero: crashes." },
+      { "name": "Code Quality", "description": "Clear and idiomatic Java", "maxScore": 25, "scoringGuide": "Full: clean. Partial: ok. Zero: poor." }
+    ],
+    "exec": {
+      "normalizedStatus": "wrong_answer",
+      "publicPassed": 2, "publicTotal": 5,
+      "hiddenPassed": 3, "hiddenTotal": 5,
+      "allPassed": false,
+      "stdout": "5\n",
+      "stderr": null,
+      "compileOutput": null,
+      "executionTimeMs": 90.0,
+      "memoryKb": 28000,
+      "testCases": [{ "input": "5\n3 1 9 2 5", "expectedOutput": "9" }]
+    }
+  }
+]

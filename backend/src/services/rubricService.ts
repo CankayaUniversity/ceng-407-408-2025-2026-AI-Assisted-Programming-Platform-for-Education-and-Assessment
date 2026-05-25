@@ -94,12 +94,57 @@ function extractJson(raw: string): GeneratedRubric | null {
 
 // ── Prompt ────────────────────────────────────────────────────────────────────
 
+/**
+ * A minimal test-case shape — matches Prisma's TestCase model. The rubric
+ * service only needs input + expectedOutput + isHidden to inform criteria.
+ */
+export type RubricTestCase = {
+  input: string;
+  expectedOutput: string;
+  isHidden: boolean;
+};
+
+/**
+ * Render test cases as a compact, judge-readable block. Public tests show
+ * input/expected pairs; hidden tests only get a count + a brief category
+ * hint (so the AI knows what edge cases exist without leaking specifics
+ * that would let a student trivially reverse-engineer hidden tests if the
+ * rubric ever leaked to them).
+ */
+function formatTestCases(tests: RubricTestCase[] | null): string {
+  if (!tests || tests.length === 0) return "";
+  const publicTests = tests.filter((t) => !t.isHidden);
+  const hiddenTests = tests.filter((t) => t.isHidden);
+
+  const lines: string[] = ["", "TEST CASES (what 'correctness' actually means for this problem)", "================================================================"];
+
+  if (publicTests.length > 0) {
+    lines.push(`Public test cases (${publicTests.length}):`);
+    publicTests.slice(0, 8).forEach((t, i) => {
+      const inp = t.input.replace(/\n/g, " ↵ ").slice(0, 200);
+      const out = t.expectedOutput.replace(/\n/g, " ↵ ").slice(0, 200);
+      lines.push(`  [${i + 1}] Input: ${inp}`);
+      lines.push(`      Expected: ${out}`);
+    });
+    if (publicTests.length > 8) lines.push(`  ... and ${publicTests.length - 8} more public tests`);
+  }
+
+  if (hiddenTests.length > 0) {
+    lines.push(`Hidden test cases: ${hiddenTests.length} (inputs withheld; consider edge cases like empty input, boundary values, large input, special characters)`);
+  }
+
+  lines.push("");
+  lines.push("Use these test cases to make the rubric SPECIFIC to this problem. The 'Correctness' criterion's scoringGuide must describe what kinds of inputs the tests actually exercise (e.g. 'handles empty arrays, boundary values, negative numbers'), not generic phrasings.");
+  return lines.join("\n");
+}
+
 function buildRubricPrompt(
   title: string,
   description: string,
   language: string,
   difficulty: string | null,
   referenceSolution: string | null,
+  tests: RubricTestCase[] | null = null,
 ): string {
   return `You are an expert computer-science educator creating a grading rubric for a programming assignment.
 You MUST respond in English only.
@@ -112,7 +157,7 @@ Language: ${language}
 Description:
 ${description}
 ${referenceSolution ? `\nReference Solution (for your context only — not shown to students):\n${referenceSolution}` : ""}
-
+${formatTestCases(tests)}
 YOUR TASK
 =========
 Create a detailed grading rubric for this problem. The rubric should:
@@ -120,6 +165,8 @@ Create a detailed grading rubric for this problem. The rubric should:
 - Total exactly 100 points distributed across all criteria
 - Each criterion must have a clear name, a description of what is being assessed, a maxScore, and a brief scoringGuide explaining what earns full, partial, and zero points
 - Criteria should cover: correctness (test cases passing), code quality/readability, edge case handling, algorithm efficiency, and any problem-specific requirements
+- The 'Correctness' criterion (or equivalent) MUST reference the actual test categories shown above when test cases are provided — NOT generic 'handles all test cases' phrasing.
+- If the test cases reveal specific edge cases (empty input, negative numbers, boundary values, multiple-space separators, etc.), the rubric SHOULD include a problem-specific 'Edge Cases' criterion that names them.
 
 RESPONSE FORMAT
 ===============
@@ -145,10 +192,11 @@ export async function generateRubric(
   language:          string,
   difficulty:        string | null,
   referenceSolution: string | null,
+  tests:             RubricTestCase[] | null = null,
 ): Promise<RubricResult> {
   const url    = getOllamaGenerateUrl();
   const model  = getModelName();
-  const prompt = buildRubricPrompt(title, description, language, difficulty, referenceSolution);
+  const prompt = buildRubricPrompt(title, description, language, difficulty, referenceSolution, tests);
 
   const controller = new AbortController();
   const timeout    = setTimeout(() => controller.abort(), 240_000);

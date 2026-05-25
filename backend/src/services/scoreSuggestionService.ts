@@ -251,6 +251,32 @@ function extractJson(
       }
     }
 
+    // ── Cross-criterion bound enforcement (Fix A) ──
+    // If Correctness lands below 50% of its maxScore, no other criterion
+    // may exceed 70% of its own maxScore. The prompt asks the AI to honor
+    // this; we structurally enforce it here so a generous LLM cannot
+    // award high Code Quality / Style / Algorithm credit for a program
+    // that doesn't actually work. We only clamp when we can identify a
+    // Correctness entry — if the rubric uses a non-"correct*" name, the
+    // rule silently no-ops (same trade-off as the proportional band).
+    const correctnessEntry = breakdown.find((b) => isCorrectnessCriterion(b.name));
+    if (correctnessEntry && correctnessEntry.maxScore > 0) {
+      const correctnessRatio = correctnessEntry.suggested / correctnessEntry.maxScore;
+      if (correctnessRatio < 0.5) {
+        const correctnessPctStr = `${Math.round(correctnessRatio * 100)}%`;
+        for (const entry of breakdown) {
+          if (entry === correctnessEntry) continue;
+          if (entry.maxScore <= 0) continue;
+          const ceiling = Math.floor(0.7 * entry.maxScore);
+          if (entry.suggested > ceiling) {
+            const original = entry.suggested;
+            entry.suggested = ceiling;
+            entry.comment = `${entry.comment} [auto-adjusted from ${original} → ${ceiling}: cross-criterion bound — Correctness ${correctnessEntry.suggested}/${correctnessEntry.maxScore} (${correctnessPctStr}) < 50% of max forces other criteria ≤ 70% of their maxScore]`.trim();
+          }
+        }
+      }
+    }
+
     const totalScore   = breakdown.reduce((s, c) => s + c.suggested, 0);
     const maxTotal     = breakdown.reduce((s, c) => s + c.maxScore, 0);
     const generalNotes = typeof obj.generalNotes === "string" ? obj.generalNotes.trim() : "";
@@ -379,8 +405,9 @@ CALIBRATION — what scores mean:
 CRITICAL RULES — you MUST follow these:
 - Execution results are ground truth. If tests FAILED, Correctness CANNOT be above 60% of its maxScore.
 - PROPORTIONAL CORRECTNESS RULE: If k of n tests passed and the result is not a compile error, the Correctness score MUST be within ±10% of (k / n) × maxScore. Example: 7 of 10 public tests passed and Correctness maxScore is 40 → suggested Correctness must be between 25 and 31 (≈ 28 ± 10%). If hidden tests are also reported, count both: use (publicPassed + hiddenPassed) / (publicTotal + hiddenTotal).
-- If ALL tests passed (allPassed = true), Correctness may be high, but other criteria must still be graded critically on their own merits.
-- If there is a compile error, Correctness = 0. Code Quality must also be very low (≤ 20% of its maxScore).
+- CROSS-CRITERION BOUND RULE: If Correctness lands below 50% of its maxScore, NO OTHER criterion (Code Quality, Edge Cases, Algorithm, Memory Safety, Code Style, Case Handling, or any other) may exceed 70% of its maxScore. A program that doesn't actually work cannot be 'high quality' regardless of style. The bug IS itself a quality problem; it constrains credit across the rubric. Example: if Correctness = 8/40 (20% of max), Code Quality's maxScore is 20 → Code Quality must be ≤ 14, and Edge Cases (max 20) must be ≤ 14, etc. This rule does NOT apply when Correctness ≥ 50% of max.
+- If ALL tests passed (allPassed = true), Correctness may be high, AND other criteria are unconstrained by the cross-criterion rule — but they must still be graded critically on their own merits.
+- If there is a compile error, Correctness = 0. Code Quality must also be very low (≤ 20% of its maxScore). The cross-criterion rule reinforces this — every non-Correctness criterion must be ≤ 70% of max.
 - If the code has no comments, hardcoded values, poor variable names, or is a single unstructured block, Code Quality must reflect that.
 - If the solution uses an inefficient algorithm when the reference uses a clearly better one, Algorithm score must be reduced.
 - Do NOT give full marks unless the student's solution is genuinely excellent for that criterion.

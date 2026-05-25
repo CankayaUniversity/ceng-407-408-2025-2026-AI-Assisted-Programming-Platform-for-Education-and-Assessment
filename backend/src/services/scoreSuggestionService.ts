@@ -251,40 +251,86 @@ function extractJson(
       }
     }
 
-    // ── Cross-criterion bound enforcement (Fix A + A.2) ──
-    // Two tiers, both designed to prevent the LLM from awarding
-    // near-perfect non-Correctness scores when a real bug exists:
-    //   • Fix A   — Correctness < 50% of max → other criteria ≤ 70% of max.
-    //               "Doesn't really work" — strong clamp.
-    //   • Fix A.2 — Correctness 50–80% of max → other criteria ≤ 85% of max.
-    //               "Has a real bug but mostly works" — softer clamp.
-    //               At ≥ 80%, no cross-criterion constraint (close to perfect).
-    // We only clamp when we can identify a Correctness entry — if the rubric
-    // uses a non-"correct*" name, the rule silently no-ops (same trade-off
-    // as the proportional band).
+    // ── Cross-criterion bound enforcement (Fix A + A.2 tiered + runtime severity) ──
+    // Three structural rules layered together, all applied as a per-criterion
+    // CEILING (we take the strictest one that applies). The goal is to prevent
+    // the LLM from awarding near-perfect non-Correctness scores when a real
+    // bug exists OR when the program crashes.
+    //
+    //   • Fix A         — Correctness < 50% of max → other criteria ≤ 70% of max.
+    //                     "Doesn't really work" — strong clamp.
+    //   • Fix A.2 lo    — Correctness 50–65% of max → other criteria ≤ 75% of max.
+    //                     "Real bug, most criteria deserve modest credit".
+    //   • Fix A.2 hi    — Correctness 65–80% of max → other criteria ≤ 85% of max.
+    //                     "Working with a defect" — softest clamp.
+    //   • Runtime floor — status === "runtime_error" → Edge Cases AND Memory
+    //                     Safety each ≤ 50% of max, regardless of Correctness.
+    //                     A crash is by definition an edge-case + memory failure.
+    //
+    // Correctness ≥ 80% with no runtime error → no cross-criterion constraint.
     const correctnessEntry = breakdown.find((b) => isCorrectnessCriterion(b.name));
+    const isRuntimeError = exec?.normalizedStatus === "runtime_error";
+
+    // Helper: identify which criteria the runtime-error floor applies to.
+    const isRuntimeFloorTarget = (name: string): boolean =>
+      /edge|memory/i.test(name);
+
     if (correctnessEntry && correctnessEntry.maxScore > 0) {
       const correctnessRatio = correctnessEntry.suggested / correctnessEntry.maxScore;
-      let ceilingFraction: number | null = null;
-      let tierLabel = "";
+      let crossFraction: number | null = null;
+      let crossTierLabel = "";
       if (correctnessRatio < 0.5) {
-        ceilingFraction = 0.7;
-        tierLabel = "< 50% of max forces other criteria ≤ 70%";
+        crossFraction = 0.7;
+        crossTierLabel = "< 50% of max forces other criteria ≤ 70%";
+      } else if (correctnessRatio < 0.65) {
+        crossFraction = 0.75;
+        crossTierLabel = "in 50–65% band forces other criteria ≤ 75%";
       } else if (correctnessRatio < 0.8) {
-        ceilingFraction = 0.85;
-        tierLabel = "in 50–80% band forces other criteria ≤ 85%";
+        crossFraction = 0.85;
+        crossTierLabel = "in 65–80% band forces other criteria ≤ 85%";
       }
-      if (ceilingFraction !== null) {
-        const correctnessPctStr = `${Math.round(correctnessRatio * 100)}%`;
-        for (const entry of breakdown) {
-          if (entry === correctnessEntry) continue;
-          if (entry.maxScore <= 0) continue;
-          const ceiling = Math.floor(ceilingFraction * entry.maxScore);
-          if (entry.suggested > ceiling) {
-            const original = entry.suggested;
-            entry.suggested = ceiling;
-            entry.comment = `${entry.comment} [auto-adjusted from ${original} → ${ceiling}: cross-criterion bound — Correctness ${correctnessEntry.suggested}/${correctnessEntry.maxScore} (${correctnessPctStr}) ${tierLabel} of their maxScore]`.trim();
-          }
+      const correctnessPctStr = `${Math.round(correctnessRatio * 100)}%`;
+
+      for (const entry of breakdown) {
+        if (entry === correctnessEntry) continue;
+        if (entry.maxScore <= 0) continue;
+
+        // Collect all applicable ceilings; take the strictest (smallest).
+        const ceilings: Array<{ value: number; reason: string }> = [];
+
+        if (crossFraction !== null) {
+          ceilings.push({
+            value: Math.floor(crossFraction * entry.maxScore),
+            reason: `cross-criterion bound — Correctness ${correctnessEntry.suggested}/${correctnessEntry.maxScore} (${correctnessPctStr}) ${crossTierLabel} of their maxScore`,
+          });
+        }
+
+        if (isRuntimeError && isRuntimeFloorTarget(entry.name)) {
+          ceilings.push({
+            value: Math.floor(0.5 * entry.maxScore),
+            reason: `runtime-error severity rule — program crashed, ${entry.name} forced ≤ 50% of maxScore`,
+          });
+        }
+
+        if (ceilings.length === 0) continue;
+        const strictest = ceilings.reduce((a, b) => (a.value <= b.value ? a : b));
+        if (entry.suggested > strictest.value) {
+          const original = entry.suggested;
+          entry.suggested = strictest.value;
+          entry.comment = `${entry.comment} [auto-adjusted from ${original} → ${strictest.value}: ${strictest.reason}]`.trim();
+        }
+      }
+    } else if (isRuntimeError) {
+      // No Correctness criterion identified, but runtime-error floor still
+      // applies to Edge Cases / Memory Safety on its own.
+      for (const entry of breakdown) {
+        if (entry.maxScore <= 0) continue;
+        if (!isRuntimeFloorTarget(entry.name)) continue;
+        const ceiling = Math.floor(0.5 * entry.maxScore);
+        if (entry.suggested > ceiling) {
+          const original = entry.suggested;
+          entry.suggested = ceiling;
+          entry.comment = `${entry.comment} [auto-adjusted from ${original} → ${ceiling}: runtime-error severity rule — program crashed, ${entry.name} forced ≤ 50% of maxScore]`.trim();
         }
       }
     }
@@ -418,7 +464,11 @@ CRITICAL RULES — you MUST follow these:
 - Execution results are ground truth. If tests FAILED, Correctness CANNOT be above 60% of its maxScore.
 - PROPORTIONAL CORRECTNESS RULE: If k of n tests passed and the result is not a compile error, the Correctness score MUST be within ±10% of (k / n) × maxScore. Example: 7 of 10 public tests passed and Correctness maxScore is 40 → suggested Correctness must be between 25 and 31 (≈ 28 ± 10%). If hidden tests are also reported, count both: use (publicPassed + hiddenPassed) / (publicTotal + hiddenTotal).
 - CROSS-CRITERION BOUND RULE: If Correctness lands below 50% of its maxScore, NO OTHER criterion (Code Quality, Edge Cases, Algorithm, Memory Safety, Code Style, Case Handling, or any other) may exceed 70% of its maxScore. A program that doesn't actually work cannot be 'high quality' regardless of style. The bug IS itself a quality problem; it constrains credit across the rubric. Example: if Correctness = 8/40 (20% of max), Code Quality's maxScore is 20 → Code Quality must be ≤ 14, and Edge Cases (max 20) must be ≤ 14, etc. This rule does NOT apply when Correctness ≥ 50% of max.
-- MID-BAND CROSS-CRITERION RULE: If Correctness lands between 50% and 80% of its maxScore (i.e. a real bug exists but most tests still pass), NO OTHER criterion may exceed 85% of its maxScore. A program with a known defect cannot be 'nearly perfect' on quality, edge cases, or style — the defect is itself evidence of incomplete reasoning. Example: if Correctness = 30/50 (60% of max), Code Style's maxScore is 30 → Code Style must be ≤ 25 (=floor(0.85 × 30)), Case Handling (max 20) must be ≤ 17, etc. This rule does NOT apply when Correctness ≥ 80% of max OR when Correctness < 50% of max (in which case the stricter 70% rule above applies instead).
+- MID-BAND CROSS-CRITERION RULE (two-tier): If Correctness lands between 50% and 80% of its maxScore (i.e. a real bug exists but most tests still pass), other criteria are bounded as follows:
+  • Correctness 50–65% of max → NO OTHER criterion may exceed 75% of its maxScore (real bug, most non-correctness criteria deserve only modest credit). Example: Correctness = 30/50 (60%) and Code Style max = 30 → Code Style ≤ 22.
+  • Correctness 65–80% of max → NO OTHER criterion may exceed 85% of its maxScore (working with a defect). Example: Correctness = 32/50 (64%) … wait, 64% is the lower tier; at 35/50 (70%) Code Style max = 30 → Code Style ≤ 25.
+  A program with a known defect cannot be 'nearly perfect' on quality, edge cases, or style — the defect is itself evidence of incomplete reasoning. Stricter caps in the lower tier reflect that fewer passing tests = more uncertainty about overall quality. This rule does NOT apply when Correctness ≥ 80% of max OR when Correctness < 50% of max (in which case the stricter 70% rule above applies instead).
+- RUNTIME-ERROR SEVERITY RULE: If the execution status is "runtime_error" (program crashes / segfaults / throws unhandled exceptions), Edge Cases AND Memory Safety MUST each be ≤ 50% of their maxScore regardless of how many tests happen to pass before the crash. A program that crashes on any input has demonstrably failed edge-case handling and memory safety. This rule applies in addition to (not instead of) the cross-criterion bound rules above — take the stricter of the two ceilings.
 - If ALL tests passed (allPassed = true), Correctness may be high, AND other criteria are unconstrained by the cross-criterion rule — but they must still be graded critically on their own merits.
 - If there is a compile error, Correctness = 0. Code Quality must also be very low (≤ 20% of its maxScore). The cross-criterion rule reinforces this — every non-Correctness criterion must be ≤ 70% of max.
 - If the code has no comments, hardcoded values, poor variable names, or is a single unstructured block, Code Quality must reflect that.

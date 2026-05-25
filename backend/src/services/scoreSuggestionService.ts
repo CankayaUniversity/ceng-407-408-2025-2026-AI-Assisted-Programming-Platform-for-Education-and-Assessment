@@ -272,8 +272,11 @@ function extractJson(
     const isRuntimeError = exec?.normalizedStatus === "runtime_error";
 
     // Helper: identify which criteria the runtime-error floor applies to.
+    // Edge Cases, Memory Safety, and Code Quality all get the runtime-error
+    // floor: a crashing program has by definition failed edge-case handling,
+    // and high "code quality" on code that crashes is not credible either.
     const isRuntimeFloorTarget = (name: string): boolean =>
-      /edge|memory/i.test(name);
+      /edge|memory|quality/i.test(name);
 
     if (correctnessEntry && correctnessEntry.maxScore > 0) {
       const correctnessRatio = correctnessEntry.suggested / correctnessEntry.maxScore;
@@ -550,7 +553,12 @@ export async function suggestScore(
         prompt,
         stream:  false,
         keep_alive: -1,
-        options: { temperature: 0.1, top_p: 0.85, num_ctx: 8192 },
+        // temperature: 0.0 → fully deterministic grading. Trades a small
+        // amount of comment-phrasing variety for run-to-run stability, which
+        // matters more in a grading context than in a chat one (teachers and
+        // students should not see the same submission scored 7/40 one day and
+        // 8/40 the next based purely on sampling noise).
+        options: { temperature: 0.0, top_p: 0.85, num_ctx: 8192 },
       }),
       signal: controller.signal,
     });

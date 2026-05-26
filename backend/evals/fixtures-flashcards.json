@@ -1,0 +1,230 @@
+[
+  {
+    "id": "py-first-try-success",
+    "category": "zero-errors",
+    "expectedBehavior": "Student solved it on first try. Expect 2 cards, all type=improvement or shortcoming (no errors), citing real tokens from the accepted code.",
+    "problemTitle": "Sum 1 to N",
+    "language": "python",
+    "referenceSolution": "n = int(input())\nprint(n * (n + 1) // 2)\n",
+    "acceptedCode": "n = int(input())\ntotal = 0\nfor i in range(1, n + 1):\n    total += i\nprint(total)\n",
+    "failedAttempts": [],
+    "expect": {
+      "minCards": 1,
+      "maxCards": 3,
+      "forbiddenTypes": ["error"],
+      "mustCiteFromAcceptedCode": true
+    }
+  },
+  {
+    "id": "py-off-by-one-3-fails",
+    "category": "single-bug-repeated",
+    "expectedBehavior": "Off-by-one across 3 attempts. Expect at least one error card mentioning the loop bound; cards should reference n or range.",
+    "problemTitle": "Sum 1 to N",
+    "language": "python",
+    "referenceSolution": "n = int(input())\nprint(n * (n + 1) // 2)\n",
+    "acceptedCode": "n = int(input())\nprint(sum(range(1, n + 1)))\n",
+    "failedAttempts": [
+      {
+        "normalizedStatus": "wrong_answer",
+        "sourceCode": "n = int(input())\nprint(sum(range(1, n)))\n",
+        "stderr": null,
+        "compileOutput": null,
+        "stdout": "45"
+      },
+      {
+        "normalizedStatus": "wrong_answer",
+        "sourceCode": "n = int(input())\ntotal = 0\nfor i in range(1, n):\n    total += i\nprint(total)\n",
+        "stderr": null,
+        "compileOutput": null,
+        "stdout": "45"
+      },
+      {
+        "normalizedStatus": "wrong_answer",
+        "sourceCode": "n = int(input())\ntotal = 0\nfor i in range(n):\n    total += i\nprint(total)\n",
+        "stderr": null,
+        "compileOutput": null,
+        "stdout": "45"
+      }
+    ],
+    "expect": {
+      "minCards": 2,
+      "maxCards": 5,
+      "mustContainType": ["error"],
+      "mustCiteAnyOf": ["range", "n", "for"],
+      "mustCiteFromAttempts": true
+    }
+  },
+  {
+    "id": "py-compile-error-then-fix",
+    "category": "compile-error",
+    "expectedBehavior": "Two syntax errors then accepted. Cards should mention the syntax issue specifically.",
+    "problemTitle": "Sum 1 to N",
+    "language": "python",
+    "referenceSolution": "n = int(input())\nprint(n * (n + 1) // 2)\n",
+    "acceptedCode": "n = int(input())\nprint(sum(range(1, n + 1)))\n",
+    "failedAttempts": [
+      {
+        "normalizedStatus": "compile_error",
+        "sourceCode": "n = int(input()\nprint(sum(range(1, n + 1)))\n",
+        "stderr": null,
+        "compileOutput": "  File \"main.py\", line 1\n    n = int(input()\n                   ^\nSyntaxError: '(' was never closed",
+        "stdout": null
+      },
+      {
+        "normalizedStatus": "compile_error",
+        "sourceCode": "n = int(input())\nprint(sum(range(1, n + 1))\n",
+        "stderr": null,
+        "compileOutput": "SyntaxError: '(' was never closed",
+        "stdout": null
+      }
+    ],
+    "expect": {
+      "minCards": 2,
+      "maxCards": 5,
+      "mustContainType": ["error"],
+      "mustCiteAnyOf": ["syntax", "parenthes", "closed", "("],
+      "mustCiteFromAttempts": true
+    }
+  },
+  {
+    "id": "c-segfault-uninitialized-ptr",
+    "category": "runtime-error",
+    "expectedBehavior": "C segfault from uninitialized pointer. Cards should call out the uninitialized buf and recommend the fix.",
+    "problemTitle": "Read One Line",
+    "language": "c",
+    "referenceSolution": "#include <stdio.h>\nint main() {\n  char buf[1024];\n  if (fgets(buf, 1024, stdin)) printf(\"%s\", buf);\n  return 0;\n}\n",
+    "acceptedCode": "#include <stdio.h>\nint main() {\n  char buf[1024];\n  fgets(buf, 1024, stdin);\n  printf(\"%s\", buf);\n  return 0;\n}\n",
+    "failedAttempts": [
+      {
+        "normalizedStatus": "runtime_error",
+        "sourceCode": "#include <stdio.h>\nint main() {\n  char *buf;\n  fgets(buf, 1024, stdin);\n  printf(\"%s\", buf);\n  return 0;\n}\n",
+        "stderr": "Segmentation fault (core dumped)",
+        "compileOutput": null,
+        "stdout": null
+      },
+      {
+        "normalizedStatus": "runtime_error",
+        "sourceCode": "#include <stdio.h>\nint main() {\n  char *buf;\n  fgets(buf, 1024, stdin);\n  printf(\"%s\", buf);\n  return 0;\n}\n",
+        "stderr": "Segmentation fault",
+        "compileOutput": null,
+        "stdout": null
+      }
+    ],
+    "expect": {
+      "minCards": 2,
+      "maxCards": 5,
+      "mustContainType": ["error"],
+      "mustCiteAnyOf": ["buf", "pointer", "uninitialized", "char"],
+      "mustCiteFromAttempts": true
+    }
+  },
+  {
+    "id": "py-mixed-compile-then-wrong",
+    "category": "mixed-errors",
+    "expectedBehavior": "Compile error then logic error. Cards should span both categories.",
+    "problemTitle": "Sum 1 to N",
+    "language": "python",
+    "referenceSolution": "n = int(input())\nprint(n * (n + 1) // 2)\n",
+    "acceptedCode": "n = int(input())\nprint(sum(range(1, n + 1)))\n",
+    "failedAttempts": [
+      {
+        "normalizedStatus": "compile_error",
+        "sourceCode": "n = int(input()\nprint(sum(range(1, n + 1)))\n",
+        "stderr": null,
+        "compileOutput": "SyntaxError",
+        "stdout": null
+      },
+      {
+        "normalizedStatus": "wrong_answer",
+        "sourceCode": "n = int(input())\nprint(sum(range(n)))\n",
+        "stderr": null,
+        "compileOutput": null,
+        "stdout": "10"
+      }
+    ],
+    "expect": {
+      "minCards": 2,
+      "maxCards": 5,
+      "mustContainType": ["error"],
+      "mustCiteFromAttempts": true
+    }
+  },
+  {
+    "id": "py-style-only-no-errors",
+    "category": "style-feedback",
+    "expectedBehavior": "Correct first try but messy code. Expect shortcoming/improvement cards about variable naming or structure.",
+    "problemTitle": "Palindrome Check",
+    "language": "python",
+    "referenceSolution": "s = input().lower()\nprint('yes' if s == s[::-1] else 'no')\n",
+    "acceptedCode": "Z = input()\nZ = Z.lower()\nif Z == Z[::-1]:\n    print('yes')\nelse:\n    print('no')\n",
+    "failedAttempts": [],
+    "expect": {
+      "minCards": 1,
+      "maxCards": 3,
+      "forbiddenTypes": ["error"],
+      "mustCiteFromAcceptedCode": true
+    }
+  },
+  {
+    "id": "c-many-attempts-7-fails",
+    "category": "long-history",
+    "expectedBehavior": "7 failed attempts trying different bugs. Verify generator handles long history without timing out and emits up to 7 cards (the ladder cap).",
+    "problemTitle": "Maximum of Array",
+    "language": "c",
+    "referenceSolution": "#include <stdio.h>\nint main() {\n  int n; scanf(\"%d\", &n);\n  int m = -2147483648;\n  for (int i = 0; i < n; i++) {\n    int x; scanf(\"%d\", &x);\n    if (x > m) m = x;\n  }\n  printf(\"%d\\n\", m);\n  return 0;\n}\n",
+    "acceptedCode": "#include <stdio.h>\n#include <limits.h>\nint main() {\n  int n; scanf(\"%d\", &n);\n  int m = INT_MIN;\n  for (int i = 0; i < n; i++) {\n    int x; scanf(\"%d\", &x);\n    if (x > m) m = x;\n  }\n  printf(\"%d\\n\", m);\n  return 0;\n}\n",
+    "failedAttempts": [
+      { "normalizedStatus": "compile_error", "sourceCode": "int main() { return 0 }", "stderr": null, "compileOutput": "expected ';' before '}'", "stdout": null },
+      { "normalizedStatus": "wrong_answer", "sourceCode": "#include <stdio.h>\nint main() { int n; scanf(\"%d\", &n); int m = 0; for (int i = 0; i < n; i++) { int x; scanf(\"%d\", &x); if (x > m) m = x; } printf(\"%d\\n\", m); return 0; }", "stderr": null, "compileOutput": null, "stdout": "0" },
+      { "normalizedStatus": "wrong_answer", "sourceCode": "#include <stdio.h>\nint main() { int n; scanf(\"%d\", &n); int m = 0; for (int i = 0; i < n; i++) { int x; scanf(\"%d\", &x); if (x > m) m = x; } printf(\"%d\\n\", m); return 0; }", "stderr": null, "compileOutput": null, "stdout": "0" },
+      { "normalizedStatus": "wrong_answer", "sourceCode": "#include <stdio.h>\nint main() { int n; scanf(\"%d\", &n); int m; for (int i = 0; i < n; i++) { int x; scanf(\"%d\", &x); if (x > m) m = x; } printf(\"%d\\n\", m); return 0; }", "stderr": null, "compileOutput": null, "stdout": "random garbage" },
+      { "normalizedStatus": "runtime_error", "sourceCode": "#include <stdio.h>\nint main() { int n; scanf(\"%d\", &n); int a[1000000000]; return 0; }", "stderr": "Segmentation fault", "compileOutput": null, "stdout": null },
+      { "normalizedStatus": "wrong_answer", "sourceCode": "#include <stdio.h>\nint main() { int n; scanf(\"%d\", &n); int m = -1; for (int i = 0; i < n; i++) { int x; scanf(\"%d\", &x); if (x > m) m = x; } printf(\"%d\\n\", m); return 0; }", "stderr": null, "compileOutput": null, "stdout": "-1" },
+      { "normalizedStatus": "wrong_answer", "sourceCode": "#include <stdio.h>\nint main() { int n; scanf(\"%d\", &n); int m = -100; for (int i = 0; i < n; i++) { int x; scanf(\"%d\", &x); if (x > m) m = x; } printf(\"%d\\n\", m); return 0; }", "stderr": null, "compileOutput": null, "stdout": "-100" }
+    ],
+    "expect": {
+      "minCards": 4,
+      "maxCards": 7,
+      "mustContainType": ["error"],
+      "mustCiteAnyOf": ["m =", "INT_MIN", "m =", "negative", "initial"],
+      "mustCiteFromAttempts": true
+    }
+  },
+  {
+    "id": "py-dedup-test",
+    "category": "duplicate-concepts",
+    "expectedBehavior": "Three identical-shape attempts with the same conceptual bug. Verify dedupeCards filter keeps only one card per concept.",
+    "problemTitle": "Sum 1 to N",
+    "language": "python",
+    "referenceSolution": "n = int(input())\nprint(n * (n + 1) // 2)\n",
+    "acceptedCode": "n = int(input())\nprint(sum(range(1, n + 1)))\n",
+    "failedAttempts": [
+      {
+        "normalizedStatus": "wrong_answer",
+        "sourceCode": "n = int(input())\nprint(sum(range(1, n)))\n",
+        "stderr": null,
+        "compileOutput": null,
+        "stdout": "45"
+      },
+      {
+        "normalizedStatus": "wrong_answer",
+        "sourceCode": "n = int(input())\nprint(sum(range(1, n)))\n",
+        "stderr": null,
+        "compileOutput": null,
+        "stdout": "10"
+      },
+      {
+        "normalizedStatus": "wrong_answer",
+        "sourceCode": "n = int(input())\nprint(sum(range(1, n)))\n",
+        "stderr": null,
+        "compileOutput": null,
+        "stdout": "0"
+      }
+    ],
+    "expect": {
+      "minCards": 1,
+      "maxCards": 4,
+      "mustContainType": ["error"]
+    }
+  }
+]

@@ -440,8 +440,13 @@ async function main(): Promise<void> {
   console.log(`[mentor-smoke] base=${args.base} fixtures=${fixtures.length} gap=${args.minGapMs}ms`);
   console.log(`[mentor-smoke] logging in as ${args.email}`);
 
-  const token = await login(args.base, args.email!, args.password!);
+  let token = await login(args.base, args.email!, args.password!);
   console.log(`[mentor-smoke] login OK, token length=${token.length}`);
+  // Access tokens expire after 60 min (see backend/src/lib/authTokens.ts).
+  // A full run of 295 fixtures takes ~60-90 min wall-clock, so the token
+  // will expire mid-run. We detect HTTP 401 below and re-login + retry once
+  // before recording the result.
+  let reloginCount = 0;
 
   const results: FixtureResult[] = [];
   let lastRequestStart = 0;
@@ -483,6 +488,16 @@ async function main(): Promise<void> {
     try {
       lastRequestStart = Date.now();
       let { httpStatus, body, raw, latencyMs, totalLatencyMs, turnResults } = await callMentor(args.base, token, f);
+
+      // If the access token expired mid-run (HTTP 401), re-login and retry once.
+      // The 60-min access TTL is shorter than a full eval run, so this is expected.
+      if (httpStatus === 401) {
+        process.stdout.write("token expired, re-login ... ");
+        token = await login(args.base, args.email!, args.password!);
+        reloginCount++;
+        lastRequestStart = Date.now();
+        ({ httpStatus, body, raw, latencyMs, totalLatencyMs, turnResults } = await callMentor(args.base, token, f));
+      }
 
       // If the rate limiter still trips us, back off for the full window and retry once.
       if (httpStatus === 429) {
@@ -607,7 +622,7 @@ async function main(): Promise<void> {
   await writeFile(mdPath, toMarkdown(meta, results), "utf8");
 
   console.log("");
-  console.log(`[mentor-smoke] done — ${meta.ok} ok, ${meta.errored} errored, avg ${meta.avgLatencyMs} ms`);
+  console.log(`[mentor-smoke] done — ${meta.ok} ok, ${meta.errored} errored, avg ${meta.avgLatencyMs} ms, re-logins: ${reloginCount}`);
   console.log(`[mentor-smoke] JSON: ${jsonPath}`);
   console.log(`[mentor-smoke] MD  : ${mdPath}`);
 }

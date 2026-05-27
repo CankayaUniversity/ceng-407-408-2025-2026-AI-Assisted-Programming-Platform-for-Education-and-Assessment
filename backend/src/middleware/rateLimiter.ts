@@ -26,12 +26,18 @@ function userKey(req: Request): string {
 }
 
 /**
- * AI mentor endpoints: max 10 requests per minute per user.
+ * AI mentor endpoints: max 10 requests per minute per user by default.
  * Prevents students from spamming hints during exams.
+ *
+ * Override with AI_RATE_LIMIT_PER_MIN for eval runs (e.g. set to 60).
  */
+const AI_RATE_LIMIT_PER_MIN = Math.max(
+  1,
+  Number.parseInt(process.env.AI_RATE_LIMIT_PER_MIN ?? "10", 10) || 10,
+);
 export const aiLimiter = rateLimit({
   windowMs:       60_000,
-  max:            10,
+  max:            AI_RATE_LIMIT_PER_MIN,
   keyGenerator:   userKey,
   standardHeaders: true,
   legacyHeaders:  false,

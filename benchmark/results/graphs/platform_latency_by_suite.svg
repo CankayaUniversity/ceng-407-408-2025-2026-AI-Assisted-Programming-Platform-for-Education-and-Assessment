@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="262" viewBox="0 0 980 262">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="24" y="34" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#111827">Platform latency by suite</text>
+<text x="24" y="73" font-family="Arial, sans-serif" font-size="13" fill="#374151">Auth</text>
+<rect x="230" y="58" width="660" height="20" rx="3" fill="#eef2ff"/>
+<rect x="230" y="58" width="27.95" height="20" rx="3" fill="#dc2626"/>
+<text x="902" y="73" font-family="Arial, sans-serif" font-size="13" fill="#111827">0.04s</text>
+<text x="24" y="107" font-family="Arial, sans-serif" font-size="13" fill="#374151">Backend API</text>
+<rect x="230" y="92" width="660" height="20" rx="3" fill="#eef2ff"/>
+<rect x="230" y="92" width="7.89" height="20" rx="3" fill="#dc2626"/>
+<text x="902" y="107" font-family="Arial, sans-serif" font-size="13" fill="#111827">0.01s</text>
+<text x="24" y="141" font-family="Arial, sans-serif" font-size="13" fill="#374151">Security/Isolation</text>
+<rect x="230" y="126" width="660" height="20" rx="3" fill="#eef2ff"/>
+<rect x="230" y="126" width="0.82" height="20" rx="3" fill="#dc2626"/>
+<text x="902" y="141" font-family="Arial, sans-serif" font-size="13" fill="#111827">0.00s</text>
+<text x="24" y="175" font-family="Arial, sans-serif" font-size="13" fill="#374151">Execution</text>
+<rect x="230" y="160" width="660" height="20" rx="3" fill="#eef2ff"/>
+<rect x="230" y="160" width="0.81" height="20" rx="3" fill="#dc2626"/>
+<text x="902" y="175" font-family="Arial, sans-serif" font-size="13" fill="#111827">0.00s</text>
+<text x="24" y="209" font-family="Arial, sans-serif" font-size="13" fill="#374151">Analytics</text>
+<rect x="230" y="194" width="660" height="20" rx="3" fill="#eef2ff"/>
+<rect x="230" y="194" width="0.57" height="20" rx="3" fill="#dc2626"/>
+<text x="902" y="209" font-family="Arial, sans-serif" font-size="13" fill="#111827">0.00s</text>
+</svg>

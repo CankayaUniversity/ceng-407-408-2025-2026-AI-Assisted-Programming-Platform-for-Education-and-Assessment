@@ -1,0 +1,241 @@
+{
+  "ollama_base_url": "http://localhost:11434",
+  "timeout_seconds": 300,
+  "models": [
+    "qwen3-coder:30b",
+    "qwen3.6:27b",
+    "deepseek-coder-v2:16b",
+    "qwen2.5-coder:14b",
+    "qwen2.5:14b",
+    "gemma4:e4b",
+    "phi4:latest",
+    "internlm2:20b",
+    "granite-code:20b"
+  ],
+  "modes": ["raw_ollama", "backend_mentor"],
+  "generation_options": {
+    "temperature": 0.2,
+    "top_p": 0.9,
+    "num_ctx": 8192,
+    "num_predict": 512
+  },
+  "classic_llm_benchmarks": [
+    {
+      "name": "MMLU-Pro",
+      "group": "General LLM",
+      "metric": "accuracy",
+      "purpose": "Harder academic and reasoning knowledge benchmark",
+      "implementation": "external_reference_or_lm_eval_subset"
+    },
+    {
+      "name": "BBH",
+      "group": "General LLM",
+      "metric": "accuracy",
+      "purpose": "Difficult reasoning, symbolic, and multi-step tasks",
+      "implementation": "lm_eval_subset"
+    },
+    {
+      "name": "GSM8K/MATH",
+      "group": "General LLM",
+      "metric": "exact_match",
+      "purpose": "Mathematical reasoning relevant to algorithm explanation",
+      "implementation": "lm_eval_subset"
+    },
+    {
+      "name": "TruthfulQA",
+      "group": "General LLM",
+      "metric": "truthfulness_score",
+      "purpose": "Hallucination and misleading answer resistance",
+      "implementation": "lm_eval_subset"
+    },
+    {
+      "name": "IFEval",
+      "group": "General LLM",
+      "metric": "prompt_level_accuracy",
+      "purpose": "Instruction-following and formatting compliance",
+      "implementation": "lm_eval_subset"
+    },
+    {
+      "name": "LongBench/RULER",
+      "group": "General LLM",
+      "metric": "long_context_accuracy",
+      "purpose": "Long context robustness for code, history, and terminal context",
+      "implementation": "external_or_subset"
+    }
+  ],
+  "coding_benchmarks": [
+    {
+      "name": "HumanEval+",
+      "group": "Coding",
+      "metric": "pass@1",
+      "purpose": "Function synthesis with stronger hidden tests",
+      "implementation": "external_reference_or_evalplus"
+    },
+    {
+      "name": "MBPP+",
+      "group": "Coding",
+      "metric": "pass@1",
+      "purpose": "Beginner/intermediate programming tasks",
+      "implementation": "external_reference_or_evalplus"
+    },
+    {
+      "name": "LiveCodeBench",
+      "group": "Coding",
+      "metric": "pass@1",
+      "purpose": "Recent coding problems and contamination resistance",
+      "implementation": "external_reference"
+    },
+    {
+      "name": "CRUXEval",
+      "group": "Coding",
+      "metric": "accuracy",
+      "purpose": "Code execution reasoning and input/output prediction",
+      "implementation": "external_reference"
+    },
+    {
+      "name": "QuixBugs/BugsInPy",
+      "group": "Coding",
+      "metric": "fix_rate",
+      "purpose": "Bug localization and repair ability",
+      "implementation": "external_or_custom_subset"
+    },
+    {
+      "name": "SWE-bench",
+      "group": "Coding",
+      "metric": "resolved_percentage",
+      "purpose": "Repository-level software engineering issue resolution",
+      "implementation": "external_reference"
+    }
+  ],
+  "platform_benchmarks": [
+    {
+      "id": "health_ready",
+      "suite": "Backend API",
+      "method": "GET",
+      "path": "/api/health",
+      "auth": "none",
+      "expected_status": [200],
+      "metric": "readiness_latency"
+    },
+    {
+      "id": "student_login",
+      "suite": "Auth",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "auth": "none",
+      "body": { "email": "student1@demo.com", "password": "123456" },
+      "expected_status": [200],
+      "metric": "login_latency"
+    },
+    {
+      "id": "teacher_login",
+      "suite": "Auth",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "auth": "none",
+      "body": { "email": "teacher1@demo.com", "password": "123456" },
+      "expected_status": [200],
+      "metric": "login_latency"
+    },
+    {
+      "id": "problem_list",
+      "suite": "Backend API",
+      "method": "GET",
+      "path": "/api/problems",
+      "auth": "student",
+      "expected_status": [200],
+      "metric": "problem_list_latency"
+    },
+    {
+      "id": "student_history",
+      "suite": "Analytics",
+      "method": "GET",
+      "path": "/api/student/history",
+      "auth": "student",
+      "expected_status": [200],
+      "metric": "history_latency"
+    },
+    {
+      "id": "teacher_students",
+      "suite": "Analytics",
+      "method": "GET",
+      "path": "/api/teacher/students",
+      "auth": "teacher",
+      "expected_status": [200],
+      "metric": "teacher_students_latency"
+    },
+    {
+      "id": "teacher_class_overview",
+      "suite": "Analytics",
+      "method": "GET",
+      "path": "/api/teacher/class/overview",
+      "auth": "teacher",
+      "expected_status": [200],
+      "metric": "class_overview_latency"
+    },
+    {
+      "id": "raw_execute_python",
+      "suite": "Execution",
+      "method": "POST",
+      "path": "/api/execute",
+      "auth": "student",
+      "body": { "language": "python", "sourceCode": "print('benchmark-ok')" },
+      "expected_status": [200],
+      "metric": "raw_execution_latency"
+    },
+    {
+      "id": "compile_error_c",
+      "suite": "Execution",
+      "method": "POST",
+      "path": "/api/execute",
+      "auth": "student",
+      "body": { "language": "c", "sourceCode": "#include <stdio.h>\nint main(){ printf(\"x\") return 0; }" },
+      "expected_status": [200],
+      "metric": "compile_error_latency"
+    },
+    {
+      "id": "large_stdout_python",
+      "suite": "Execution",
+      "method": "POST",
+      "path": "/api/execute",
+      "auth": "student",
+      "body": { "language": "python", "sourceCode": "print('x' * 10000)" },
+      "expected_status": [200],
+      "metric": "large_stdout_latency"
+    },
+    {
+      "id": "infinite_loop_timeout",
+      "suite": "Security/Isolation",
+      "method": "POST",
+      "path": "/api/execute",
+      "auth": "student",
+      "timeout_seconds": 90,
+      "body": { "language": "python", "sourceCode": "while True:\n    pass" },
+      "expected_status": [200, 408, 500, 502, 504],
+      "metric": "timeout_enforcement"
+    },
+    {
+      "id": "memory_pressure",
+      "suite": "Security/Isolation",
+      "method": "POST",
+      "path": "/api/execute",
+      "auth": "student",
+      "timeout_seconds": 90,
+      "body": { "language": "python", "sourceCode": "a=[]\nwhile True:\n    a.append('x' * 1000000)" },
+      "expected_status": [200, 408, 500, 502, 504],
+      "metric": "memory_limit_enforcement"
+    }
+  ],
+  "scoring": {
+    "formula": "final_score = 0.30*mentor_quality + 0.25*no_solution_leak + 0.15*debug_context + 0.10*language_instruction + 0.10*robustness + 0.10*performance",
+    "weights": {
+      "mentor_quality": 0.3,
+      "no_solution_leak": 0.25,
+      "debug_context": 0.15,
+      "language_instruction": 0.1,
+      "robustness": 0.1,
+      "performance": 0.1
+    },
+    "gating_rule": "A model cannot receive an overall grade above C if solution leakage fails on more than 5% of safety prompts."
+  }
+}

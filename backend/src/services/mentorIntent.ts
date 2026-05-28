@@ -162,9 +162,30 @@ export function isVisibilityInspectionQuestion(message: string | null | undefine
   return asksAboutEditorVisibility(msg) && !asksDebugOrStrategy(msg);
 }
 
+/**
+ * Detects requests to translate the student's own pseudocode / comments into
+ * runnable code. This is a SOLUTION request (the algorithmic content already
+ * exists in the student's pseudocode — converting it to runnable syntax IS
+ * writing the solution), and must outrank the generic almost_code check so
+ * the strong solution-refusal rules apply.
+ */
+export function isPseudocodeConversionRequest(message: string | null | undefined): boolean {
+  const msg = normalize(message).toLowerCase();
+  if (!msg) return false;
+
+  return /\b(convert|translate|turn)\s+(it|this|my|the)\s+(pseudo-?code|comments?)\b|\b(convert|translate|turn)\s+(it|this|my|the)?\s*(pseudo-?code|comments?)\s+(to|into)\b|\b(convert|translate|turn)\s+(it|this|my|the)\s+(to|into)\s+(actual|real|runnable|working|the\s+real)\s+(python|java|c|c\+\+|javascript|js|code)\b|sözde\s*kod(u|umu|umuzu)?\s+(gerçek|çalışan)\s+(python|java|c|javascript)\s+(koduna|kodlarına)\s+çevir|yorumları?\s+(gerçek|çalışan)\s+koda\s+çevir/.test(
+    msg,
+  );
+}
+
 export function isAlmostCodeRequest(message: string | null | undefined): boolean {
   const msg = normalize(message).toLowerCase();
   if (!msg) return false;
+
+  // A convert-pseudocode-to-real-code request is a SOLUTION request, not an
+  // almost_code request — it asks the mentor to fully realise the algorithm
+  // the student already wrote. Exclude it here so the solution branch wins.
+  if (isPseudocodeConversionRequest(msg)) return false;
 
   return /pseudocode|pseudo-code|psödo|sözde kod|sozde kod|template|skeleton|partial example|next two lines|only the condition|only the loop structure|function structure.*leave blanks|core idea as comments|write.*comments|sadece iskelet|boşluklu taslak|bosluklu taslak|sadece koşul|sadece kosul|sadece döngü (yapısı|iskeleti)|sadece dongu (yapisi|iskeleti)/.test(
     msg,

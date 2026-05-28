@@ -156,6 +156,11 @@ type Args = {
   gptModel: string;
   claudeModel: string;
   deepseekModel: string;
+  // Default false: Haiku judges only the FINAL turn of multi-turn fixtures
+  // (cost-saving panel rule). Pass --haiku-all-turns to score every turn
+  // with all three judges — useful for small targeted suites where full
+  // per-turn agreement matters more than cost.
+  haikuAllTurns: boolean;
 };
 
 function parseArgs(): Args {
@@ -193,6 +198,7 @@ function parseArgs(): Args {
     gptModel: get("--gpt-model") ?? process.env.SCORER_GPT_MODEL ?? "gpt-4o-mini",
     claudeModel: get("--claude-model") ?? process.env.SCORER_CLAUDE_MODEL ?? "claude-haiku-4-5",
     deepseekModel: get("--deepseek-model") ?? process.env.SCORER_DEEPSEEK_MODEL ?? "deepseek-chat",
+    haikuAllTurns: has("--haiku-all-turns"),
   };
 }
 
@@ -798,8 +804,10 @@ async function scoreOneTurn(
   if (!args.skipOpenAI && openAiKey) {
     calls.push(callOpenAI(args.gptModel, prompt, openAiKey));
   }
-  // Haiku only on the final turn (panel-rule for cost).
-  if (isFinal && !args.skipAnthropic && anthropicKey) {
+  // Haiku is called on the FINAL turn by default (cost-saving panel rule).
+  // With --haiku-all-turns, Haiku judges every turn — matches GPT + DeepSeek
+  // call counts exactly so per-turn agreement can be computed on all turns.
+  if ((isFinal || args.haikuAllTurns) && !args.skipAnthropic && anthropicKey) {
     calls.push(callAnthropic(args.claudeModel, prompt, anthropicKey));
   }
   if (!args.skipDeepSeek && deepseekKey) {

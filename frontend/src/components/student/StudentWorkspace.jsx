@@ -1648,7 +1648,12 @@ export default function StudentWorkspace({
               </Stack>
             </Stack>
 
-            {/* Content */}
+            {/* Content — shares the same renderer as the side panel so the
+                block-based schema (text / code / syntax / note / goodtoknow /
+                list) is rendered correctly. Previously this used the legacy
+                section.body + section.code fields only, which silently dropped
+                all block-based content and left the overlay showing nothing
+                but section headings. */}
             <Box sx={{ overflowY: "auto", p: 3 }}>
               <Stack spacing={2.5}>
                 {(tutorialContent?.sections ?? []).map((section, idx) => (
@@ -1656,23 +1661,10 @@ export default function StudentWorkspace({
                     {section.heading && (
                       <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 0.75 }}>{section.heading}</Typography>
                     )}
-                    {section.body && (
-                      <Typography variant="body2" color="text.secondary"
-                        sx={{ mb: section.code ? 1.5 : 0, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>
-                        {section.body}
-                      </Typography>
-                    )}
-                    {section.code && (
-                      <Box sx={{ borderRadius: 2, overflow: "hidden", border: 1, borderColor: "divider" }}>
-                        <Editor
-                          height={`${Math.min(Math.max(section.code.split("\n").length * 20 + 20, 70), 320)}px`}
-                          language={tutorialLanguage ?? "c"}
-                          value={section.code}
-                          theme="vs-dark"
-                          options={{ readOnly: true, minimap: { enabled: false }, fontSize: 13, lineNumbers: "off", scrollBeyondLastLine: false, padding: { top: 10, bottom: 10 }, automaticLayout: true }}
-                        />
-                      </Box>
-                    )}
+                    <TutorialSectionContent
+                      section={section}
+                      monacoLang={tutorialLanguage ?? "c"}
+                    />
                   </Box>
                 ))}
               </Stack>

@@ -1,25 +1,29 @@
 import { Router, type Request, type Response } from "express";
 import { PolicyAction } from "@prisma/client";
-import { assessMentorReply } from "../services/mentorQuality";
 import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/requireAuth";
 import {
   getMentorModelName,
   getMentorReply,
   getMentorReplyStream,
+  repairMentorReplyLanguage,
   type MentorRequestInput,
 } from "../services/mentor";
-import { detectMentorIntent } from "../services/mentorIntent";
-import { applyPolicyWithRetry, validateMentorReplyWithQuality } from "../services/policy";
+import {
+  applyMentorSafetyFilter,
+  buildMentorFallbackReply,
+  logMentorDebug,
+  summarizeMentorInput,
+  summarizeSafetyFilter,
+} from "../services/Validator";
+import { enrichMentorAnalysis } from "../services/mentorAnalysis";
+import { resolveMentorContextWithClassifier } from "../services/mentorIntentClassifier";
 import { aiChatSchema } from "../lib/schemas";
 
 const router = Router();
 
 const PROMPT_VERSION = "mentor_v2";
 const MAX_CONVERSATION_HISTORY_MESSAGES = 20;
-// Default validator model is the small instruct model the platform ships with;
-// never falls back to a model that is not part of the deployed Ollama stack.
-const VALIDATOR_MODEL = process.env.OLLAMA_VALIDATOR_MODEL ?? process.env.OLLAMA_MODEL ?? "qwen2.5:3b-instruct";
 
 router.use(requireAuth);
 
@@ -27,6 +31,86 @@ type StoredAiLogMessage = {
   studentQuestion: string | null;
   responseText: string | null;
 };
+
+function parseLspDiagnostics(
+  value: unknown,
+): NonNullable<MentorRequestInput["lspDiagnostics"]> | null {
+  if (!Array.isArray(value)) return null;
+
+  return value
+    .filter(
+      (diagnostic): diagnostic is Record<string, unknown> =>
+        typeof diagnostic === "object" &&
+        diagnostic !== null &&
+        typeof (diagnostic as { message?: unknown }).message === "string",
+    )
+    .map((diagnostic) => ({
+      message: diagnostic.message as string,
+      severity: typeof diagnostic.severity === "string" ? diagnostic.severity : null,
+      line:
+        typeof diagnostic.line === "number" &&
+        Number.isInteger(diagnostic.line) &&
+        diagnostic.line > 0
+          ? diagnostic.line
+          : null,
+      source: typeof diagnostic.source === "string" ? diagnostic.source : null,
+    }));
+}
+
+function parseRelatedFiles(
+  value: unknown,
+): NonNullable<MentorRequestInput["relatedFiles"]> | null {
+  if (!Array.isArray(value)) return null;
+
+  return value
+    .filter(
+      (file): file is Record<string, unknown> =>
+        typeof file === "object" &&
+        file !== null &&
+        typeof (file as { path?: unknown }).path === "string" &&
+        typeof (file as { content?: unknown }).content === "string",
+    )
+    .map((file) => ({
+      path: file.path as string,
+      content: file.content as string,
+    }));
+}
+
+function parseVisibleTestCases(
+  value: unknown,
+): NonNullable<NonNullable<MentorRequestInput["testResults"]>["visibleCases"]> | null {
+  if (!Array.isArray(value)) return null;
+
+  return value
+    .filter(
+      (testCase): testCase is Record<string, unknown> =>
+        typeof testCase === "object" && testCase !== null,
+    )
+    .map((testCase) => ({
+      input: typeof testCase.input === "string" ? testCase.input : null,
+      expected: typeof testCase.expected === "string" ? testCase.expected : null,
+      actual: typeof testCase.actual === "string" ? testCase.actual : null,
+      passed: typeof testCase.passed === "boolean" ? testCase.passed : null,
+    }));
+}
+
+function parseTestResults(value: unknown): MentorRequestInput["testResults"] {
+  if (typeof value !== "object" || value === null) return null;
+
+  const results = value as Record<string, unknown>;
+  return {
+    status: typeof results.status === "string" ? results.status : null,
+    summary: typeof results.summary === "string" ? results.summary : null,
+    visibleCases: parseVisibleTestCases(results.visibleCases),
+  };
+}
+
+function parseRestrictedKeywords(
+  value: unknown,
+): NonNullable<MentorRequestInput["restrictedKeywords"]> | null {
+  if (!Array.isArray(value)) return null;
+  return value.filter((keyword): keyword is string => typeof keyword === "string");
+}
 
 function parseMentorBody(body: Record<string, unknown>): MentorRequestInput {
   const studentQuestion =
@@ -78,6 +162,12 @@ function parseMentorBody(body: Record<string, unknown>): MentorRequestInput {
     problemDescription:
       typeof body.problemDescription === "string" ? body.problemDescription : null,
     assignmentText: typeof body.assignmentText === "string" ? body.assignmentText : null,
+    problemDifficulty:
+      typeof body.problemDifficulty === "string"
+        ? body.problemDifficulty
+        : typeof body.difficulty === "string"
+          ? body.difficulty
+          : null,
     studentCode,
     errorMessage:
       typeof body.errorMessage === "string"
@@ -106,6 +196,10 @@ function parseMentorBody(body: Record<string, unknown>): MentorRequestInput {
         : typeof body.codeContext === "string"
           ? body.codeContext
           : null,
+    lspDiagnostics: parseLspDiagnostics(body.lspDiagnostics),
+    relatedFiles: parseRelatedFiles(body.relatedFiles),
+    testResults: parseTestResults(body.testResults),
+    restrictedKeywords: parseRestrictedKeywords(body.restrictedKeywords),
     conversationHistory,
     mode: typeof body.mode === "string" ? body.mode : null,
     hintLevel: typeof body.hintLevel === "number" ? body.hintLevel : null,
@@ -172,6 +266,20 @@ async function enrichInputWithStoredHistory(
 ): Promise<MentorRequestInput> {
   const providedHistory = compactConversationHistory(input.conversationHistory ?? []);
 
+  if (problemId !== undefined) {
+    const problem = await prisma.problem.findUnique({
+      where: { id: problemId },
+      select: { difficulty: true, description: true },
+    });
+
+    if (problem) {
+      input.problemDifficulty = input.problemDifficulty ?? problem.difficulty ?? null;
+      if (!input.assignmentText && !input.problemDescription) {
+        input.assignmentText = problem.description;
+      }
+    }
+  }
+
   if (providedHistory.length > 0 || problemId === undefined) {
     input.conversationHistory = providedHistory;
     return input;
@@ -221,59 +329,6 @@ async function isUserInExamMode(userId: number): Promise<boolean> {
   return membership !== null;
 }
 
-// ── Per-assignment AI guard ──────────────────────────────────────────────────
-// Teachers can disable AI Mentor on an individual assignment via the
-// Assignment.aiEnabled boolean. When the student is enrolled in any assignment
-// for this problem with aiEnabled=false, refuse the mentor request.
-async function isAiDisabledForProblem(userId: number, problemId: number): Promise<boolean> {
-  const enrollment = await prisma.assignmentEnrollment.findFirst({
-    where: {
-      userId,
-      assignment: {
-        problemId,
-        aiEnabled: false,
-      },
-    },
-  });
-  return enrollment !== null;
-}
-
-function toPolicyAction(action: "allow" | "rewrite" | "block"): PolicyAction {
-  if (action === "rewrite") return PolicyAction.rewrite;
-  if (action === "block") return PolicyAction.block;
-  return PolicyAction.allow;
-}
-
-function getRequestFlags(input: MentorRequestInput): string[] {
-  const flags: string[] = [];
-  if (detectMentorIntent(input.studentQuestion) === "solution") {
-    flags.push("direct_solution_request");
-  }
-  return flags;
-}
-
-
-async function validateAndRepairMentorReply(input: MentorRequestInput, mentorRaw: string) {
-  const startedAt = Date.now();
-
-  const validator = await validateMentorReplyWithQuality(input, mentorRaw);
-
-  const policy = await applyPolicyWithRetry({
-    mentorReply: mentorRaw,
-    validator,
-    studentQuestion: input.studentQuestion,
-    originalInput: input,
-  });
-
-  return {
-    validator,
-    policy,
-    latencyMsValidator: Date.now() - startedAt,
-    requestFlags: getRequestFlags(input),
-  };
-}
-
-
 async function handleAiRequest(req: Request, res: Response) {
   const parsed = aiChatSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -291,23 +346,12 @@ async function handleAiRequest(req: Request, res: Response) {
 
   const body = req.body as Record<string, unknown>;
   const problemId = parseProblemId(body);
-
-  // Per-assignment AI toggle: refuse when any enrollment for this problem has
-  // aiEnabled=false. Teachers use this to disable AI on specific assignments
-  // without flipping the global exam-mode flag.
-  if (problemId !== undefined && await isAiDisabledForProblem(req.auth!.userId, problemId)) {
-    res.status(403).json({
-      success: false,
-      error: "AI Mentor is disabled for this assignment.",
-    });
-    return;
-  }
-
-  const input = await enrichInputWithStoredHistory(
-    parseMentorBody(body),
-    req.auth!.userId,
-    problemId,
+  const input = await resolveMentorContextWithClassifier(
+    enrichMentorAnalysis(
+      await enrichInputWithStoredHistory(parseMentorBody(body), req.auth!.userId, problemId),
+    ),
   );
+  logMentorDebug("input", summarizeMentorInput(input));
   const submissionId = parseSubmissionId(body);
   const mode = typeof body.mode === "string" ? body.mode.trim().toLowerCase() : "practice";
 
@@ -316,18 +360,44 @@ async function handleAiRequest(req: Request, res: Response) {
   const latencyMsMentor = Date.now() - mentorStartedAt;
 
   if (!result.success) {
-    res.status(503).json({
-      success: false,
-      error: "Mentor service unavailable.",
-      details: result.error,
+    const fallbackText = buildMentorFallbackReply(input, result.error);
+    res.json({
+      success: true,
+      mentorReply: fallbackText,
+      mentorRaw: "",
+      languageRepair: {
+        text: fallbackText,
+        changed: false,
+        targetLocale: input.mentorLocale ?? null,
+        reason: "mentor_failure_fallback",
+        error: result.error,
+      },
+      safetyFilter: { ok: false, reasons: ["mentor_failure_fallback"] },
+      policyAction: PolicyAction.block,
+      fallbackUsed: true,
+      fallbackReason: result.error,
+      rewriteCount: 0,
     });
     return;
   }
 
   const mentorRaw = result.mentorReply;
   const mentorModel = getMentorModelName(input);
-  const validation = await validateAndRepairMentorReply(input, mentorRaw);
-  const finalText = validation.policy.finalText.trim() ? validation.policy.finalText : mentorRaw;
+  const languageRepair = await repairMentorReplyLanguage(input, mentorRaw);
+  const safetyFilter = await applyMentorSafetyFilter(input, languageRepair.text);
+  const fallbackReason = safetyFilter.rewriteError ?? safetyFilter.quality.reasons.join(",");
+  const fallbackUsed = !safetyFilter.text.trim();
+  const finalText = fallbackUsed ? buildMentorFallbackReply(input, fallbackReason) : safetyFilter.text;
+  const rewriteCount = safetyFilter.rewriteCount;
+  logMentorDebug("output", {
+    mentorRaw,
+    languageRepair,
+    safetyFilter: summarizeSafetyFilter(safetyFilter),
+    fallbackUsed,
+    fallbackReason: fallbackUsed ? fallbackReason : null,
+    finalText,
+    latencyMsMentor,
+  });
 
   const problem =
     problemId !== undefined ? await prisma.problem.findUnique({ where: { id: problemId } }) : null;
@@ -367,12 +437,14 @@ async function handleAiRequest(req: Request, res: Response) {
         requestPayload: body as object,
         responsePayload: {
           mentorRaw,
+          languageRepair,
+          safetyFilter: safetyFilter.quality,
+          policyAction: safetyFilter.policyAction,
+          rewriteError: safetyFilter.rewriteError,
           mentorError: null,
-          validator: validation.validator,
-          finalValidator: validation.policy.finalValidator ?? null,
-          policyAction: validation.policy.action,
-          requestFlags: validation.requestFlags,
-          fallbackUsed: false,
+          fallbackUsed,
+          fallbackReason: fallbackUsed ? fallbackReason : null,
+          rewriteCount,
         },
       },
     });
@@ -404,19 +476,15 @@ async function handleAiRequest(req: Request, res: Response) {
         problemId: pid,
         attemptId: linkedAttempt?.id ?? null,
         mentorModel,
-        validatorModel: VALIDATOR_MODEL,
+        validatorModel: null,
+        validatorJson: safetyFilter.quality,
         mentorRaw,
-        validatorJson: {
-          initial: validation.validator,
-          final: validation.policy.finalValidator ?? null,
-          requestFlags: validation.requestFlags,
-        },
-        policyAction: toPolicyAction(validation.policy.action),
+        policyAction: safetyFilter.policyAction,
         finalText,
-        rewriteCount: validation.policy.rewriteCount,
+        rewriteCount,
         latencyMsMentor,
-        latencyMsValidator: validation.latencyMsValidator,
-        errorCode: null,
+        latencyMsValidator: null,
+        errorCode: safetyFilter.rewriteError,
       },
     });
   }
@@ -424,12 +492,13 @@ async function handleAiRequest(req: Request, res: Response) {
   res.json({
     success: true,
     mentorReply: finalText,
-    fallbackUsed: false,
-    validator: validation.validator,
-    finalValidator: validation.policy.finalValidator ?? null,
-    policyAction: validation.policy.action,
-    rewriteCount: validation.policy.rewriteCount,
-    requestFlags: validation.requestFlags,
+    mentorRaw,
+    languageRepair,
+    safetyFilter: safetyFilter.quality,
+    policyAction: safetyFilter.policyAction,
+    fallbackUsed,
+    fallbackReason: fallbackUsed ? fallbackReason : null,
+    rewriteCount,
   });
 }
 
@@ -448,18 +517,12 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
 
   const body = req.body as Record<string, unknown>;
   const problemId = parseProblemId(body);
-
-  // Per-assignment AI toggle (same guard as /chat).
-  if (problemId !== undefined && await isAiDisabledForProblem(req.auth!.userId, problemId)) {
-    res.status(403).json({ error: "AI Mentor is disabled for this assignment." });
-    return;
-  }
-
-  const input = await enrichInputWithStoredHistory(
-    parseMentorBody(body),
-    req.auth!.userId,
-    problemId,
+  const input = await resolveMentorContextWithClassifier(
+    enrichMentorAnalysis(
+      await enrichInputWithStoredHistory(parseMentorBody(body), req.auth!.userId, problemId),
+    ),
   );
+  logMentorDebug("stream input", summarizeMentorInput(input));
 
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -470,7 +533,6 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
   let mentorRaw = "";
   let finalText = "";
   let mentorError: string | null = null;
-  let validation: Awaited<ReturnType<typeof validateAndRepairMentorReply>>;
   const isHint = (typeof body.mode === "string" ? body.mode.trim().toLowerCase() : "") === "hint";
   const mentorStartedAt = Date.now();
 
@@ -483,7 +545,8 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
   } catch (err) {
     mentorError = err instanceof Error ? err.message : "mentor_stream_error";
     console.warn("[ai/stream] mentor stream failed:", mentorError);
-    res.write(`event: error\ndata: ${JSON.stringify({ error: "Mentor service unavailable.", details: mentorError })}\n\n`);
+    finalText = buildMentorFallbackReply(input, mentorError);
+    res.write(`data: ${JSON.stringify({ token: finalText })}\n\n`);
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     res.end();
     return;
@@ -491,21 +554,24 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
 
   const latencyMsMentor = Date.now() - mentorStartedAt;
 
-  try {
-    validation = await validateAndRepairMentorReply(input, mentorRaw);
-    finalText = validation.policy.finalText.trim() ? validation.policy.finalText : mentorRaw;
-  } catch (err) {
-    const details = err instanceof Error ? err.message : "mentor_validation_error";
-    console.warn("[ai/stream] mentor validation failed:", details);
-    res.write(`event: error\ndata: ${JSON.stringify({ error: "Mentor validation failed.", details })}\n\n`);
-    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
-    res.end();
-    return;
-  }
-
   const mode = typeof body.mode === "string" ? body.mode.trim().toLowerCase() : "practice";
+  const languageRepair = await repairMentorReplyLanguage(input, mentorRaw);
+  const safetyFilter = await applyMentorSafetyFilter(input, languageRepair.text);
+  const fallbackReason = safetyFilter.rewriteError ?? safetyFilter.quality.reasons.join(",");
+  const fallbackUsed = !safetyFilter.text.trim();
+  finalText = fallbackUsed ? buildMentorFallbackReply(input, fallbackReason) : safetyFilter.text;
+  const rewriteCount = safetyFilter.rewriteCount;
+  logMentorDebug("stream output", {
+    mentorRaw,
+    languageRepair,
+    safetyFilter: summarizeSafetyFilter(safetyFilter),
+    fallbackUsed,
+    fallbackReason: fallbackUsed ? fallbackReason : null,
+    finalText,
+    latencyMsMentor,
+  });
 
-  if (problemId !== undefined && finalText.trim()) {
+  if (problemId !== undefined && (finalText.trim() || safetyFilter.policyAction === PolicyAction.block)) {
     Promise.resolve().then(async () => {
       try {
         const problem = await prisma.problem.findUnique({ where: { id: problemId } });
@@ -531,11 +597,13 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
               requestPayload: body as object,
               responsePayload: {
                 mentorRaw,
-                validator: validation.validator,
-                finalValidator: validation.policy.finalValidator ?? null,
-                policyAction: validation.policy.action,
-                requestFlags: validation.requestFlags,
-                fallbackUsed: false,
+                languageRepair,
+                safetyFilter: safetyFilter.quality,
+                policyAction: safetyFilter.policyAction,
+                rewriteError: safetyFilter.rewriteError,
+                fallbackUsed,
+                fallbackReason: fallbackUsed ? fallbackReason : null,
+                rewriteCount,
                 streamed: true,
               },
             },
@@ -547,19 +615,15 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
               problemId: problem.id,
               attemptId: linkedAttempt?.id ?? null,
               mentorModel: getMentorModelName(input),
-              validatorModel: VALIDATOR_MODEL,
+              validatorModel: null,
+              validatorJson: safetyFilter.quality,
               mentorRaw,
-              validatorJson: {
-                initial: validation.validator,
-                final: validation.policy.finalValidator ?? null,
-                requestFlags: validation.requestFlags,
-              },
-              policyAction: toPolicyAction(validation.policy.action),
+              policyAction: safetyFilter.policyAction,
               finalText,
-              rewriteCount: validation.policy.rewriteCount,
+              rewriteCount,
               latencyMsMentor,
-              latencyMsValidator: validation.latencyMsValidator,
-              errorCode: null,
+              latencyMsValidator: null,
+              errorCode: safetyFilter.rewriteError,
             },
           });
 

@@ -1637,9 +1637,23 @@ export default function StudentWorkspace({
                 <Chip label="C" size="small" variant="outlined" sx={{ fontSize: 11 }} />
               </Stack>
               <Stack direction="row" spacing={1}>
-                <Button startIcon={<ArrowBackIcon />} size="small" onClick={() => { backToList(); setTutorialExpanded(false); }}>
-                  Topics
-                </Button>
+                {/* Back button is context-aware:
+                    - Level 3 (a section is open): clear selectedSection so the
+                      overlay drops back to showing the full tutorial table of
+                      contents. Stays inside the overlay.
+                    - Level 2 (no section selected): close the overlay AND
+                      return to the topic list (original behavior).
+                    Previously this always called backToList(), which dumped
+                    the user out of the tutorial entirely. */}
+                {selectedSection ? (
+                  <Button startIcon={<ArrowBackIcon />} size="small" onClick={() => setSelectedSection(null)}>
+                    Sections
+                  </Button>
+                ) : (
+                  <Button startIcon={<ArrowBackIcon />} size="small" onClick={() => { backToList(); setTutorialExpanded(false); }}>
+                    Topics
+                  </Button>
+                )}
                 <Tooltip title="Collapse">
                   <IconButton size="small" onClick={() => setTutorialExpanded(false)}>
                     <CloseFullscreenIcon fontSize="small" />
@@ -1648,26 +1662,40 @@ export default function StudentWorkspace({
               </Stack>
             </Stack>
 
-            {/* Content — shares the same renderer as the side panel so the
-                block-based schema (text / code / syntax / note / goodtoknow /
-                list) is rendered correctly. Previously this used the legacy
-                section.body + section.code fields only, which silently dropped
-                all block-based content and left the overlay showing nothing
-                but section headings. */}
+            {/* Content — shares the same renderer as the side panel and is
+                context-aware about which level the user expanded from:
+                - Level 3 (selectedSection set): render ONLY the open section.
+                  Previously the overlay always iterated tutorialContent.sections
+                  here, which dropped the user from a single section's content
+                  back to a list of all section headings — exactly the bug the
+                  user reported.
+                - Level 2 (no selectedSection): render every section in order. */}
             <Box sx={{ overflowY: "auto", p: 3 }}>
-              <Stack spacing={2.5}>
-                {(tutorialContent?.sections ?? []).map((section, idx) => (
-                  <Box key={idx}>
-                    {section.heading && (
-                      <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 0.75 }}>{section.heading}</Typography>
-                    )}
-                    <TutorialSectionContent
-                      section={section}
-                      monacoLang={tutorialLanguage ?? "c"}
-                    />
-                  </Box>
-                ))}
-              </Stack>
+              {selectedSection ? (
+                <Box>
+                  {selectedSection.heading && (
+                    <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 0.75 }}>{selectedSection.heading}</Typography>
+                  )}
+                  <TutorialSectionContent
+                    section={selectedSection}
+                    monacoLang={tutorialLanguage ?? "c"}
+                  />
+                </Box>
+              ) : (
+                <Stack spacing={2.5}>
+                  {(tutorialContent?.sections ?? []).map((section, idx) => (
+                    <Box key={idx}>
+                      {section.heading && (
+                        <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 0.75 }}>{section.heading}</Typography>
+                      )}
+                      <TutorialSectionContent
+                        section={section}
+                        monacoLang={tutorialLanguage ?? "c"}
+                      />
+                    </Box>
+                  ))}
+                </Stack>
+              )}
             </Box>
           </Box>
         </Box>

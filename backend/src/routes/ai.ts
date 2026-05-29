@@ -9,6 +9,15 @@ import {
   repairMentorReplyLanguage,
   type MentorRequestInput,
 } from "../services/mentor";
+import {
+  applyMentorSafetyFilter,
+  buildMentorFallbackReply,
+  logMentorDebug,
+  summarizeMentorInput,
+  summarizeSafetyFilter,
+} from "../services/Validator";
+import { enrichMentorAnalysis } from "../services/mentorAnalysis";
+import { resolveMentorContextWithClassifier } from "../services/mentorIntentClassifier";
 import { aiChatSchema } from "../lib/schemas";
 
 const router = Router();
@@ -337,11 +346,12 @@ async function handleAiRequest(req: Request, res: Response) {
 
   const body = req.body as Record<string, unknown>;
   const problemId = parseProblemId(body);
-  const input = await enrichInputWithStoredHistory(
-    parseMentorBody(body),
-    req.auth!.userId,
-    problemId,
+  const input = await resolveMentorContextWithClassifier(
+    enrichMentorAnalysis(
+      await enrichInputWithStoredHistory(parseMentorBody(body), req.auth!.userId, problemId),
+    ),
   );
+  logMentorDebug("input", summarizeMentorInput(input));
   const submissionId = parseSubmissionId(body);
   const mode = typeof body.mode === "string" ? body.mode.trim().toLowerCase() : "practice";
 
@@ -350,10 +360,23 @@ async function handleAiRequest(req: Request, res: Response) {
   const latencyMsMentor = Date.now() - mentorStartedAt;
 
   if (!result.success) {
-    res.status(503).json({
-      success: false,
-      error: "Mentor service unavailable.",
-      details: result.error,
+    const fallbackText = buildMentorFallbackReply(input, result.error);
+    res.json({
+      success: true,
+      mentorReply: fallbackText,
+      mentorRaw: "",
+      languageRepair: {
+        text: fallbackText,
+        changed: false,
+        targetLocale: input.mentorLocale ?? null,
+        reason: "mentor_failure_fallback",
+        error: result.error,
+      },
+      safetyFilter: { ok: false, reasons: ["mentor_failure_fallback"] },
+      policyAction: PolicyAction.block,
+      fallbackUsed: true,
+      fallbackReason: result.error,
+      rewriteCount: 0,
     });
     return;
   }
@@ -361,8 +384,20 @@ async function handleAiRequest(req: Request, res: Response) {
   const mentorRaw = result.mentorReply;
   const mentorModel = getMentorModelName(input);
   const languageRepair = await repairMentorReplyLanguage(input, mentorRaw);
-  const finalText = languageRepair.text;
-  const rewriteCount = 0;
+  const safetyFilter = await applyMentorSafetyFilter(input, languageRepair.text);
+  const fallbackReason = safetyFilter.rewriteError ?? safetyFilter.quality.reasons.join(",");
+  const fallbackUsed = !safetyFilter.text.trim();
+  const finalText = fallbackUsed ? buildMentorFallbackReply(input, fallbackReason) : safetyFilter.text;
+  const rewriteCount = safetyFilter.rewriteCount;
+  logMentorDebug("output", {
+    mentorRaw,
+    languageRepair,
+    safetyFilter: summarizeSafetyFilter(safetyFilter),
+    fallbackUsed,
+    fallbackReason: fallbackUsed ? fallbackReason : null,
+    finalText,
+    latencyMsMentor,
+  });
 
   const problem =
     problemId !== undefined ? await prisma.problem.findUnique({ where: { id: problemId } }) : null;
@@ -403,8 +438,12 @@ async function handleAiRequest(req: Request, res: Response) {
         responsePayload: {
           mentorRaw,
           languageRepair,
+          safetyFilter: safetyFilter.quality,
+          policyAction: safetyFilter.policyAction,
+          rewriteError: safetyFilter.rewriteError,
           mentorError: null,
-          fallbackUsed: false,
+          fallbackUsed,
+          fallbackReason: fallbackUsed ? fallbackReason : null,
           rewriteCount,
         },
       },
@@ -438,13 +477,14 @@ async function handleAiRequest(req: Request, res: Response) {
         attemptId: linkedAttempt?.id ?? null,
         mentorModel,
         validatorModel: null,
+        validatorJson: safetyFilter.quality,
         mentorRaw,
-        policyAction: PolicyAction.allow,
+        policyAction: safetyFilter.policyAction,
         finalText,
         rewriteCount,
         latencyMsMentor,
         latencyMsValidator: null,
-        errorCode: null,
+        errorCode: safetyFilter.rewriteError,
       },
     });
   }
@@ -454,7 +494,10 @@ async function handleAiRequest(req: Request, res: Response) {
     mentorReply: finalText,
     mentorRaw,
     languageRepair,
-    fallbackUsed: false,
+    safetyFilter: safetyFilter.quality,
+    policyAction: safetyFilter.policyAction,
+    fallbackUsed,
+    fallbackReason: fallbackUsed ? fallbackReason : null,
     rewriteCount,
   });
 }
@@ -474,11 +517,12 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
 
   const body = req.body as Record<string, unknown>;
   const problemId = parseProblemId(body);
-  const input = await enrichInputWithStoredHistory(
-    parseMentorBody(body),
-    req.auth!.userId,
-    problemId,
+  const input = await resolveMentorContextWithClassifier(
+    enrichMentorAnalysis(
+      await enrichInputWithStoredHistory(parseMentorBody(body), req.auth!.userId, problemId),
+    ),
   );
+  logMentorDebug("stream input", summarizeMentorInput(input));
 
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -501,7 +545,8 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
   } catch (err) {
     mentorError = err instanceof Error ? err.message : "mentor_stream_error";
     console.warn("[ai/stream] mentor stream failed:", mentorError);
-    res.write(`event: error\ndata: ${JSON.stringify({ error: "Mentor service unavailable.", details: mentorError })}\n\n`);
+    finalText = buildMentorFallbackReply(input, mentorError);
+    res.write(`data: ${JSON.stringify({ token: finalText })}\n\n`);
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     res.end();
     return;
@@ -511,10 +556,22 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
 
   const mode = typeof body.mode === "string" ? body.mode.trim().toLowerCase() : "practice";
   const languageRepair = await repairMentorReplyLanguage(input, mentorRaw);
-  finalText = languageRepair.text;
-  const rewriteCount = 0;
+  const safetyFilter = await applyMentorSafetyFilter(input, languageRepair.text);
+  const fallbackReason = safetyFilter.rewriteError ?? safetyFilter.quality.reasons.join(",");
+  const fallbackUsed = !safetyFilter.text.trim();
+  finalText = fallbackUsed ? buildMentorFallbackReply(input, fallbackReason) : safetyFilter.text;
+  const rewriteCount = safetyFilter.rewriteCount;
+  logMentorDebug("stream output", {
+    mentorRaw,
+    languageRepair,
+    safetyFilter: summarizeSafetyFilter(safetyFilter),
+    fallbackUsed,
+    fallbackReason: fallbackUsed ? fallbackReason : null,
+    finalText,
+    latencyMsMentor,
+  });
 
-  if (problemId !== undefined && finalText.trim()) {
+  if (problemId !== undefined && (finalText.trim() || safetyFilter.policyAction === PolicyAction.block)) {
     Promise.resolve().then(async () => {
       try {
         const problem = await prisma.problem.findUnique({ where: { id: problemId } });
@@ -541,7 +598,11 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
               responsePayload: {
                 mentorRaw,
                 languageRepair,
-                fallbackUsed: false,
+                safetyFilter: safetyFilter.quality,
+                policyAction: safetyFilter.policyAction,
+                rewriteError: safetyFilter.rewriteError,
+                fallbackUsed,
+                fallbackReason: fallbackUsed ? fallbackReason : null,
                 rewriteCount,
                 streamed: true,
               },
@@ -555,13 +616,14 @@ router.post("/chat/stream", async (req: Request, res: Response) => {
               attemptId: linkedAttempt?.id ?? null,
               mentorModel: getMentorModelName(input),
               validatorModel: null,
+              validatorJson: safetyFilter.quality,
               mentorRaw,
-              policyAction: PolicyAction.allow,
+              policyAction: safetyFilter.policyAction,
               finalText,
               rewriteCount,
               latencyMsMentor,
               latencyMsValidator: null,
-              errorCode: null,
+              errorCode: safetyFilter.rewriteError,
             },
           });
 

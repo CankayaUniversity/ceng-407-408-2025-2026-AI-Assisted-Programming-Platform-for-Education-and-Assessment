@@ -252,6 +252,16 @@ const FORMAT_REFERENCE_FOLLOW_UP_PATTERNS = [
   /^(bunu|şunu|sunu|onu|kodları|kodlari)\s+(in\s+)?(c|c\+\+|cpp|csharp|cs|python|py|java|javascript|js|ts|typescript|kotlin|swift|ruby|php|go|golang|rust|scala|lua|r|bash|shell|html|css|sql)\s*(de|da|ile|olarak|dilinde|halinde|türünde|turunde)?\s*(göster|goster|yaz|anlat|çevir|cevir|dönüştür|donustur)\??$/i,
 ];
 
+const ASSIGNMENT_EXPLANATION_PATTERNS = [
+  /\b(assignment|homework|task|problem statement|question)\b.{0,80}\b(mean|asking|want|explain|understand|requirements?)\b/i,
+  /\b(explain|describe|summarize|help me understand)\b.{0,80}\b(assignment|homework|task|problem statement|question)\b/i,
+  /^(assignment|homework|task|problem|question)$/i,
+  /\b(ödev|odev|assignment|soru|problem)\b.{0,80}\b(ne\s+istiyor|ne\s+diyor|ne\s+demek|anlamadım|anlamadim|anlat|açıkla|acikla|özetle|ozetle)\b/i,
+  /\b(bu\s+soruyu|soruyu|ödevin\s+sorusunu|odevin\s+sorusunu|assignment'?ı|assignmenti)\b.{0,80}\b(anlat|açıkla|acikla|anlamadım|anlamadim)\b/i,
+  /^(assignment|ödev|odev|soru|problem)$/i,
+  /\b(yazıyor\s+ya\s+işte|yaziyor\s+ya\s+iste|zaten\s+yazıyor|zaten\s+yaziyor)\b/i,
+];
+
 const CONVERSATION_MEMORY_PATTERNS = [
   /\b(last\s+\d+\s+questions?|previous\s+\d+\s+questions?|past\s+\d+\s+questions?)\b/i,
   /\bwhat\s+was\s+my\s+(last|first|previous|prior)\s+(question|message|prompt|ask)\b/i,
@@ -599,6 +609,10 @@ function asksForCurrentCodeContext(msg: string): boolean {
   return asksDebugOrStrategy(msg) || asksAboutExpectedOutputOrFormat(msg) || matchesAny(msg, CURRENT_CODE_CONTEXT_PATTERNS);
 }
 
+function asksAboutAssignmentStatement(msg: string): boolean {
+  return matchesAny(msg, ASSIGNMENT_EXPLANATION_PATTERNS);
+}
+
 function scopeForIntent(intent: MentorIntent): MentorContextScope {
   if (intent === "editor_inspection") return "editor";
   if (intent === "runtime") return "runtime";
@@ -775,6 +789,10 @@ export function resolveMentorContextScope(params: {
   const turn = resolveMentorTurn(params.studentQuestion, params.conversationHistory);
 
   if (mode === "hint" || mode === "tip") return "code";
+
+  if (asksAboutAssignmentStatement(msg)) {
+    return "assignment";
+  }
 
   if (turn.latestIntent === "casual" || turn.latestIntent === "meta") {
     return "chat";

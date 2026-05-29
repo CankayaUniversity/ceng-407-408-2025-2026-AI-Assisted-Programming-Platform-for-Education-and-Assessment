@@ -96,6 +96,20 @@ export function buildMentorFallbackReply(
   });
   const question = normalizeText(input.studentQuestion);
   const seed = `${targetLocale}|${contextScope}|${reason ?? ""}|${question}|${input.conversationHistory?.length ?? 0}`;
+  const reasonText = normalizeText(reason).toLowerCase();
+
+  const reasonKind =
+    /solution|algorithm|leak|unsafe|block/.test(reasonText)
+      ? "solution"
+      : /editor|visible|focused|line/.test(reasonText)
+        ? "editor"
+        : /runtime|error|stderr|terminal|output/.test(reasonText)
+          ? "runtime"
+          : /locale|language|dil/.test(reasonText)
+            ? "language"
+            : /context|casual|misuse/.test(reasonText)
+              ? "context"
+              : "unclear";
 
   if (targetLocale === "tr") {
     const focusByScope: Record<string, string> = {
@@ -107,12 +121,35 @@ export function buildMentorFallbackReply(
       chat: "ne sormak istediğini",
     };
     const focus = focusByScope[contextScope] ?? "ne sormak istediğini";
-    const variants = [
-      `Sorunu net yakalayamadım; ${focus} biraz daha açık tekrar eder misin?`,
-      `Bunu tam anlayamadım; ${focus} bir cümleyle yeniden yazar mısın?`,
-      `Yanlış yönlendirmemek için emin olmak istiyorum; ${focus} tekrar eder misin?`,
-      `Burada neye odaklanmam gerektiğini kaçırdım; ${focus} kısaca tekrar eder misin?`,
-    ];
+    const variantsByReason: Record<string, string[]> = {
+      solution: [
+        `Final cevaba kaymadan yardımcı olayım; ${focus} ve takıldığın küçük adımı tekrar eder misin?`,
+        `Çözümü doğrudan vermeden ilerleyelim; ${focus} hangi noktada kaldığını bir cümleyle yazar mısın?`,
+      ],
+      editor: [
+        `Editör bağlamını yanlış yorumlamamak için ${focus} tekrar eder misin?`,
+        `Görünen koddan emin olayım; ${focus} kısaca yeniden yazar mısın?`,
+      ],
+      runtime: [
+        `Terminali uydurmadan yorumlamak için ${focus} tekrar eder misin?`,
+        `Çıktı/hata tarafını netleştirelim; ${focus} bir cümleyle yeniden yazar mısın?`,
+      ],
+      language: [
+        `Yanıt dilini de doğru tutayım; ${focus} tekrar eder misin?`,
+        `Dili karıştırmadan cevaplayayım; ${focus} kısaca yeniden yazar mısın?`,
+      ],
+      context: [
+        `Soruyu yanlış bağlama çekmiş olabilirim; ${focus} tekrar eder misin?`,
+        `Doğru yerden cevaplamak için ${focus} bir cümleyle yeniden yazar mısın?`,
+      ],
+      unclear: [
+        `Sorunu net yakalayamadım; ${focus} biraz daha açık tekrar eder misin?`,
+        `Bunu tam anlayamadım; ${focus} bir cümleyle yeniden yazar mısın?`,
+        `Yanlış yönlendirmemek için emin olmak istiyorum; ${focus} tekrar eder misin?`,
+        `Burada neye odaklanmam gerektiğini kaçırdım; ${focus} kısaca tekrar eder misin?`,
+      ],
+    };
+    const variants = variantsByReason[reasonKind] ?? variantsByReason.unclear;
     return variants[stableIndex(seed, variants.length)];
   }
 
@@ -125,12 +162,35 @@ export function buildMentorFallbackReply(
     chat: "what you want to ask",
   };
   const focus = focusByScope[contextScope] ?? "what you want to ask";
-  const variants = [
-    `I did not quite catch the question; can you repeat ${focus} a bit more clearly?`,
-    `I want to avoid guessing here; can you restate ${focus} in one sentence?`,
-    `I missed the exact point; can you repeat ${focus} briefly?`,
-    `I am not fully sure what to answer yet; can you clarify ${focus}?`,
-  ];
+  const variantsByReason: Record<string, string[]> = {
+    solution: [
+      `I can help without giving the final answer; can you restate ${focus} and the small step where you are stuck?`,
+      `Let's keep this as guidance rather than a direct solution; can you repeat ${focus} in one sentence?`,
+    ],
+    editor: [
+      `I do not want to misread the editor context; can you repeat ${focus} briefly?`,
+      `To stay grounded in the visible code, can you restate ${focus}?`,
+    ],
+    runtime: [
+      `I do not want to guess the terminal behavior; can you repeat ${focus} briefly?`,
+      `Let's clarify the output/error first; can you restate ${focus} in one sentence?`,
+    ],
+    language: [
+      `I want to keep the answer in the right language; can you repeat ${focus} briefly?`,
+      `To avoid mixing languages, can you restate ${focus}?`,
+    ],
+    context: [
+      `I may have pulled this into the wrong context; can you repeat ${focus} briefly?`,
+      `To answer from the right context, can you restate ${focus} in one sentence?`,
+    ],
+    unclear: [
+      `I did not quite catch the question; can you repeat ${focus} a bit more clearly?`,
+      `I want to avoid guessing here; can you restate ${focus} in one sentence?`,
+      `I missed the exact point; can you repeat ${focus} briefly?`,
+      `I am not fully sure what to answer yet; can you clarify ${focus}?`,
+    ],
+  };
+  const variants = variantsByReason[reasonKind] ?? variantsByReason.unclear;
   return variants[stableIndex(seed, variants.length)];
 }
 

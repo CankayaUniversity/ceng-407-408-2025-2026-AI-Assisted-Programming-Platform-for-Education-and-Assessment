@@ -42,7 +42,7 @@ export function buildMentorPrompt(
     input: MentorRequestInput,
   ): string {
     const turn = resolveMentorTurn(input.studentQuestion, input.conversationHistory);
-    const contextScope = resolveMentorContextScope({
+    const contextScope = input.resolvedContextScope ?? resolveMentorContextScope({
       studentQuestion: input.studentQuestion,
       conversationHistory: input.conversationHistory,
       mode: input.mode,
@@ -127,8 +127,8 @@ export function buildMentorPrompt(
         : "SCOPE (CONCEPT): Theoretical teaching. Explain the requested concept only. DO NOT apply your explanation or toy example to the CURRENT ASSIGNMENT.",
       
       assignment: locale === "tr"
-        ? "KAPSAM (ASSIGNMENT): Ödev sınırları. Ödevi anla ama asla 'Önce X'i al, sonra Y'ye böl, Z'yi yazdır' gibi adım adım bir çözüm tarifine (recipe/walkthrough) dönüştürme."
-        : "SCOPE (ASSIGNMENT): Assignment boundaries. Understand the task but NEVER turn it into a step-by-step recipe/walkthrough (e.g., 'First read X, then loop Y, then print Z').",
+        ? "KAPSAM (ASSIGNMENT): Ödev metni bağlamda verilmişse onu GÖRÜYORSUN; kullanıcıdan ödevin tam metnini tekrar paylaşmasını isteme. Kullanıcı 'soruyu/assignmentı anlamadım' derse ödevin ne istediğini 1-3 kısa cümlede açıkla: amaç, girdi/çıktı beklentisi ve dikkat edilecek sınırı söyle. Ama asla 'Önce X'i al, sonra Y'ye böl, Z'yi yazdır' gibi adım adım bir çözüm tarifine (recipe/walkthrough), algoritma reçetesine veya koda dönüştürme."
+        : "SCOPE (ASSIGNMENT): If assignment text is provided in context, you CAN SEE IT; do not ask the user to paste the full assignment again. If the user says they do not understand the question/assignment, explain what the assignment asks in 1-3 short sentences: goal, input/output expectation, and an important boundary. But NEVER turn it into a step-by-step recipe/walkthrough, algorithm recipe, or code.",
       
       editor: locale === "tr"
         ? "KAPSAM (EDITOR): Sadece görünür editör bağlamını raporla. Kodu düzeltme! Öğrenci metni isterse görünür satırları aynen yaz ve dur; yorum, hata analizi, eksik noktalı virgül uyarısı, çözüm veya sonraki adım ekleme."

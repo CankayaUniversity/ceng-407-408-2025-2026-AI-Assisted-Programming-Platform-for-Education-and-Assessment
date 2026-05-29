@@ -1,4 +1,4 @@
-import { detectMentorIntent } from "./mentorIntent";
+import { detectMentorIntent, type MentorContextScope } from "./mentorIntent";
 
 export type MentorConversationMessage = {
   role: "user" | "assistant";
@@ -13,6 +13,7 @@ export type MentorQualityInput = {
   stderr?: string | null;
   errorMessage?: string | null;
   conversationHistory?: MentorConversationMessage[] | null;
+  contextScope?: MentorContextScope;
 };
 
 export type MentorQualityResult = {
@@ -470,6 +471,10 @@ export function assessMentorReply(input: MentorQualityInput): MentorQualityResul
   const reply = input.reply.trim();
   const question = (input.studentQuestion ?? "").trim();
   const intent = detectMentorIntent(question);
+  const contextScope = input.contextScope;
+  const isChatScope = contextScope ? contextScope === "chat" : intent === "casual" || intent === "meta";
+  const isEditorScope = contextScope ? contextScope === "editor" : intent === "editor_inspection";
+  const isRuntimeScope = contextScope ? contextScope === "runtime" : intent === "runtime";
   const hasErrorContext = Boolean((input.stderr || input.errorMessage || "").trim());
   const reasons: string[] = [];
 
@@ -518,7 +523,7 @@ export function assessMentorReply(input: MentorQualityInput): MentorQualityResul
     reasons.push("ignores_focused_line");
   }
 
-  if (intent === "editor_inspection" && hasProvidedEditorContext(input.selectedCodeContext)) {
+  if (isEditorScope && hasProvidedEditorContext(input.selectedCodeContext)) {
     const replyLower = reply.toLowerCase();
     const tokens = distinctiveContextTokens(input.selectedCodeContext);
 
@@ -535,7 +540,7 @@ export function assessMentorReply(input: MentorQualityInput): MentorQualityResul
     reasons.push("unsupported_code_visibility_claim");
   }
 
-  if (intent === "meta" || intent === "casual") {
+  if (isChatScope) {
     const replyLower = reply.toLowerCase();
 
     if (distinctiveContextTokens(input.selectedCodeContext).some((token) => replyLower.includes(token))) {
@@ -543,18 +548,18 @@ export function assessMentorReply(input: MentorQualityInput): MentorQualityResul
     }
   }
 
-  if (intent === "casual" && matchesAny(reply, CASUAL_CODE_ADVICE_PATTERNS)) {
+  if (isChatScope && matchesAny(reply, CASUAL_CODE_ADVICE_PATTERNS)) {
     reasons.push("casual_code_advice");
   }
 
   if (
-    intent === "editor_inspection" &&
+    isEditorScope &&
     matchesAny(reply, EDITOR_INSPECTION_ADVICE_PATTERNS)
   ) {
     reasons.push("editor_inspection_solution_advice");
   }
 
-  if (intent === "editor_inspection") {
+  if (isEditorScope) {
     const editorContext = combinedEditorContext(input);
 
     if (claimsOnlyTinyVisibleContext(reply, editorContext)) {
@@ -568,6 +573,17 @@ export function assessMentorReply(input: MentorQualityInput): MentorQualityResul
     if (hasEditorInspectionExtraAnalysis(question, reply)) {
       reasons.push("editor_inspection_extra_analysis");
     }
+  }
+
+  if (
+    isRuntimeScope &&
+    !hasErrorContext &&
+    matchesAny(reply, [
+      /\b(the output is|it prints|it passes|passed|works as expected)\b/i,
+      /\b(çıktı şudur|şunu yazdırır|geçti|başarılı|çalışıyor)\b/i,
+    ])
+  ) {
+    reasons.push("runtime_guess");
   }
 
   if (

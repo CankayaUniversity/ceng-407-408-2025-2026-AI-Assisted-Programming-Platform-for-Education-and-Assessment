@@ -1,44 +1,39 @@
 # AI-Assisted Programming Platform for Education and Assessment
 
-Web platform for programming courses with AI-assisted hints, secure code execution, and teacher/student role flows.
+Web platform for programming courses with teacher/student workflows, AI-assisted mentoring, secure code execution, grading support, analytics, and personalized flashcards.
 
-## Quick start
+## Project overview
 
-From repository root:
-
-```bash
-cp .env.example .env
-cp infra/judge0/judge0.conf.example infra/judge0/judge0.conf
-npm run up:all
-npm run setup
-npm run smoke
-```
-
-Main URLs:
-
-- Frontend: `http://localhost:5173`
-- Backend API (direct): `http://localhost:5000`
-- In Docker, the browser talks to the **same host/port** as the UI: nginx proxies `/api/*` to the backend, so you only need to expose **5173** publicly (no separate `VITE_API_BASE_URL` for the built image).
-- Backend readiness: `http://localhost:5000/api/health/ready` (or `http://localhost:5173/api/health/ready` through nginx)
-
-Stop:
-
-```bash
-npm run down:all
-```
+The platform is designed for programming education. Teachers can create problems, assignments, rubrics, and AI-generated problem variations. Students can solve assigned programming tasks in a browser-based coding workspace, run code, submit solutions against test cases, receive mentor-style AI help, review grades and teacher feedback, track analytics, and study personalized flashcards generated from their own attempts.
 
 ## Core stack
 
-- Frontend: React + Vite + Material-UI
+- Frontend: React + Vite + Material UI
+- Code editor and terminal UI: Monaco Editor + xterm.js
 - Backend: Node.js + Express + TypeScript
 - Database: PostgreSQL + Prisma
-- AI runtime: Ollama (Open WebUI optional interface)
-- Code execution: Judge0 (Docker-sandboxed)
+- Authentication: JWT access tokens and refresh tokens
+- AI runtime: Ollama, using `qwen2.5-coder:14b` as the primary local mentor model
+- Code execution: Docker-based language runner containers
+- Deployment target: single Google Cloud server with Docker Compose
+
+## Main features
+
+- Student workspace with problem statement, code editor, run/submit flow, terminal output, and AI Mentor chat
+- Teacher question bank for creating and managing programming problems
+- Assignment management with student enrollment
+- Rubric generation and teacher-controlled grading
+- AI-assisted grade suggestions based on rubric criteria and latest submissions
+- AI-generated problem variations for teacher review
+- Student analytics and teacher class analytics
+- Personalized flashcards generated after accepted submissions
+- Exam mode controls and violation tracking
+- Tutorial content for supported programming topics
 
 ## Supported languages
 
-| Language | Run (raw) | Submit (test cases) |
-|----------|-----------|---------------------|
+| Language | Run | Submit with test cases |
+|----------|-----|------------------------|
 | Python | Yes | Yes |
 | C | Yes | Yes |
 | C++ | Yes | Yes |
@@ -46,102 +41,189 @@ npm run down:all
 | JavaScript | Yes | Yes |
 | Java | Yes | Yes |
 
-## Common operations
+## Running the project
+
+Create an environment file from the example:
 
 ```bash
-# app stack only
-npm run up
-
-# judge0 only
-npm run up:judge0
-
-# migrations and seed
-npm run db:migrate
-npm run db:seed
-
-# backend logs
-npm run logs
+cp .env.example .env
 ```
 
-## Key API endpoints
-
-- Auth: `/api/auth/register`, `/api/auth/login`, `/api/auth/me`
-- Problems: `/api/problems`, `/api/problems/:id` (CRUD for teachers)
-- AI chat: `/api/ai/chat`, `/api/ai/hint`
-- Code run: `/api/execute`
-- Student: `/api/student/history`, `/api/student/history/ai`
-- Teacher: `/api/teacher/students`, `/api/teacher/class/overview`
-- Admin: `/api/admin/exam-mode`
-- Health: `/health`, `/api/health/live`, `/api/health/ready`
-
-## Operations and deployment
-
-### Prerequisites
-
-- Docker Desktop (or Docker Engine + Compose v2)
-- `.env` created from `.env.example`
-- Judge0 config: `infra/judge0/judge0.conf` created from `judge0.conf.example`
-
-### Judge0 sandbox strategy
-
-Code execution uses a **3-layer Docker-level sandbox**:
-
-| Layer | What | Where |
-|-------|------|-------|
-| **1 — Docker Container** | PID namespace, filesystem, process isolation | docker-compose.yml |
-| **2 — Docker Resource Limits** | memory: 512m, cpus: 1.0, pids: 128 | docker-compose.yml |
-| **3 — Judge0 App Limits** | CPU_TIME_LIMIT: 5s, WALL_TIME_LIMIT: 10s, MEMORY_LIMIT: 128MB | judge0.conf |
-
-Judge0's internal `isolate` sandbox (`ENABLE_SANDBOX`) requires cgroup v1, which is
-unavailable on Docker Desktop (Windows/macOS use cgroup v2 via WSL2/HyperKit).
-Docker-level isolation is the industry standard for containerized code judges and
-provides equivalent security through container namespace isolation and hard resource limits.
-
-On native Linux servers with cgroup v1 support, set `ENABLE_SANDBOX=true` in
-`judge0.conf` for an additional kernel-level isolation layer.
-
-This project uses a community-maintained fork
-([`mrkushalsm/judge0`](https://hub.docker.com/r/mrkushalsm/judge0)) based on the
-official Judge0 codebase. See
-[judge0/judge0#543](https://github.com/judge0/judge0/issues/543) for upstream status.
-
-### Production-like deploy (single server)
+For the current Docker deployment:
 
 ```bash
 docker compose up -d --build
 docker compose exec backend npx prisma migrate deploy
-```
-
-Optional seed:
-
-```bash
 docker compose exec backend npm run prisma:seed
 ```
 
-### Verification checklist
+Stop the stack:
 
-- Backend health is `ok`
-- Login works for demo student and teacher
+```bash
+docker compose down
+```
+
+Useful commands:
+
+```bash
+# backend logs
+docker compose logs -f backend
+
+# run database migrations
+npm run db:migrate
+
+# seed demo data
+npm run db:seed
+
+# smoke test the backend API
+npm run smoke
+```
+
+Note: older root npm scripts such as `up:judge0`, `down:judge0`, and `up:all` reference a removed `infra/judge0` folder and should not be used unless that legacy Judge0 stack is restored.
+
+## URLs
+
+Production/server Docker deployment:
+
+- Frontend: `https://<server-domain>` or the server IP/domain configured for nginx
+- Backend API through nginx: `https://<server-domain>/api`
+- Backend health through nginx: `https://<server-domain>/health`
+- Backend direct port: `http://<server-ip>:5000`
+- Ollama direct port: `http://<server-ip>:11434`
+
+Local Vite development:
+
+- Frontend dev server: `http://localhost:5173`
+- Backend API: `http://localhost:5000`
+- Backend readiness: `http://localhost:5000/api/health/ready`
+
+The built frontend uses same-origin API calls. In Docker, nginx proxies `/api/*` and `/ws/*` to the backend container, so the frontend does not need a separate `VITE_API_BASE_URL` in the production image.
+
+## Code execution architecture
+
+The project currently uses a Docker-based runner instead of a live Judge0 service.
+
+Both the interactive terminal path and the submit/test-case path execute student code inside short-lived Docker containers. The backend writes code into a shared temporary directory, asks the host Docker daemon to start a language-specific runner container, passes stdin to the process, and captures stdout, stderr, exit status, and timing information.
+
+Security and resource boundaries include:
+
+- no outbound network access for runner containers
+- dropped Linux capabilities
+- `no-new-privileges`
+- memory limit
+- CPU limit
+- process count limit
+- temporary writable scratch space
+- per-run timeout handling
+
+Some internal names still use Judge0-compatible terminology, such as `Judge0RunResult`, `languageId`, `judge0Status`, and `judge0StatusId`. These are legacy compatibility names for result/status mapping; the current execution path is the local Docker runner.
+
+## AI architecture
+
+The AI features run through Ollama. The main model is configured with:
+
+```env
+OLLAMA_MODEL=qwen2.5-coder:14b
+```
+
+The AI Mentor is designed to guide students without simply giving away complete answers. It uses prompt rules, assignment/problem context, student code, terminal output, and safety filtering to produce mentor-style responses.
+
+AI is also used for:
+
+- personalized flashcard generation
+- rubric generation
+- grade suggestion support
+- problem variation generation
+- tutorial generation/caching support
+
+The current mentor flow does not rely on a separate validator model. If legacy validator-related environment variables or database fields are present, they are retained for compatibility/audit history and are not the main AI mentor architecture.
+
+## Key API endpoints
+
+- Auth: `/api/auth/register`, `/api/auth/verify-email`, `/api/auth/login`, `/api/auth/refresh`, `/api/auth/me`
+- Problems: `/api/problems`, `/api/problems/:id`
+- AI mentor: `/api/ai/chat`, `/api/ai/chat/stream`, `/api/ai/hint`
+- Code execution: `/api/execute`
+- Student history and analytics: `/api/student/history`, `/api/student/history/ai`, `/api/student/analytics`
+- Teacher views: `/api/teacher/students`, `/api/teacher/class/overview`, `/api/teacher/class/analytics`
+- Assignments: `/api/assignments`, `/api/assignments/:id`, `/api/assignments/:id/enroll`
+- Grades: `/api/grades/me/assignment/:assignmentId`, `/api/grades/assignment/:assignmentId`, `/api/grades/:assignmentId/:userId`
+- Rubrics: `/api/rubrics/:problemId`, `/api/rubrics/:problemId/generate`
+- Flashcards: `/api/flashcards/library`, `/api/flashcards/status`, `/api/flashcards/generate`
+- Variations: `/api/variations/generate`, `/api/variations`, `/api/variations/:id`
+- Tutorials: `/api/tutorials/index/:language`, `/api/tutorials/:tag/:language`
+- Exam mode: `/api/admin/exam-mode`, `/api/exam/violation`, `/api/exam/status/:assignmentId`
+- Health: `/health`, `/api/health`, `/api/health/live`, `/api/health/ready`
+
+## Repository structure
+
+```text
+backend/      Express API, Prisma schema, AI services, Docker runner, routes
+frontend/     React/Vite application, student and teacher UI
+docs/         Technical notes, checklists, and validation documents
+Documents/    Project delivery documents
+infra/        Infrastructure helper scripts
+model/        Model-related project files, if present
+scripts/      Utility scripts such as API smoke tests
+```
+
+The `Documents` folder is organized by course phase:
+
+```text
+Documents/407/    CENG 407 documents
+Documents/408/    CENG 408 documents
+```
+
+## Verification checklist
+
+- Backend health endpoint returns `ok`
+- Login works for demo student and teacher accounts
 - Problem list loads
-- `Run` returns stdout/stderr output
-- `Submit` runs test cases and records submission
-- AI chat returns mentor response
-- Exam mode toggle disables AI chat for students
+- Student can open an assignment and reach the coding workspace
+- `Run` returns terminal output or execution errors
+- `Submit` runs test cases and records the submission
+- AI Mentor returns guidance without directly giving complete solutions
+- Flashcards can be generated after accepted submissions
+- Teacher can create assignments, rubrics, and grades
+- Student can view grade and teacher feedback
+- Exam mode disables restricted features for students
 
-### Incident quick actions
+## Deployment notes
 
-- Restart backend: `docker compose restart backend`
-- Restart frontend: `docker compose restart frontend`
-- Full restart: `npm run down:all && npm run up:all`
-- Re-run setup if schema/data drift occurs: `npm run setup`
+The current Docker Compose file is production-oriented:
 
-### Rollback (manual)
+- frontend is served by nginx on ports `80` and `443`
+- backend is exposed on port `5000`
+- PostgreSQL is exposed on port `5432`
+- Ollama is exposed on port `11434`
+- nginx expects Let's Encrypt certificates under `/etc/letsencrypt`
+- GPU support is requested for the Ollama container through the NVIDIA Docker runtime
+- backend uses the host Docker socket to start isolated language runner containers
+
+For a fresh local machine, certificate and GPU settings may need adjustment before using the production Compose file unchanged.
+
+## Incident quick actions
+
+```bash
+# restart backend
+docker compose restart backend
+
+# restart frontend
+docker compose restart frontend
+
+# full restart
+docker compose down
+docker compose up -d --build
+
+# re-run migrations and seed data
+npm run setup
+```
+
+## Manual rollback
 
 If deployment fails:
 
-1. Checkout last known good commit/tag.
-2. Rebuild and restart:
-   ```bash
-   docker compose up -d --build
-   ```
-3. Re-verify health + smoke checks.
+1. Checkout the last known good commit or tag.
+2. Rebuild and restart the stack.
+3. Re-run migrations only if the target commit requires them.
+4. Verify health, login, problem loading, run/submit, AI Mentor, and grading flows.

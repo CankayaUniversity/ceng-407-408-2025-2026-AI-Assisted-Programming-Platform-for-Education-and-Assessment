@@ -451,6 +451,7 @@ export default function StudentWorkspace({
   problems,
   assignments = [],
   assignmentsLoading = false,
+  lockedExamIds = new Set(),
   onAssignmentSelect,
   selectedId,
   selectProblem,
@@ -891,36 +892,51 @@ export default function StudentWorkspace({
                   ) : (
                     <List disablePadding sx={{ maxHeight: 480, overflowY: "auto" }}>
                       {filteredAssignments.map((a) => {
-                        const problem    = a.problem ?? {};
-                        const isSelected = problem.id === selectedId;
-                        const state      = examState(a);
-                        const isLocked   = a.mode === "exam" && state === "not_started";
-                        const isEnded    = a.mode === "exam" && state === "ended";
-                        const langs      = a.allowedLanguages ?? [];
+                        const problem     = a.problem ?? {};
+                        const isSelected  = problem.id === selectedId;
+                        const state       = examState(a);
+                        const isLocked    = a.mode === "exam" && state === "not_started";
+                        const isEnded     = a.mode === "exam" && state === "ended";
+                        // Student has already finished/locked-out of this exam
+                        const isSubmitted = a.mode === "exam" && lockedExamIds.has(a.id);
+                        const langs       = a.allowedLanguages ?? [];
 
                         return (
                           <ListItemButton
                             key={a.id}
-                            selected={isSelected}
-                            disabled={isLocked || isEnded}
-                            onClick={() => onAssignmentSelect?.(a)}
+                            selected={isSelected && !isSubmitted}
+                            disabled={isLocked || isEnded || isSubmitted}
+                            onClick={() => {
+                              if (isSubmitted) return;
+                              onAssignmentSelect?.(a);
+                            }}
                             sx={{
                               mb: 0.75,
                               border: 1,
-                              borderColor: isSelected ? "primary.main" : "divider",
+                              borderColor: isSelected && !isSubmitted ? "primary.main" : "divider",
                               borderRadius: 2,
                               alignItems: "flex-start",
-                              bgcolor: isSelected ? "rgba(99,102,241,0.08)" : "transparent",
-                              opacity: isEnded ? 0.5 : 1,
+                              bgcolor: isSelected && !isSubmitted ? "rgba(99,102,241,0.08)" : "transparent",
+                              opacity: (isEnded || isSubmitted) ? 0.55 : 1,
                             }}
                           >
                             <ListItemText
                               primary={
                                 <Stack direction="row" alignItems="center" spacing={0.5}>
-                                  {isLocked && <LockIcon sx={{ fontSize: 12, color: "text.disabled" }} />}
+                                  {isLocked    && <LockIcon sx={{ fontSize: 12, color: "text.disabled" }} />}
+                                  {isSubmitted && <LockIcon sx={{ fontSize: 12, color: "success.main" }} />}
                                   <Typography variant="body2" fontWeight={600} fontSize={13} noWrap>
                                     {a.title}
                                   </Typography>
+                                  {isSubmitted && (
+                                    <Chip
+                                      label="Submitted"
+                                      size="small"
+                                      color="success"
+                                      variant="outlined"
+                                      sx={{ height: 16, fontSize: 10, ml: 0.5 }}
+                                    />
+                                  )}
                                 </Stack>
                               }
                               secondary={

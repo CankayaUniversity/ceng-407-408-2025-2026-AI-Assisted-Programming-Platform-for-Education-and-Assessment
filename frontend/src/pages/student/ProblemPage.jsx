@@ -93,6 +93,10 @@ export default function ProblemPage() {
   // Populates the Homework / Practice / Exams toggle next to the editor.
   const [studentAssignments,        setStudentAssignments]        = useState([]);
   const [studentAssignmentsLoading, setStudentAssignmentsLoading] = useState(true);
+  // Set<assignmentId> of exam assignments this student is locked out of
+  // (already finished or auto-submitted via violation). Drives the
+  // "Submitted" badge + disabled state in the sidebar list.
+  const [lockedExamIds, setLockedExamIds] = useState(() => new Set());
   useEffect(() => {
     if (!token) return;
     setStudentAssignmentsLoading(true);
@@ -100,7 +104,28 @@ export default function ProblemPage() {
       headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
     })
       .then((r) => r.json())
-      .then((body) => setStudentAssignments(body?.data ?? []))
+      .then((body) => {
+        const list = body?.data ?? [];
+        setStudentAssignments(list);
+        // Fetch exam-status for each exam-mode assignment in parallel and
+        // collect the IDs the student is locked out of. Failures are
+        // silently ignored — the row just stays clickable in that case.
+        const examOnes = list.filter((a) => a.mode === "exam");
+        if (examOnes.length === 0) return;
+        Promise.all(
+          examOnes.map((a) =>
+            fetch(`${API_BASE}/api/exam/status/${a.id}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            })
+              .then((r) => (r.ok ? r.json() : null))
+              .then((d) => (d?.success && d.locked ? a.id : null))
+              .catch(() => null),
+          ),
+        ).then((ids) => {
+          const next = new Set(ids.filter((x) => x != null));
+          if (next.size > 0) setLockedExamIds(next);
+        });
+      })
       .catch(() => {})
       .finally(() => setStudentAssignmentsLoading(false));
   }, [token]);
@@ -273,6 +298,16 @@ export default function ProblemPage() {
     examLockedRef.current = true;
     setExamLocked(true);
     if (examLockKey) { try { localStorage.setItem(examLockKey, "1"); } catch {} }
+    // Add this assignment to the locked set so the sidebar list disables
+    // its row immediately (without waiting for a re-fetch).
+    if (assignmentId) {
+      setLockedExamIds((prev) => {
+        if (prev.has(assignmentId)) return prev;
+        const next = new Set(prev);
+        next.add(assignmentId);
+        return next;
+      });
+    }
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
   }
 
@@ -1017,6 +1052,7 @@ export default function ProblemPage() {
       problems={problems}
       assignments={studentAssignments}
       assignmentsLoading={studentAssignmentsLoading}
+      lockedExamIds={lockedExamIds}
       onAssignmentSelect={selectAssignment}
       selectedId={selectedId}
       selectProblem={selectProblem}

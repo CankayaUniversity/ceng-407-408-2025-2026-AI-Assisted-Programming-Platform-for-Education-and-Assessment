@@ -2,6 +2,7 @@ import { normalizeText } from "./mentorContext";
 import type { MentorLocale, MentorRequestInput } from "./mentorTypes";
 
 const TURKISH_CHARACTER_PATTERN = /[çğıöşüÇĞİÖŞÜ]/;
+const NON_KEYBOARD_TYPO_TURKISH_CHARACTER_PATTERN = /[çğöşüÇĞÖŞÜ]/;
 
 const TURKISH_LOCALE_PATTERNS = [
   /\b(merhaba|selam|naber|ne haber|nhbr|slm|mrb|hey|günaydın|gunaydin|tünaydın|tunaydin|iyi günler|iyi gunler|iyi akşamlar|iyi aksamlar|iyi geceler)\b/,
@@ -19,6 +20,9 @@ const TURKISH_LOCALE_PATTERNS = [
 
 const STRONG_ENGLISH_LOCALE_PATTERN =
   /\b(what|which|who|how|why|can|could|do|does|did|is|are|am|write|give|just|hello|hi|thanks|review|check|explain|show|tell|should|where|exactly|mean|understand|output|input|format|error|code|editor|line|function|loop|array|condition|recursion|pointer|variable|syntax|debug|compile|print|return|class|method|object|test|run|issue|fix|help|hint|step|example)\b/i;
+
+const ENGLISH_SENTENCE_STRUCTURE_PATTERN =
+  /\b(i|i'm|im|you|your|you're|youre|we|can you|could you|do you|does it|did it|what|which|who|how|why|where|please)\b/i;
 
 const ENGLISH_LOCALE_PATTERNS = [
   /\b(what|which|who|how|why|can|could|do|does|did|is|are|am|was|were|will|would|should|write|give|just|hello|hi|thanks|thank you|please|hey|sup|greet|greetings)\b/,
@@ -76,6 +80,18 @@ function shouldInheritRecentLocale(rawQuestion: string): boolean {
   return wordCount <= 2 || SHORT_AMBIGUOUS_MESSAGE_PATTERN.test(text);
 }
 
+function looksLikeEnglishWithTurkishKeyboardTypos(rawText: string): boolean {
+  if (NON_KEYBOARD_TYPO_TURKISH_CHARACTER_PATTERN.test(rawText)) return false;
+
+  const normalized = rawText.replace(/[ıİ]/g, "i");
+  return (
+    normalized !== rawText &&
+    ASCII_ENGLISH_MESSAGE_PATTERN.test(normalized) &&
+    STRONG_ENGLISH_LOCALE_PATTERN.test(normalized) &&
+    ENGLISH_SENTENCE_STRUCTURE_PATTERN.test(normalized)
+  );
+}
+
 function inferLocaleFromText(rawText: string): MentorLocale | null {
   const text = normalizeText(rawText);
   if (!text) return null;
@@ -83,12 +99,18 @@ function inferLocaleFromText(rawText: string): MentorLocale | null {
   const lowerTr = text.toLocaleLowerCase("tr-TR");
   const lowerEn = text.toLowerCase();
 
-  if (TURKISH_CHARACTER_PATTERN.test(text)) return "tr";
-  if (TURKISH_LOCALE_PATTERNS.some((pattern) => pattern.test(lowerTr))) return "tr";
-
   const strongEnglish =
     ASCII_ENGLISH_MESSAGE_PATTERN.test(text) &&
     STRONG_ENGLISH_LOCALE_PATTERN.test(text);
+  const englishSentence =
+    strongEnglish &&
+    ENGLISH_SENTENCE_STRUCTURE_PATTERN.test(text);
+
+  if (looksLikeEnglishWithTurkishKeyboardTypos(text)) return "en";
+  if (TURKISH_CHARACTER_PATTERN.test(text)) return "tr";
+  if (englishSentence) return "en";
+  if (TURKISH_LOCALE_PATTERNS.some((pattern) => pattern.test(lowerTr))) return "tr";
+
   if (strongEnglish || ENGLISH_LOCALE_PATTERNS.some((pattern) => pattern.test(lowerEn))) {
     return "en";
   }
@@ -122,8 +144,13 @@ export function inferMentorLocale(input: MentorRequestInput): MentorLocale {
   const strongEnglish =
     ASCII_ENGLISH_MESSAGE_PATTERN.test(rawQuestion) &&
     STRONG_ENGLISH_LOCALE_PATTERN.test(rawQuestion);
+  const englishSentence =
+    strongEnglish &&
+    ENGLISH_SENTENCE_STRUCTURE_PATTERN.test(rawQuestion);
 
+  if (looksLikeEnglishWithTurkishKeyboardTypos(rawQuestion)) return "en";
   if (TURKISH_CHARACTER_PATTERN.test(rawQuestion)) return "tr";
+  if (englishSentence && !shouldInheritRecentLocale(rawQuestion)) return "en";
   if (TURKISH_LOCALE_PATTERNS.some((pattern) => pattern.test(question))) return "tr";
   if (strongEnglish && !shouldInheritRecentLocale(rawQuestion)) return "en";
 

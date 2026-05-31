@@ -232,12 +232,37 @@ export default function ProblemPage() {
   // Defined as a ref so the violation handler (above) and the auto-submit
   // effect (below) can reference it before runTests is declared.
   const lockAndFinishRef = useRef(null);
-  function lockAndFinish() {
+  async function lockAndFinish() {
+    // Close dialog immediately so the UI feels responsive.
+    setFinishExamDialogOpen(false);
+
+    // 1) Submit the student's current code via the normal test-run path.
+    //    Wrapped in try/catch so a network failure still locks the exam.
+    try {
+      await runTestsRef.current?.();
+    } catch { /* swallow — local lock still applies */ }
+
+    // 2) Persist the "finished" marker server-side so re-login cannot
+    //    re-open this exam. Uses the existing autoSubmitted=true lockout
+    //    path; GET /api/exam/status will return locked:true on next load.
+    if (assignmentId && token) {
+      try {
+        await fetch(`${API_BASE}/api/exam/finish`, {
+          method:  "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            assignmentId,
+            problemId: selectedProblem?.id,
+          }),
+        });
+      } catch { /* network failure — local lock still applies */ }
+    }
+
+    // 3) Apply the local lock + exit fullscreen (original behavior).
     examLockedRef.current = true;
     setExamLocked(true);
     if (examLockKey) { try { localStorage.setItem(examLockKey, "1"); } catch {} }
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-    setFinishExamDialogOpen(false);
   }
 
   // Core violation handler — called by all event listeners

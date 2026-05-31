@@ -24,7 +24,7 @@ examRouter.post("/violation", async (req, res) => {
     return;
   }
 
-  const ALLOWED_TYPES = ["tab_switch", "fullscreen_exit", "window_blur"];
+  const ALLOWED_TYPES = ["tab_switch", "fullscreen_exit", "window_blur", "manual_finish"];
   if (!ALLOWED_TYPES.includes(type)) {
     res.status(400).json({ error: `type must be one of: ${ALLOWED_TYPES.join(", ")}` });
     return;
@@ -46,6 +46,61 @@ examRouter.post("/violation", async (req, res) => {
   } catch (err) {
     console.error("[exam/violation]", err);
     res.status(500).json({ error: "Failed to record violation" });
+  }
+});
+
+/**
+ * POST /api/exam/finish
+ *
+ * Marks an exam as voluntarily finished by the student. Persists a violation
+ * row with type="manual_finish" and autoSubmitted=true so the existing
+ * GET /api/exam/status lockout check (`where: { autoSubmitted: true }`)
+ * will return locked=true on subsequent loads. This prevents the student
+ * from re-entering the exam after logout/login.
+ *
+ * Body: { assignmentId, problemId? }
+ * Idempotent: if a manual_finish row already exists for this user+assignment,
+ * returns success without creating a duplicate.
+ */
+examRouter.post("/finish", async (req, res) => {
+  const userId = req.auth!.userId;
+  const { assignmentId, problemId } = req.body;
+
+  if (assignmentId == null) {
+    res.status(400).json({ error: "assignmentId is required" });
+    return;
+  }
+
+  try {
+    const existing = await prisma.examViolation.findFirst({
+      where: {
+        userId,
+        assignmentId: Number(assignmentId),
+        type: "manual_finish",
+      },
+      select: { id: true },
+    });
+
+    if (existing) {
+      res.json({ success: true, id: existing.id, alreadyFinished: true });
+      return;
+    }
+
+    const row = await prisma.examViolation.create({
+      data: {
+        userId,
+        assignmentId: Number(assignmentId),
+        problemId:    problemId != null ? Number(problemId) : null,
+        type:         "manual_finish",
+        count:        1,
+        autoSubmitted: true,
+      },
+    });
+
+    res.status(201).json({ success: true, id: row.id });
+  } catch (err) {
+    console.error("[exam/finish]", err);
+    res.status(500).json({ error: "Failed to finish exam" });
   }
 });
 

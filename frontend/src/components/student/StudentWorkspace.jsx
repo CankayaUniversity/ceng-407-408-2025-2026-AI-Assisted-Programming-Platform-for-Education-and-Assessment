@@ -1130,17 +1130,18 @@ export default function StudentWorkspace({
           title={selectedProblem?.title || "Code Editor"}
           action={
             <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
-              {/* Exam: "Finish Exam" button appears when all tests pass (not locked) */}
-              {examMode && hasSolvedProblem && !examLocked && (
+              {/* Exam: "Finish & Submit Exam" — always available so the student
+                  has a clear exit. Color upgrades to success once tests pass. */}
+              {examMode && !examLocked && (
                 <Button
                   variant="contained"
                   size="small"
-                  color="success"
+                  color={hasSolvedProblem ? "success" : "warning"}
                   startIcon={<CheckIcon />}
                   onClick={onFinishExamRequest}
                   sx={{ fontWeight: 700, whiteSpace: "nowrap" }}
                 >
-                  Finish Exam
+                  {hasSolvedProblem ? "Finish Exam" : "Finish & Submit Exam"}
                 </Button>
               )}
               {/* Non-exam: Create Flashcards button — shown after solving, hidden once generated */}

@@ -165,6 +165,11 @@ export default function ProblemPage() {
     catch { return 0; }
   });
 
+  // "violation" (security trigger) vs "finished" (student voluntarily submitted).
+  // Drives the lockout-screen wording: harsh red for violations, friendly green
+  // for finished. Source of truth is the server (GET /api/exam/status).
+  const [lockReason, setLockReason] = useState("violation");
+
   const [violationSnackbarOpen, setViolationSnackbarOpen] = useState(false);
   const [violationSnackbarMsg,  setViolationSnackbarMsg]  = useState("");
   const [finishExamDialogOpen,  setFinishExamDialogOpen]  = useState(false);
@@ -203,6 +208,9 @@ export default function ProblemPage() {
         if (data.locked) {
           examLockedRef.current = true;
           setExamLocked(true);
+          if (data.lockReason === "finished" || data.lockReason === "violation") {
+            setLockReason(data.lockReason);
+          }
           if (examLockKey) {
             try { localStorage.setItem(examLockKey, "1"); } catch {}
           }
@@ -258,7 +266,10 @@ export default function ProblemPage() {
       } catch { /* network failure — local lock still applies */ }
     }
 
-    // 3) Apply the local lock + exit fullscreen (original behavior).
+    // 3) Apply the local lock + exit fullscreen. Mark as voluntary finish
+    //    so the lockout screen shows the friendly "Exam submitted" wording
+    //    instead of the harsh "security violation" message.
+    setLockReason("finished");
     examLockedRef.current = true;
     setExamLocked(true);
     if (examLockKey) { try { localStorage.setItem(examLockKey, "1"); } catch {} }
@@ -916,6 +927,14 @@ export default function ProblemPage() {
   // dashboard. This cannot be bypassed by logout/login because the server
   // confirms `locked: true` on every load.
   if (isExamSession && examLocked) {
+    const isFinished = lockReason === "finished";
+    const accentColor = isFinished ? "#22c55e" : "#f04747";
+    const icon        = isFinished ? "✅" : "🔒";
+    const heading     = isFinished ? "Exam Submitted" : "Exam Locked";
+    const body1       = isFinished
+      ? "You finished and submitted this exam. Your result has been recorded for grading."
+      : "Your exam was automatically submitted because a security violation (tab switch, window blur, or fullscreen exit) was detected.";
+    const body2       = "You cannot resume or re-enter this exam.";
     return (
       <div
         style={{
@@ -935,24 +954,22 @@ export default function ProblemPage() {
             maxWidth: 560,
             width: "100%",
             background: "#0f1226",
-            border: "1px solid #f04747",
+            border: `1px solid ${accentColor}`,
             borderRadius: 12,
             padding: "32px 28px",
-            boxShadow: "0 8px 32px rgba(240,71,71,0.25)",
+            boxShadow: `0 8px 32px ${isFinished ? "rgba(34,197,94,0.25)" : "rgba(240,71,71,0.25)"}`,
             textAlign: "center",
           }}
         >
-          <div style={{ fontSize: 48, marginBottom: 12 }}>🔒</div>
-          <h2 style={{ marginTop: 0, marginBottom: 12, color: "#f04747" }}>
-            Exam Locked
+          <div style={{ fontSize: 48, marginBottom: 12 }}>{icon}</div>
+          <h2 style={{ marginTop: 0, marginBottom: 12, color: accentColor }}>
+            {heading}
           </h2>
           <p style={{ lineHeight: 1.5, marginBottom: 12 }}>
-            Your exam was automatically submitted because a security violation
-            (tab switch, window blur, or fullscreen exit) was detected.
+            {body1}
           </p>
           <p style={{ lineHeight: 1.5, marginBottom: 24, color: "#bbb" }}>
-            You cannot resume or re-enter this exam. The submitted result has
-            been recorded for grading.
+            {body2}
           </p>
           <button
             type="button"

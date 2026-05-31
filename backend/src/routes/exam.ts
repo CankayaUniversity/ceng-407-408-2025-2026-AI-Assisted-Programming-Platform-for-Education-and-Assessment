@@ -163,13 +163,20 @@ examRouter.get("/status/:assignmentId", async (req, res) => {
       prisma.examViolation.findFirst({
         where: { userId, assignmentId, autoSubmitted: true },
         orderBy: { createdAt: "asc" },
-        select: { createdAt: true },
+        select: { createdAt: true, type: true },
       }),
     ]);
+
+    // lockReason tells the frontend whether the lockout was triggered by a
+    // security violation (harsh red "Exam Locked" UI) or a voluntary finish
+    // (friendly green "Exam submitted" UI). Defaults to "violation" for any
+    // legacy rows that don't have a known type.
+    const lockReason = lockingRow?.type === "manual_finish" ? "finished" : "violation";
 
     res.json({
       success: true,
       locked: lockingRow !== null,
+      lockReason,
       violationCount,
       autoSubmittedAt: lockingRow?.createdAt?.toISOString() ?? null,
     });
